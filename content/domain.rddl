@@ -1,0 +1,67 @@
+domain simple_compromise {
+
+    types {
+        host: object;
+        credentials: object;
+    };
+
+    pvariables {
+
+        // Associations
+        CONNECTED(host, host) : { non-fluent, bool, default = false };
+        ACCESSES(credentials, host)  : { non-fluent, bool, default = false };
+        STORES(host, credentials)  : { non-fluent, bool, default = false };
+
+        // State fluents
+        compromised(host) : { state-fluent, bool, default = false };
+        cracked(credentials) : { state-fluent, bool, default = false };
+
+        // Attacker action fluents
+        compromise_attack(host) : { action-fluent, bool, default = false };
+        crack_attack(credentials) : { action-fluent, bool, default = false };
+
+        // Detector observations for crack_attack. (Doing these as state-fluents instead of observ-fluents because the latter hides all state-fluents.)
+        observed_crack_attack(credentials) : { state-fluent, bool, default = false };
+
+        // Initial TTCs
+        ittc_crack_attack(credentials) : { non-fluent, int, default = 0 };
+
+        // Remaining TTCs
+        rttc_crack_attack(credentials) : { state-fluent, int, default = 0 };
+
+        // Host value
+        value(host) : { state-fluent, int, default = 0 };
+
+    };
+
+    cpfs {
+        compromised'(?ht) =
+            if (~compromised(?ht) ^ exists_{?hs : host, ?c : credentials} [CONNECTED(?hs, ?ht) ^ compromised(?hs) ^ ACCESSES(?c, ?ht) ^ cracked(?c) ^ compromise_attack(?ht)])
+                then KronDelta(true)
+            else compromised(?ht);
+
+        cracked'(?c) =
+            if (~cracked(?c) ^ crack_attack(?c) ^ rttc_crack_attack(?c) < 1 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
+                then KronDelta(true)
+            else cracked(?c);
+
+        rttc_crack_attack'(?c) =
+            if (~cracked(?c) ^ crack_attack(?c) ^ rttc_crack_attack(?c) > 0 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
+                then (rttc_crack_attack(?c) - 1)
+            else rttc_crack_attack(?c);
+
+        observed_crack_attack'(?c) = 
+            if (crack_attack(?c)) 
+              then Bernoulli(0.8)
+            else Bernoulli(0.1);
+
+        value'(?h) = 
+            if (compromised(?h))
+              then 0
+            else value(?h);
+
+    };
+
+    reward = (sum_{?h: host} [value(?h) * compromised(?h)]);
+
+}
