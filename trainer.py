@@ -7,6 +7,42 @@ from pyRDDLGym.Visualizer.MovieGenerator import MovieGenerator
 from pyRDDLGym.Core.Policies.Agents import RandomAgent
 from agents import PassiveCyberAgent
 from agents import RandomCyberAgent
+import torch
+from torch_geometric.data import Data
+
+node_mapping = {
+    'observed_crack_attack___c1': 6,
+    'observed_crack_attack___c2': 7,
+    'observed_crack_attack___c3': 8,
+    'observed_crack_attack___c4': 9,
+    'observed_crack_attack___c5': 10,
+    'observed_crack_attack___c6': 11}
+
+
+# Node features
+node_features = torch.tensor([
+    [1], [1], [1], [1], [1], [1],  # Host features
+    [0], [0], [0], [0], [0], [0]   # Credential features
+])
+
+# Edges
+edge_index = torch.tensor([
+    # CONNECTED Edges (Host-to-Host)
+    [0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 5, 
+     # ACCESSES Edges (Credentials-to-Host)
+     6, 7, 8, 9, 10, 11, 
+     # STORES Edges (Host-to-Credentials)
+     0, 0, 5, 1, 3, 3, 4],
+    [1, 2, 3, 5, 4, 5, 0, 0, 1, 2, 3, 
+     0, 1, 2, 3, 4, 5, 
+     6, 7, 8, 9, 10, 8, 11]
+], dtype=torch.long)
+
+N = len(node_features)
+time_steps = 25  # Number of time steps
+
+data_series = []
+
 
 base_path = 'content/'
 myEnv = RDDLEnv.RDDLEnv(domain=base_path+'domain.rddl', instance=base_path+'instance.rddl')
@@ -32,17 +68,43 @@ for step in range(myEnv.horizon):
     next_state, reward, done, info = myEnv.step(action)
     observations = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" in key]
     log_trace.append(observations)
+    truncated_log_trace = log_trace[-time_steps:]
     attacksteps = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" not in key]
     total_reward += reward
     print()
     print(f'step              = {step}')
     print(f'action            = {action}')
     print(f'observations      = {observations}')
-    print(f'log trace (25)    = {log_trace[-25:]}')
+    print(f'log trace (trunc) = {truncated_log_trace}')
+ #   print(f'log trace         = {log_trace}')
     print(f'attack steps      = {attacksteps}')
     print(f'TTCs              = {[(attackstep, value) for attackstep, value in next_state.items() if type(value) is numpy.int64]}')
     print(f'reward            = {reward}')
     state = next_state
+
+    # Initialize feature vectors with -1
+    log_feature_vectors = torch.full((N, time_steps), -1)
+
+    # Update feature vectors based on log traces
+    for t, log_t in enumerate(truncated_log_trace):
+        for node in range(N):
+            # Check if node is observable at this time step
+            if any(log_event in log_t for log_event, idx in node_mapping.items() if idx == node):
+                log_feature_vectors[node][t] = 1
+            elif log_feature_vectors[node][t] == -1:
+                log_feature_vectors[node][t] = 0
+
+    combined_features = torch.cat((node_features, log_feature_vectors), dim=1)
+
+    # Create PyTorch Geometric data object
+    data = Data(x=combined_features, edge_index=edge_index)
+
+    # Print the conttent of the data object
+    print(data.x)
+    print(data.edge_index)
+
+    data_series.append(data)
+
     if done:
         break
 end_time = time.time()
@@ -50,3 +112,5 @@ print()
 print(f'episode ended with reward {total_reward}. Execution time was {end_time-start_time} s.')
 
 myEnv.close()
+
+
