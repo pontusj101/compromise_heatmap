@@ -11,6 +11,12 @@ import torch
 from torch_geometric.data import Data
 
 node_mapping = {
+    'compromised___h1': 0,
+    'compromised___h2': 1,
+    'compromised___h3': 2,
+    'compromised___h4': 3,
+    'compromised___h5': 4,
+    'compromised___h6': 5,
     'observed_crack_attack___c1': 6,
     'observed_crack_attack___c2': 7,
     'observed_crack_attack___c3': 8,
@@ -88,6 +94,9 @@ for step in range(myEnv.horizon):
         # Initialize feature vectors with -1
         log_feature_vectors = torch.full((N, time_steps), -1)
 
+        # Initialize labels with 0 (uncompromised)
+        labels = torch.zeros(N)
+
         # Update feature vectors based on log traces
         for t, log_t in enumerate(truncated_log_trace):
             for node in range(N):
@@ -97,14 +106,20 @@ for step in range(myEnv.horizon):
                 elif log_feature_vectors[node][t] == -1:
                     log_feature_vectors[node][t] = 0
 
+        # Update labels based on current state
+        for attackstep in attacksteps:
+            if attackstep in node_mapping:
+                labels[node_mapping[attackstep]] = 1
+
         combined_features = torch.cat((node_features, log_feature_vectors), dim=1)
 
         # Create PyTorch Geometric data object
-        data = Data(x=combined_features, edge_index=edge_index)
+        data = Data(x=combined_features, edge_index=edge_index, y=labels)
 
         # Print the conttent of the data object
         print(data.x)
         print(data.edge_index)
+        print(data.y)
 
         data_series.append(data)
 
