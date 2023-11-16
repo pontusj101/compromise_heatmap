@@ -3,8 +3,6 @@ import numpy
 import random
 from pyRDDLGym import RDDLEnv
 from pyRDDLGym import ExampleManager
-from pyRDDLGym.Visualizer.MovieGenerator import MovieGenerator
-from pyRDDLGym.Core.Policies.Agents import RandomAgent
 from agents import PassiveCyberAgent
 from agents import RandomCyberAgent
 import torch

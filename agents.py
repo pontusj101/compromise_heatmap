@@ -1,7 +1,6 @@
 import random
-import gym
-from pyRDDLGym.Core.Policies.Agents import BaseAgent
 from collections import OrderedDict
+from pyRDDLGym.Core.Policies.Agents import BaseAgent
 
 # Attackers and defenders look the same
 class PassiveCyberAgent(BaseAgent):
