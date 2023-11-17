@@ -92,61 +92,60 @@ def torch_data_from_trace(truncated_log_trace, attacksteps, debug_print=False):
 
     return data
 
-def produce_training_data(log_window=25, max_start_time_step=100, rddl_path='content/', random_cyber_agent_seed=42, debug_print=False):
+def produce_training_data(n_simulations=10, log_window=25, max_start_time_step=100, rddl_path='content/', random_cyber_agent_seed=42, debug_print=False):
 
     data_series = []
 
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
-    start_step =  random.randint(log_window, max_start_time_step)
-    agent = PassiveCyberAgent(action_space=myEnv.action_space)
+    for i_sims in range(n_simulations):
+        start_step =  random.randint(log_window, max_start_time_step)
+        agent = PassiveCyberAgent(action_space=myEnv.action_space)
 
-    log_trace = []
-    total_reward = 0
-    state = myEnv.reset()
-    start_time = time.time()
-    if debug_print:
-        print(f'Starting attack at step {start_step}')
-        print(f'step         = 0')
-        print(f'attack steps = {[attackstep for attackstep, value in state.items() if type(value) is numpy.bool_ and value == True]}')
-        print(f'TTCs         = {[(attackstep, value) for attackstep, value in state.items() if type(value) is numpy.int64]}')
-    for step in range(myEnv.horizon):
-        if step == start_step:
-            agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
-            if debug_print:
-                print(f'Now initiating attack.')
-        action = agent.sample_action()
-        next_state, reward, done, info = myEnv.step(action)
-        observations = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" in key]
-        log_trace.append(observations)
-        truncated_log_trace = log_trace[-log_window:]
-        attacksteps = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" not in key]
-        total_reward += reward
-        state = next_state
+        log_trace = []
+        total_reward = 0
+        state = myEnv.reset()
+        start_time = time.time()
         if debug_print:
-            print()
-            print(f'step              = {step}')
-            print(f'action            = {action}')
-            print(f'observations      = {observations}')
-            print(f'log trace (trunc) = {truncated_log_trace}')
-            print(f'attack steps      = {attacksteps}')
-            print(f'TTCs              = {[(attackstep, value) for attackstep, value in next_state.items() if type(value) is numpy.int64]}')
-            print(f'reward            = {reward}')
-
-        if step >= log_window:
+            print(f'Starting attack at step {start_step}')
+            print(f'step         = 0')
+            print(f'attack steps = {[attackstep for attackstep, value in state.items() if type(value) is numpy.bool_ and value == True]}')
+            print(f'TTCs         = {[(attackstep, value) for attackstep, value in state.items() if type(value) is numpy.int64]}')
+        for step in range(myEnv.horizon):
+            if step == start_step:
+                agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                if debug_print:
+                    print(f'Now initiating attack.')
+            action = agent.sample_action()
+            next_state, reward, done, info = myEnv.step(action)
+            observations = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" in key]
+            log_trace.append(observations)
+            truncated_log_trace = log_trace[-log_window:]
+            attacksteps = [key for key, value in next_state.items() if type(value) is numpy.bool_ and value == True and "observed" not in key]
+            total_reward += reward
+            state = next_state
             if debug_print:
-                print(f'Now initiating logging (having populated the beginning of the log with non-malicious data).')
+                print()
+                print(f'step              = {step}')
+                print(f'action            = {action}')
+                print(f'observations      = {observations}')
+                print(f'log trace (trunc) = {truncated_log_trace}')
+                print(f'attack steps      = {attacksteps}')
+                print(f'TTCs              = {[(attackstep, value) for attackstep, value in next_state.items() if type(value) is numpy.int64]}')
+                print(f'reward            = {reward}')
 
-            data = torch_data_from_trace(truncated_log_trace, attacksteps, debug_print=debug_print)
-            data_series.append(data)
+            if step >= log_window:
+                if debug_print:
+                    print(f'Now initiating logging (having populated the beginning of the log with non-malicious data).')
 
-        if done:
-            break
+                data = torch_data_from_trace(truncated_log_trace, attacksteps, debug_print=debug_print)
+                data_series.append(data)
 
-    if debug_print:
+            if done:
+                break
+
         end_time = time.time()
-        print()
-        print(f'episode ended with reward {total_reward}. Execution time was {end_time-start_time} s.')
+        print(f'Simulation {i_sims}: episode ended with reward {total_reward}. Execution time was {end_time-start_time} s.')
 
     myEnv.close()
     return data_series

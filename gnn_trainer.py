@@ -5,7 +5,8 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
 from data_producer import produce_training_data
 
-data_series = produce_training_data()
+log_window = 200
+data_series = produce_training_data(n_simulations=10, log_window=log_window, max_start_time_step=300, rddl_path='content/', random_cyber_agent_seed=42, debug_print=False)
 
 class GCN(torch.nn.Module):
     def __init__(self, num_node_features, num_classes):
@@ -22,7 +23,7 @@ class GCN(torch.nn.Module):
         return F.log_softmax(x, dim=1)
 
 # Initialize model
-model = GCN(num_node_features=26, num_classes=2) # 26 features, 2 classes (compromised/not compromised)
+model = GCN(num_node_features=log_window+1, num_classes=2) # 26 features, 2 classes (compromised/not compromised)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 # DataLoader
@@ -30,7 +31,7 @@ data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
 
 # Training loop
 loss_values = []
-for epoch in range(100):  # number of epochs
+for epoch in range(10):  # number of epochs
     epoch_loss = 0.0
     for batch in data_loader:
         optimizer.zero_grad()
