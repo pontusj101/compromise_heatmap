@@ -22,6 +22,7 @@ domain simple_compromise {
 
         // Detector observations for crack_attack. (Doing these as state-fluents instead of observ-fluents because the latter hides all state-fluents.)
         observed_crack_attack(credentials) : { state-fluent, bool, default = false };
+        observed_compromise_attack(host) : { state-fluent, bool, default = false };
 
         // Initial TTCs
         ittc_crack_attack(credentials) : { non-fluent, int, default = 0 };
@@ -54,6 +55,11 @@ domain simple_compromise {
             if (crack_attack(?c)) 
               then Bernoulli(0.95)
             else Bernoulli(0.1);
+
+        observed_compromise_attack'(?c) = 
+            if (compromise_attack(?c)) 
+              then Bernoulli(0.95)
+            else Bernoulli(0.05);
 
         value'(?h) = 
             if (compromised(?h))

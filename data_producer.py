@@ -8,19 +8,33 @@ from agents import PassiveCyberAgent
 from agents import RandomCyberAgent
 
 def torch_data_from_trace(truncated_log_trace, attacksteps, debug_print=False):
-    node_mapping = {
-        'compromised___h1': 0,
-        'compromised___h2': 1,
-        'compromised___h3': 2,
-        'compromised___h4': 3,
-        'compromised___h5': 4,
-        'compromised___h6': 5,
+    log_mapping = {
+        'observed_compromise_attack___h1': 0,
+        'observed_compromise_attack___h2': 1,
+        'observed_compromise_attack___h3': 2,
+        'observed_compromise_attack___h4': 3,
+        'observed_compromise_attack___h5': 4,
+        'observed_compromise_attack___h6': 5,
         'observed_crack_attack___c1': 6,
         'observed_crack_attack___c2': 7,
         'observed_crack_attack___c3': 8,
         'observed_crack_attack___c4': 9,
         'observed_crack_attack___c5': 10,
         'observed_crack_attack___c6': 11}
+
+    attackstep_mapping = {
+        'compromised___h1': 0,
+        'compromised___h2': 1,
+        'compromised___h3': 2,
+        'compromised___h4': 3,
+        'compromised___h5': 4,
+        'compromised___h6': 5,
+        'cracked___c1': 6,
+        'cracked___c2': 7,
+        'cracked___c3': 8,
+        'cracked___c4': 9,
+        'cracked___c5': 10,
+        'cracked___c6': 11}
 
     # Node features
     node_features = torch.tensor([
@@ -53,15 +67,15 @@ def torch_data_from_trace(truncated_log_trace, attacksteps, debug_print=False):
     for t, log_t in enumerate(truncated_log_trace):
         for node in range(n_nodes):
             # Check if node is observable at this time step
-            if any(log_event in log_t for log_event, idx in node_mapping.items() if idx == node):
+            if any(log_event in log_t for log_event, idx in log_mapping.items() if idx == node):
                 log_feature_vectors[node][t] = 1
             elif log_feature_vectors[node][t] == -1:
                 log_feature_vectors[node][t] = 0
 
     # Update labels based on current state
     for attackstep in attacksteps:
-        if attackstep in node_mapping:
-            labels[node_mapping[attackstep]] = 1
+        if attackstep in attackstep_mapping:
+            labels[attackstep_mapping[attackstep]] = 1
 
     labels = labels.to(torch.long)
     log_feature_vectors = log_feature_vectors.to(torch.float)

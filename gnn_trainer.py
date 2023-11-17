@@ -1,12 +1,11 @@
-from data_producer import produce_training_data
 import matplotlib.pyplot as plt
-
-data_series = produce_training_data()
-
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
+from data_producer import produce_training_data
+
+data_series = produce_training_data()
 
 class GCN(torch.nn.Module):
     def __init__(self, num_node_features, num_classes):
@@ -31,7 +30,7 @@ data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
 
 # Training loop
 loss_values = []
-for epoch in range(10):  # number of epochs
+for epoch in range(100):  # number of epochs
     epoch_loss = 0.0
     for batch in data_loader:
         optimizer.zero_grad()
@@ -50,4 +49,9 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.title('Loss Curve')
 plt.legend()
-plt.show()
+
+# Save the plot to a file
+plt.savefig('loss_curve.png')
+
+# Optional: Close the plot if not showing it
+plt.close()
