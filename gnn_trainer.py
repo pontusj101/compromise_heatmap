@@ -1,12 +1,12 @@
+import time
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
+from sklearn.metrics import precision_score, recall_score, f1_score
 from torch_geometric.loader import DataLoader
 from data_producer import produce_training_data
-
-log_window = 200
-data_series = produce_training_data(n_simulations=10, log_window=log_window, max_start_time_step=300, rddl_path='content/', random_cyber_agent_seed=42, debug_print=False)
 
 class GCN(torch.nn.Module):
     def __init__(self, num_node_features, num_classes):
@@ -22,37 +22,122 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
 
-# Initialize model
-model = GCN(num_node_features=log_window+1, num_classes=2) # 26 features, 2 classes (compromised/not compromised)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
-# DataLoader
-data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
+def train(use_saved_data=True, n_simulations=10, log_window = 20, max_start_time_step=30, number_of_epochs=10, debug_print=False):
+    
+    data_series = produce_training_data(use_saved_data=use_saved_data, n_simulations=n_simulations, 
+                                        log_window=log_window, 
+                                        max_start_time_step=max_start_time_step, 
+                                        rddl_path='content/', 
+                                        random_cyber_agent_seed=42, 
+                                        debug_print=debug_print)
 
-# Training loop
-loss_values = []
-for epoch in range(10):  # number of epochs
-    epoch_loss = 0.0
-    for batch in data_loader:
-        optimizer.zero_grad()
-        out = model(batch)
-        loss = F.nll_loss(out, batch.y)
-        loss.backward()
-        optimizer.step()
-        epoch_loss += loss.item()
-    epoch_loss /= len(data_loader)
-    print(f'Epoch {epoch} loss: {epoch_loss}')
-    loss_values.append(epoch_loss)
+    # Creating masks
+    for data in data_series:
+        num_nodes = data.num_nodes
+        all_indices = torch.randperm(num_nodes)  # Shuffling indices using PyTorch
 
-plt.figure(figsize=(10, 6))
-plt.plot(loss_values, label='Training Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.title('Loss Curve')
-plt.legend()
+        train_size = int(0.7 * num_nodes)
+        val_size = int(0.15 * num_nodes)
 
-# Save the plot to a file
-plt.savefig('loss_curve.png')
+        train_indices = all_indices[:train_size]
+        val_indices = all_indices[train_size:train_size + val_size]
+        test_indices = all_indices[train_size + val_size:]
 
-# Optional: Close the plot if not showing it
-plt.close()
+        data.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        data.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+
+        data.train_mask[train_indices] = True
+        data.val_mask[val_indices] = True
+        data.test_mask[test_indices] = True
+
+
+
+    # Initialize model
+    model = GCN(num_node_features=log_window+1, num_classes=2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    # DataLoader
+    data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
+
+    # Evaluation function
+    def evaluate_model(model, data_loader, mask):
+        model.eval()
+        total_loss = 0
+        all_predicted_labels = []
+        all_true_labels = []
+        with torch.no_grad():
+            for batch in data_loader:
+                out = model(batch)
+                loss = F.nll_loss(out[mask], batch.y[mask])
+                total_loss += loss.item()
+
+                # Predictions
+                predicted_labels = out[mask].max(1)[1]
+                all_predicted_labels.append(predicted_labels.cpu().numpy())
+
+                # True labels
+                true_labels = batch.y[mask]
+                all_true_labels.append(true_labels.cpu().numpy())
+
+        all_predicted_labels = np.concatenate(all_predicted_labels)
+        all_true_labels = np.concatenate(all_true_labels)
+
+        return total_loss / len(data_loader), all_predicted_labels, all_true_labels
+
+    # Training loop with validation
+    loss_values, val_loss_values = [], []
+    precision_values, recall_values, f1_values = [], [], []
+    for epoch in range(number_of_epochs):  # number of epochs
+        start_time = time.time()
+        model.train()
+        epoch_loss = 0.0
+        for batch in data_loader:
+            optimizer.zero_grad()
+            out = model(batch)
+            loss = F.nll_loss(out[batch.train_mask], batch.y[batch.train_mask])
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        epoch_loss /= len(data_loader)
+        loss_values.append(epoch_loss)
+
+    # Validation
+        val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, batch.val_mask)
+        val_loss_values.append(val_loss)
+        end_time = time.time()
+        print(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
+
+        precision = precision_score(true_labels, predicted_labels, average='binary')
+        recall = recall_score(true_labels, predicted_labels, average='binary')
+        f1 = f1_score(true_labels, predicted_labels, average='binary')
+
+        precision_values.append(precision)
+        recall_values.append(recall)
+        f1_values.append(f1)
+
+        print(f'Epoch {epoch}: Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(loss_values, label='Training Loss')
+    plt.plot(val_loss_values, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss Curve')
+    plt.legend()
+    plt.savefig('loss_curve.png')
+    plt.close()
+
+    # Test evaluation (optional if you want to see test performance)
+    test_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, batch.test_mask)
+    precision = precision_score(true_labels, predicted_labels, average='binary')
+    recall = recall_score(true_labels, predicted_labels, average='binary')
+    f1 = f1_score(true_labels, predicted_labels, average='binary')
+    print(f'Test Loss: {test_loss:.4f}')
+    print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+
+
+train(use_saved_data=True, n_simulations=10, log_window = 200, max_start_time_step=300, debug_print=False)
