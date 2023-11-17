@@ -31,7 +31,7 @@ data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
 
 # Training loop
 loss_values = []
-for epoch in range(200):  # number of epochs
+for epoch in range(10):  # number of epochs
     epoch_loss = 0.0
     for batch in data_loader:
         optimizer.zero_grad()
