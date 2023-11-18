@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import precision_score, recall_score, f1_score
-from data_producer import produce_training_data
+from simulator import produce_training_data
 
 class GCN(torch.nn.Module):
     def __init__(self, num_node_features, num_classes):
@@ -74,7 +74,10 @@ def plot_training_results(loss_values, val_loss_values):
     plt.close()
 
 def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=False):
+
+
     data_series = produce_training_data(use_saved_data, n_simulations, log_window, max_start_time_step, 'content/', 42, debug_print)
+ 
     create_masks(data_series)
 
     first_graph = data_series[0]
@@ -116,4 +119,4 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_
     print(f'Test Loss: {test_loss:.4f}')
     print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
 
-train_model()
+train_model(use_saved_data=False, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=False)
