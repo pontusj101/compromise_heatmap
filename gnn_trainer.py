@@ -2,6 +2,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import cProfile
+import pstats
+import io
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
@@ -75,9 +78,22 @@ def plot_training_results(loss_values, val_loss_values):
 
 def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=False):
 
+    profiler = cProfile.Profile()
+    profiler.enable()
 
     data_series = produce_training_data(use_saved_data, n_simulations, log_window, max_start_time_step, 'content/', 42, debug_print)
- 
+
+    profiler.disable()
+
+    # Write the report to a file
+    with open('profiling_report.txt', 'w') as file:
+        # Create a Stats object with the specified output stream
+        stats = pstats.Stats(profiler, stream=file)
+        stats.sort_stats('cumtime')
+        stats.print_stats()
+
+    print("Profiling report saved to 'profiling_report.txt'")    
+
     create_masks(data_series)
 
     first_graph = data_series[0]
