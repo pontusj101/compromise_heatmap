@@ -149,7 +149,7 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
         false_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 1))
         true_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 0))
         
-        print(f'Epoch {epoch}: Precision: {precision}, Recall: {recall}, F1 Score: {f1}. true_positives: {true_positives}, false_positives: {false_positives}, false_negatives: {false_negatives}, true_negatives: {true_negatives}')
+        print(f'         Precision: {precision}, Recall: {recall}, F1 Score: {f1}. true_positives: {true_positives}, false_positives: {false_positives}, false_negatives: {false_negatives}, true_negatives: {true_negatives}')
 
     plot_training_results(loss_values, val_loss_values)
 
@@ -158,4 +158,4 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
     print(f'Test Loss: {test_loss:.4f}')
     print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}.')
 
-train_model(use_saved_data=False, n_simulations=8, log_window=60, game_time= 300, max_start_time_step=80, graph_size='medium', number_of_epochs=10, debug_print=1)
+train_model(use_saved_data=False, n_simulations=2, log_window=20, game_time= 60, max_start_time_step=40, graph_size='small', number_of_epochs=10, debug_print=1)
