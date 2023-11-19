@@ -44,19 +44,14 @@ def vectorized_log_line(state, graph_index):
 def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed, debug_print):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
+    start_time = time.time()
     graph_index = GraphIndex(size=graph_size)
-
     n_nodes = len(graph_index.node_features)
-
     start_step = random.randint(log_window, max_start_time_step)
-    agent = PassiveCyberAgent(action_space=myEnv.action_space)
 
+    agent = PassiveCyberAgent(action_space=myEnv.action_space)
     state = myEnv.reset()
     total_reward = 0
-    start_time = time.time()
-    if debug_print >= 2:
-        print(f'Starting attack at step {start_step} in simulation {sim_id}')
-
     snapshot_sequence = []
     log_feature_vectors = torch.zeros((n_nodes, log_window))
     for step in range(myEnv.horizon):
@@ -70,41 +65,21 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         total_reward += reward
 
         log_line = vectorized_log_line(state, graph_index)
-        labels = vectorized_labels(state, graph_index)
-
-
         log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
-        if debug_print >= 2:
-            print(f'The compromised steps are {labels}')
-            print(f'The most recent log line is {log_line}')
-            print(f'The complete log is \n{log_feature_vectors}')
-
-        # Convert labels to torch.long
+        labels = vectorized_labels(state, graph_index)
         labels = labels.to(torch.long)
-
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
         snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
 
-        if debug_print >= 2:
-            print(f'At step {step} the snapshot is:')
-            print(snapshot.x)
-            print(snapshot.edge_index)
-            print(snapshot.y)
-
-        snapshot_sequence.append(snapshot)
+        # Only add snapshots after the log window has been filled with unmalicious log lines
+        if step >= log_window:
+            snapshot_sequence.append(snapshot)
 
         if done:
             break
 
-    end_time = time.time()
-    if debug_print >= 2:
-        print(f'Simulation {sim_id}: episode ended with reward {total_reward}. Execution time was {end_time - start_time} s.')
-        print('20th snapshot (x [node features + log data], edge_index and y [attack steps]):')
-        print(snapshot_sequence[20].x)
-        print(snapshot_sequence[20].edge_index)
-        print(snapshot_sequence[20].y)
-
     myEnv.close()
+    end_time = time.time()
 
     return snapshot_sequence
 
