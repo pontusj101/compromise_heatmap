@@ -52,9 +52,6 @@ def evaluate_model(model, data_loader, masks):
     all_true_labels = []
     with torch.no_grad():
         for batch, mask in zip(data_loader, masks):
-            print(f'batch: {batch}')
-            print(f'batch.train_mask: {batch.train_mask}')
-            print(f'mask: {mask}')
             out = model(batch)
             loss = F.nll_loss(out[mask], batch.y[mask])
             total_loss += loss.item()
@@ -79,12 +76,20 @@ def plot_training_results(loss_values, val_loss_values):
     plt.savefig('loss_curve.png')
     plt.close()
 
-def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=0):
+def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time= 50, max_start_time_step=30, graph_size='small', number_of_epochs=10, debug_print=0):
 
     # profiler = cProfile.Profile()
     # profiler.enable()
 
-    snapshot_sequence = produce_training_data_parallel(use_saved_data, n_simulations, log_window, max_start_time_step, 'content/', 42, debug_print)
+    snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
+                                                       n_simulations=n_simulations, 
+                                                       log_window=log_window, 
+                                                       game_time=game_time,
+                                                       max_start_time_step=max_start_time_step, 
+                                                       graph_size=graph_size, 
+                                                       rddl_path='content/', 
+                                                       random_cyber_agent_seed=42, 
+                                                       debug_print=debug_print)
 
     if debug_print >= 1:
         print(f'Number of snapshots: {len(snapshot_sequence)}')
@@ -153,4 +158,4 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_
     print(f'Test Loss: {test_loss:.4f}')
     print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}.')
 
-train_model(use_saved_data=False, n_simulations=1, log_window=10, max_start_time_step=40, number_of_epochs=5, debug_print=2)
+train_model(use_saved_data=False, n_simulations=8, log_window=60, game_time= 300, max_start_time_step=80, graph_size='medium', number_of_epochs=10, debug_print=1)
