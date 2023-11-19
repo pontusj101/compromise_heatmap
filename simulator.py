@@ -10,6 +10,37 @@ from agents import PassiveCyberAgent, RandomCyberAgent
 from instance_creator import create_instance
 from graph_index import GraphIndex
 
+
+def vectorized_labels(state, graph_index):
+    n_attacksteps = len(graph_index.attackstep_mapping)
+    labels = torch.zeros(n_attacksteps)
+    n_detectors = len(graph_index.log_mapping)
+    log_line = torch.zeros(n_detectors)
+    for key, value in state.items():
+        if isinstance(value, numpy.bool_):
+            if not "observed" in key:
+                node_index = graph_index.attackstep_mapping.get(key)
+                if node_index is not None:
+                    if value:
+                        labels[node_index] = 1.0
+                    else:
+                        labels[node_index] = 0.0
+    return labels
+
+def vectorized_log_line(state, graph_index):
+    n_detectors = len(graph_index.log_mapping)
+    log_line = torch.zeros(n_detectors)
+    for key, value in state.items():
+        if isinstance(value, numpy.bool_):
+            if "observed" in key:
+                node_index = graph_index.log_mapping.get(key)
+                if node_index is not None:
+                    if value:
+                        log_line[node_index] = 1.0
+                    else:
+                        log_line[node_index] = 0.0
+    return log_line
+
 def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed, debug_print):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
@@ -37,49 +68,30 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         action = agent.sample_action()
         state, reward, done, info = myEnv.step(action)
         total_reward += reward
-        if step >= log_window:
 
-            labels = torch.zeros(n_nodes)
-            log_line = torch.zeros(n_nodes)
-
-            for key, value in state.items():
-                if isinstance(value, numpy.bool_):
-                    if "observed" in key:
-                        node_index = graph_index.log_mapping.get(key)
-                        if node_index is not None:
-                            if value:
-                                log_line[node_index] = 1.0
-                            else:
-                                log_line[node_index] = 0.0
-                    else:
-                        node_index = graph_index.attackstep_mapping.get(key)
-                        if node_index is not None:
-                            if value:
-                                labels[node_index] = 1.0
-                            else:
-                                labels[node_index] = 0.0
-
-            log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
-            if debug_print >= 2:
-                print(f'The compromised steps are {labels}')
-                print(f'The most recent log line is {log_line}')
-                print(f'The complete log is \n{log_feature_vectors}')
+        log_line = vectorized_log_line(state, graph_index)
+        labels = vectorized_labels(state, graph_index)
 
 
+        log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
+        if debug_print >= 2:
+            print(f'The compromised steps are {labels}')
+            print(f'The most recent log line is {log_line}')
+            print(f'The complete log is \n{log_feature_vectors}')
 
-            # Convert labels to torch.long
-            labels = labels.to(torch.long)
+        # Convert labels to torch.long
+        labels = labels.to(torch.long)
 
-            combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
-            snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
+        combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
+        snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
 
-            if debug_print >= 2:
-                print(f'At step {step} the snapshot is:')
-                print(snapshot.x)
-                print(snapshot.edge_index)
-                print(snapshot.y)
+        if debug_print >= 2:
+            print(f'At step {step} the snapshot is:')
+            print(snapshot.x)
+            print(snapshot.edge_index)
+            print(snapshot.y)
 
-            snapshot_sequence.append(snapshot)
+        snapshot_sequence.append(snapshot)
 
         if done:
             break

@@ -25,6 +25,7 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
 
+
 def create_masks(snapshot_sequence):
     for snapshot in snapshot_sequence:
         num_nodes = snapshot.num_nodes
@@ -93,10 +94,10 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
 
     if debug_print >= 1:
         print(f'Number of snapshots: {len(snapshot_sequence)}')
-        print('20th snapshot:')
-        print(snapshot_sequence[20].x)
-        print(snapshot_sequence[20].edge_index)
-        print(snapshot_sequence[20].y)
+        print(f'Final snapshot:')
+        print(snapshot_sequence[-1].x)
+        print(snapshot_sequence[-1].edge_index)
+        print(snapshot_sequence[-1].y)
  
     # profiler.disable()
 
@@ -158,4 +159,4 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
     print(f'Test Loss: {test_loss:.4f}')
     print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}.')
 
-train_model(use_saved_data=False, n_simulations=2, log_window=20, game_time= 60, max_start_time_step=40, graph_size='small', number_of_epochs=10, debug_print=1)
+train_model(use_saved_data=False, n_simulations=2, log_window=100, game_time= 300, max_start_time_step=100, graph_size='medium', number_of_epochs=20, debug_print=1)
