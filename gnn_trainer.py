@@ -2,14 +2,14 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import cProfile
-import pstats
-import io
+# import cProfile
+# import pstats
+# import io
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import precision_score, recall_score, f1_score
-from simulator import produce_training_data
+from simulator import produce_training_data_parallel
 
 class GCN(torch.nn.Module):
     def __init__(self, num_node_features, num_classes):
@@ -25,9 +25,9 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
 
-def create_masks(data_series):
-    for data in data_series:
-        num_nodes = data.num_nodes
+def create_masks(snapshot_sequence):
+    for snapshot in snapshot_sequence:
+        num_nodes = snapshot.num_nodes
         all_indices = torch.randperm(num_nodes)
 
         train_size = int(0.7 * num_nodes)
@@ -37,21 +37,24 @@ def create_masks(data_series):
         val_indices = all_indices[train_size:train_size + val_size]
         test_indices = all_indices[train_size + val_size:]
 
-        data.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        data.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        snapshot.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        snapshot.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        snapshot.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
 
-        data.train_mask[train_indices] = True
-        data.val_mask[val_indices] = True
-        data.test_mask[test_indices] = True
+        snapshot.train_mask[train_indices] = True
+        snapshot.val_mask[val_indices] = True
+        snapshot.test_mask[test_indices] = True
 
-def evaluate_model(model, data_loader, mask):
+def evaluate_model(model, data_loader, masks):
     model.eval()
     total_loss = 0
     all_predicted_labels = []
     all_true_labels = []
     with torch.no_grad():
-        for batch in data_loader:
+        for batch, mask in zip(data_loader, masks):
+            print(f'batch: {batch}')
+            print(f'batch.train_mask: {batch.train_mask}')
+            print(f'mask: {mask}')
             out = model(batch)
             loss = F.nll_loss(out[mask], batch.y[mask])
             total_loss += loss.item()
@@ -76,32 +79,39 @@ def plot_training_results(loss_values, val_loss_values):
     plt.savefig('loss_curve.png')
     plt.close()
 
-def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=False):
+def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=0):
 
-    profiler = cProfile.Profile()
-    profiler.enable()
+    # profiler = cProfile.Profile()
+    # profiler.enable()
 
-    data_series = produce_training_data(use_saved_data, n_simulations, log_window, max_start_time_step, 'content/', 42, debug_print)
+    snapshot_sequence = produce_training_data_parallel(use_saved_data, n_simulations, log_window, max_start_time_step, 'content/', 42, debug_print)
 
-    profiler.disable()
+    if debug_print >= 1:
+        print(f'Number of snapshots: {len(snapshot_sequence)}')
+        print('20th snapshot:')
+        print(snapshot_sequence[20].x)
+        print(snapshot_sequence[20].edge_index)
+        print(snapshot_sequence[20].y)
+ 
+    # profiler.disable()
 
-    # Write the report to a file
-    with open('profiling_report.txt', 'w') as file:
-        # Create a Stats object with the specified output stream
-        stats = pstats.Stats(profiler, stream=file)
-        stats.sort_stats('cumtime')
-        stats.print_stats()
+    # # Write the report to a file
+    # with open('profiling_report.txt', 'w') as file:
+    #     # Create a Stats object with the specified output stream
+    #     stats = pstats.Stats(profiler, stream=file)
+    #     stats.sort_stats('cumtime')
+    #     stats.print_stats()
 
     print("Profiling report saved to 'profiling_report.txt'")    
 
-    create_masks(data_series)
+    create_masks(snapshot_sequence)
 
-    first_graph = data_series[0]
+    first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
 
     model = GCN(num_node_features=actual_num_features, num_classes=2)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    data_loader = DataLoader(data_series, batch_size=1, shuffle=True)
+    data_loader = DataLoader(snapshot_sequence, batch_size=1, shuffle=True)
 
     loss_values, val_loss_values = [], []
     for epoch in range(number_of_epochs):
@@ -119,20 +129,28 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, max_start_
         epoch_loss /= len(data_loader)
         loss_values.append(epoch_loss)
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, batch.val_mask)
+        val_masks = [snapshot.val_mask for snapshot in snapshot_sequence]
+        val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
         val_loss_values.append(val_loss)
         end_time = time.time()
         print(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
 
-        precision = precision_score(true_labels, predicted_labels, average='binary')
-        recall = recall_score(true_labels, predicted_labels, average='binary')
-        f1 = f1_score(true_labels, predicted_labels, average='binary')
-        print(f'Epoch {epoch}: Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+        precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        recall = recall_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        # Compute the number of true positives, false positives, false negatives and true negatives
+        true_positives = np.sum(np.logical_and(predicted_labels == 1, true_labels == 1))
+        false_positives = np.sum(np.logical_and(predicted_labels == 1, true_labels == 0))
+        false_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 1))
+        true_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 0))
+        
+        print(f'Epoch {epoch}: Precision: {precision}, Recall: {recall}, F1 Score: {f1}. true_positives: {true_positives}, false_positives: {false_positives}, false_negatives: {false_negatives}, true_negatives: {true_negatives}')
 
     plot_training_results(loss_values, val_loss_values)
 
-    test_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, batch.test_mask)
+    test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
+    test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)
     print(f'Test Loss: {test_loss:.4f}')
-    print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+    print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}.')
 
-train_model(use_saved_data=False, n_simulations=10, log_window=20, max_start_time_step=30, number_of_epochs=10, debug_print=False)
+train_model(use_saved_data=False, n_simulations=1, log_window=10, max_start_time_step=40, number_of_epochs=5, debug_print=2)
