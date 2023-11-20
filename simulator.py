@@ -55,7 +55,7 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
     total_reward = 0
     snapshot_sequence = []
     log_feature_vectors = torch.zeros((n_nodes, log_window))
-    all_compromised = False
+    log_steps_after_total_compromise = 0
     for step in range(myEnv.horizon):
         if step == start_step:
             agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
@@ -69,9 +69,13 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
         labels = vectorized_labels(state, graph_index)
         labels = labels.to(torch.long)
-        if (labels == 1).all() and not all_compromised:
-            logging.warning(f'Step {step}: All attack steps were compromised.')
-            all_compromised = True
+        if (labels == 1).all():
+            if log_steps_after_total_compromise == 0:
+                logging.warning(f'Step {step}: All attack steps were compromised. Continuing to log for {log_window/2} steps.')
+            log_steps_after_total_compromise += 1
+            if log_steps_after_total_compromise > log_window/2:
+                logging.warning(f'Step {step}: All attack steps were compromised. Terminating simulation.')
+                break
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
         snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
 
