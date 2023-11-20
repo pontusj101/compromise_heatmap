@@ -58,6 +58,6 @@ instance simple_network_instance {
     };
 
     max-nondef-actions = 1;
-    horizon = 300;
+    horizon = 250;
     discount = 1.0;
 }
