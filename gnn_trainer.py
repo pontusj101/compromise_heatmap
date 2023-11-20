@@ -78,38 +78,8 @@ def plot_training_results(loss_values, val_loss_values):
     plt.savefig('loss_curve.png')
     plt.close()
 
-def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time= 50, max_start_time_step=30, graph_size='small', random_cyber_agent_seed=None, number_of_epochs=10, debug_print=0):
+def train_gnn(number_of_epochs=10, snapshot_sequence=None):
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-
-    # profiler = cProfile.Profile()
-    # profiler.enable()
-
-    snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
-                                                       n_simulations=n_simulations, 
-                                                       log_window=log_window, 
-                                                       game_time=game_time,
-                                                       max_start_time_step=max_start_time_step, 
-                                                       graph_size=graph_size, 
-                                                       rddl_path='content/', 
-                                                       random_cyber_agent_seed=random_cyber_agent_seed, 
-                                                       debug_print=debug_print)
-
-    logging.info(f'Number of snapshots: {len(snapshot_sequence)}')
-    logging.info(f'Final snapshot (node type + log sequence, edge index, and labels):')
-    logging.info(snapshot_sequence[-1].x)
-    logging.info(snapshot_sequence[-1].edge_index)
-    logging.info(snapshot_sequence[-1].y)
- 
-    # profiler.disable()
-
-    # # Write the report to a file
-    # with open('profiling_report.txt', 'w') as file:
-    #     # Create a Stats object with the specified output stream
-    #     stats = pstats.Stats(profiler, stream=file)
-    #     stats.sort_stats('cumtime')
-    #     stats.print_stats()
-    # print("Profiling report saved to 'profiling_report.txt'")    
 
     create_masks(snapshot_sequence)
 

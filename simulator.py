@@ -42,7 +42,7 @@ def vectorized_log_line(state, graph_index):
                         log_line[node_index] = 0.0
     return log_line
 
-def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed, debug_print):
+def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
     start_time = time.time()
@@ -99,8 +99,7 @@ def produce_training_data_parallel(use_saved_data=False,
                                    max_start_time_step=100, 
                                    graph_size='small', 
                                    rddl_path='content/', 
-                                   random_cyber_agent_seed=None, 
-                                   debug_print=1):
+                                   random_cyber_agent_seed=None):
     file_name = 'data_series_parallel.pkl'
     if use_saved_data:
         with open(file_name, 'rb') as file:
@@ -111,7 +110,7 @@ def produce_training_data_parallel(use_saved_data=False,
         n_processes = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed, debug_print) for i in range(n_simulations)]
+        simulation_args = [(i, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
         results = pool.starmap(simulation_worker, simulation_args)
         pool.close()
