@@ -1,15 +1,21 @@
 import logging
 import torch
+from graph_index import GraphIndex
+
 
 from simulator import produce_training_data_parallel
 
-def frequency(target_log_sequence, snapshot_sequence):
+def frequency(target_log_sequence, snapshot_sequence, label_index):
     count = 0
+    hits = 0
     for snapshot in snapshot_sequence:
         log_sequence = snapshot.x[:, 1:]
         if torch.equal(log_sequence, target_log_sequence):
             count += 1
-    return count/len(snapshot_sequence)
+            labels = snapshot.y
+            if labels[label_index] == 1:
+                hits += 1
+    return hits/count
 
 def get_unique_snapshots(snpshot_sequence):
     seen = set()
@@ -27,11 +33,16 @@ def get_unique_snapshots(snpshot_sequence):
 
     return unique_log_sequences
 
-def train_tabular(snapshot_sequence=None):
+def train_tabular(snapshot_sequence=None, graph_size='small'):
+    graph_index = GraphIndex(size=graph_size)
+    n_attacksteps = len(graph_index.attackstep_mapping)
+    labels = torch.zeros(n_attacksteps)
     logging.info(f'Number of snapshots : {len(snapshot_sequence)}')
     unique_snapshots = get_unique_snapshots(snapshot_sequence)
     logging.info(f'Number of unique snapshots: {len(unique_snapshots)}')
     for snapshot in unique_snapshots:
         log_sequence = snapshot.x[:, 1:]
-        f = frequency(log_sequence, snapshot_sequence)
-        logging.info(f'Frequency of log sequence \n{log_sequence}: {f:.2f}')
+        logging.info(f'\n{log_sequence}')
+        for label_index in range(n_attacksteps):
+            labels[label_index] = frequency(log_sequence, snapshot_sequence, label_index)
+            logging.info(f'Label {label_index}: {labels[label_index]:.2f}')

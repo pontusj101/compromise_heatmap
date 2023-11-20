@@ -41,6 +41,6 @@ def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, g
     if method == 'gnn':
         train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence)
     elif method == 'tabular':
-        train_tabular(snapshot_sequence=snapshot_sequence)
+        train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
     else:
         logging.error(f'No such training method: {method}')
