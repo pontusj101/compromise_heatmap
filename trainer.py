@@ -1,9 +1,13 @@
 import logging
+# import cProfile
+# import pstats
+# import io
 from simulator import produce_training_data_parallel
 from gnn_trainer import train_gnn
 from tabular_trainer import train_tabular
 
 def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
+
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # profiler = cProfile.Profile()
@@ -20,7 +24,7 @@ def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, g
 
     logging.info(f'Number of snapshots: {len(snapshot_sequence)}')
     logging.info(f'Final snapshot (node type + log sequence, edge index, and labels):')
-    logging.info(snapshot_sequence[-1].x)
+    logging.info(f'\n{snapshot_sequence[-1].x}')
     logging.info(snapshot_sequence[-1].edge_index)
     logging.info(snapshot_sequence[-1].y)
 
@@ -38,3 +42,5 @@ def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, g
         train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence)
     elif method == 'tabular':
         train_tabular(snapshot_sequence=snapshot_sequence)
+    else:
+        logging.error(f'No such training method: {method}')

@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
-# import cProfile
-# import pstats
-# import io
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader

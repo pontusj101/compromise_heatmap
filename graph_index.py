@@ -5,11 +5,15 @@ class GraphIndex:
         if size == 'small':
             self.log_mapping = {
                 'observed_compromise_attack___h1': 0,
-                'observed_compromise_attack___h2': 1}
+                'observed_compromise_attack___h2': 1,
+                'observed_crack_attack___c1': 2,
+                'observed_crack_attack___c2': 3}
 
             self.attackstep_mapping = {
                 'compromised___h1': 0,
-                'compromised___h2': 1}
+                'compromised___h2': 1,
+                'cracked___c1': 2,
+                'cracked___c2': 3}
 
             # Node features
             self.node_features = torch.tensor([
