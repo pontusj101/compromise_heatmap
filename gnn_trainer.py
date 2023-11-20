@@ -2,6 +2,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import logging
 # import cProfile
 # import pstats
 # import io
@@ -77,7 +78,9 @@ def plot_training_results(loss_values, val_loss_values):
     plt.savefig('loss_curve.png')
     plt.close()
 
-def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time= 50, max_start_time_step=30, graph_size='small', number_of_epochs=10, debug_print=0):
+def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time= 50, max_start_time_step=30, graph_size='small', random_cyber_agent_seed=None, number_of_epochs=10, debug_print=0):
+
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -89,15 +92,14 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
                                                        max_start_time_step=max_start_time_step, 
                                                        graph_size=graph_size, 
                                                        rddl_path='content/', 
-                                                       random_cyber_agent_seed=42, 
+                                                       random_cyber_agent_seed=random_cyber_agent_seed, 
                                                        debug_print=debug_print)
 
-    if debug_print >= 1:
-        print(f'Number of snapshots: {len(snapshot_sequence)}')
-        print(f'Final snapshot:')
-        print(snapshot_sequence[-1].x)
-        print(snapshot_sequence[-1].edge_index)
-        print(snapshot_sequence[-1].y)
+    logging.info(f'Number of snapshots: {len(snapshot_sequence)}')
+    logging.info(f'Final snapshot (node type + log sequence, edge index, and labels):')
+    logging.info(snapshot_sequence[-1].x)
+    logging.info(snapshot_sequence[-1].edge_index)
+    logging.info(snapshot_sequence[-1].y)
  
     # profiler.disable()
 
@@ -107,8 +109,7 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
     #     stats = pstats.Stats(profiler, stream=file)
     #     stats.sort_stats('cumtime')
     #     stats.print_stats()
-
-    print("Profiling report saved to 'profiling_report.txt'")    
+    # print("Profiling report saved to 'profiling_report.txt'")    
 
     create_masks(snapshot_sequence)
 
@@ -139,7 +140,7 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
         val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
         val_loss_values.append(val_loss)
         end_time = time.time()
-        print(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
+        logging.warning(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
 
         precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
         recall = recall_score(true_labels, predicted_labels, average='binary', zero_division=0)
@@ -150,13 +151,15 @@ def train_model(use_saved_data=True, n_simulations=10, log_window=20, game_time=
         false_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 1))
         true_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 0))
         
-        print(f'         Precision: {precision}, Recall: {recall}, F1 Score: {f1}. true_positives: {true_positives}, false_positives: {false_positives}, false_negatives: {false_negatives}, true_negatives: {true_negatives}')
+        logging.warning(f'         F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}, TP: {true_positives}, FP: {false_positives}, FN: {false_negatives}, TN: {true_negatives}')
 
     plot_training_results(loss_values, val_loss_values)
 
     test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)
-    print(f'Test Loss: {test_loss:.4f}')
-    print(f'Test: Precision: {precision}, Recall: {recall}, F1 Score: {f1}.')
+    precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    logging.warning(f'Test Loss: {test_loss:.4f}')
+    logging.warning(f'Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}.')
 
-train_model(use_saved_data=False, n_simulations=2, log_window=50, game_time= 250, max_start_time_step=100, graph_size='medium', number_of_epochs=10, debug_print=1)

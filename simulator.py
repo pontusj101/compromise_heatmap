@@ -4,6 +4,7 @@ import random
 import pickle
 import numpy
 import torch
+import logging
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
 from agents import PassiveCyberAgent, RandomCyberAgent
@@ -54,11 +55,11 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
     total_reward = 0
     snapshot_sequence = []
     log_feature_vectors = torch.zeros((n_nodes, log_window))
+    all_compromised = False
     for step in range(myEnv.horizon):
         if step == start_step:
             agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
-            if debug_print >= 2:
-                print('Now initiating attack.')
+            logging.info(f'Step {step}: Now initiating attack.')
 
         action = agent.sample_action()
         state, reward, done, info = myEnv.step(action)
@@ -68,6 +69,9 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
         labels = vectorized_labels(state, graph_index)
         labels = labels.to(torch.long)
+        if (labels == 1).all() and not all_compromised:
+            logging.warning(f'Step {step}: All attack steps were compromised.')
+            all_compromised = True
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
         snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
 
@@ -91,12 +95,13 @@ def produce_training_data_parallel(use_saved_data=False,
                                    max_start_time_step=100, 
                                    graph_size='small', 
                                    rddl_path='content/', 
-                                   random_cyber_agent_seed=42, 
+                                   random_cyber_agent_seed=None, 
                                    debug_print=1):
     file_name = 'data_series_parallel.pkl'
     if use_saved_data:
         with open(file_name, 'rb') as file:
             data_series = pickle.load(file)
+            logging.info(f'Data retrieved from file {file_name}')
     else:
         create_instance(size=graph_size, horizon=game_time, rddl_path=rddl_path)
         n_processes = multiprocessing.cpu_count()
@@ -113,6 +118,6 @@ def produce_training_data_parallel(use_saved_data=False,
 
         with open(file_name, 'wb') as file:
             pickle.dump(data_series, file)
-        print(f'Data saved to {file_name}')
+        logging.info(f'Data saved to {file_name}')
 
     return data_series

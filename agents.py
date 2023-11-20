@@ -11,7 +11,6 @@ class PassiveCyberAgent(BaseAgent):
         selected_action = next(iter(self.action_space.spaces))
         action = {selected_action: self.action_space[selected_action]}
         action[selected_action] = 0
-        # print(f'action = {action}')
         return action
 
 class RandomCyberAgent(BaseAgent):
@@ -26,7 +25,6 @@ class RandomCyberAgent(BaseAgent):
         action = {}
         selected_action = self.rng.sample(list(s), 1)[0]
         action[selected_action] = s[selected_action]
-        # print(f'RandomCyberAgent action = {action}')
         return action
 
 class KeyboardCyberAgent(BaseAgent):
