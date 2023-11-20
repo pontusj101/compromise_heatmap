@@ -1,10 +1,31 @@
 import logging
+import torch
 # import cProfile
 # import pstats
 # import io
 from simulator import produce_training_data_parallel
-from gnn_trainer import train_gnn
 from tabular_trainer import train_tabular
+from gnn_trainer import train_gnn
+
+def create_masks(snapshot_sequence):
+    for snapshot in snapshot_sequence:
+        num_nodes = snapshot.num_nodes
+        all_indices = torch.randperm(num_nodes)
+
+        train_size = int(0.7 * num_nodes)
+        val_size = int(0.15 * num_nodes)
+
+        train_indices = all_indices[:train_size]
+        val_indices = all_indices[train_size:train_size + val_size]
+        test_indices = all_indices[train_size + val_size:]
+
+        snapshot.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        snapshot.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        snapshot.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+
+        snapshot.train_mask[train_indices] = True
+        snapshot.val_mask[val_indices] = True
+        snapshot.test_mask[test_indices] = True
 
 def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
 
@@ -21,6 +42,8 @@ def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, g
                                                         graph_size=graph_size, 
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=random_cyber_agent_seed)
+
+    create_masks(snapshot_sequence)
 
     logging.info(f'Number of snapshots: {len(snapshot_sequence)}')
     logging.info(f'Final snapshot (node type + log sequence, edge index, and labels):')

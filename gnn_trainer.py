@@ -23,27 +23,6 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
 
-
-def create_masks(snapshot_sequence):
-    for snapshot in snapshot_sequence:
-        num_nodes = snapshot.num_nodes
-        all_indices = torch.randperm(num_nodes)
-
-        train_size = int(0.7 * num_nodes)
-        val_size = int(0.15 * num_nodes)
-
-        train_indices = all_indices[:train_size]
-        val_indices = all_indices[train_size:train_size + val_size]
-        test_indices = all_indices[train_size + val_size:]
-
-        snapshot.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        snapshot.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        snapshot.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
-
-        snapshot.train_mask[train_indices] = True
-        snapshot.val_mask[val_indices] = True
-        snapshot.test_mask[test_indices] = True
-
 def evaluate_model(model, data_loader, masks):
     model.eval()
     total_loss = 0
@@ -76,9 +55,6 @@ def plot_training_results(loss_values, val_loss_values):
     plt.close()
 
 def train_gnn(number_of_epochs=10, snapshot_sequence=None):
-
-
-    create_masks(snapshot_sequence)
 
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
