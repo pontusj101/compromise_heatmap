@@ -27,21 +27,21 @@ def frequency(target_log_sequence, snapshot_sequence):
     count = 0
     hits = torch.zeros(n_labels)
     for snapshot in snapshot_sequence:
-        count += 1
-        for label_index in range(n_labels):
-            log_sequence = snapshot.x[:, 1:]
-            if torch.equal(log_sequence, target_log_sequence):
+        log_sequence = snapshot.x[:, 1:]
+        if torch.equal(log_sequence, target_log_sequence):
+            count += 1
+            for label_index in range(n_labels):
                 labels = snapshot.y
                 if labels[label_index] == 1:
                     hits[label_index] += 1
-    return hits/count
+    return np.round(hits/count)
 
 def evaluate_model(data_loader, masks, snapshot_sequence):
     all_predicted_labels = []
     all_true_labels = []
     for batch, mask in zip(data_loader, masks):
         true_labels = batch.y[mask]
-        unmasked_predicted_labels = frequency(batch.x, snapshot_sequence)
+        unmasked_predicted_labels = frequency(batch.x[:,1:], snapshot_sequence)
         logging.info(f'Unmasked predicted labels: {unmasked_predicted_labels}')
         predicted_labels = unmasked_predicted_labels[mask]
         all_true_labels.append(true_labels.cpu().numpy())
@@ -71,10 +71,9 @@ def train_tabular(snapshot_sequence=None, graph_size='small'):
 
     test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     test_predicted_labels, test_true_labels = evaluate_model(data_loader, test_masks, snapshot_sequence)
-    logging.info(f'Test: Predicted Labels: {test_predicted_labels}')
-    logging.info(f'Test: True Labels: {test_true_labels}') 
+    logging.info(f'Test: Predicted Labels: \n{test_predicted_labels}')
+    logging.info(f'Test: True Labels: \n{test_true_labels}') 
     precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    logging.warning(f'Test Loss: {test_loss:.4f}')
     logging.warning(f'Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}.')
