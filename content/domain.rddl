@@ -53,13 +53,13 @@ domain simple_compromise {
 
         observed_crack_attack'(?c) = 
             if (crack_attack(?c)) 
-              then Bernoulli(0.9999)
-            else Bernoulli(0.0001);
+              then Bernoulli(0.999)
+            else Bernoulli(0.001);
 
         observed_compromise_attack'(?c) = 
             if (compromise_attack(?c)) 
-              then Bernoulli(0.9999)
-            else Bernoulli(0.0001);
+              then Bernoulli(0.999)
+            else Bernoulli(0.001);
 
         value'(?h) = 
             if (compromised(?h))

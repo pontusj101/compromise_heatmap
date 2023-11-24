@@ -22,27 +22,30 @@ from simulator import produce_training_data_parallel
 
 #     return unique_log_sequences
 
-def frequency(target_log_sequence, snapshot_sequence):
+def frequency(target_log_sequence, snapshot_sequence, train_masks):
     n_labels = len(snapshot_sequence[0].y)
-    count = 0
+    count = torch.zeros(n_labels)
     hits = torch.zeros(n_labels)
-    for snapshot in snapshot_sequence:
+    for snapshot, mask in zip(snapshot_sequence, train_masks):
         log_sequence = snapshot.x[:, 1:]
         if torch.equal(log_sequence, target_log_sequence):
-            count += 1
             for label_index in range(n_labels):
-                labels = snapshot.y
-                if labels[label_index] == 1:
-                    hits[label_index] += 1
-    return np.round(hits/count)
+                if mask[label_index]:
+                    count[label_index] += 1
+                    labels = snapshot.y
+                    if labels[label_index] == 1:
+                        hits[label_index] += 1
+    
+    return torch.round(torch.nan_to_num(hits/count))
 
-def evaluate_model(data_loader, masks, snapshot_sequence):
+def evaluate_model(data_loader, snapshot_sequence):
+    train_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
+    test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     all_predicted_labels = []
     all_true_labels = []
-    for batch, mask in zip(data_loader, masks):
+    for batch, mask in zip(data_loader, test_masks):
         true_labels = batch.y[mask]
-        unmasked_predicted_labels = frequency(batch.x[:,1:], snapshot_sequence)
-        logging.info(f'Unmasked predicted labels: {unmasked_predicted_labels}')
+        unmasked_predicted_labels = frequency(batch.x[:,1:], snapshot_sequence, train_masks)
         predicted_labels = unmasked_predicted_labels[mask]
         all_true_labels.append(true_labels.cpu().numpy())
         all_predicted_labels.append(predicted_labels.cpu().numpy())
@@ -69,8 +72,7 @@ def train_tabular(snapshot_sequence=None, graph_size='small'):
 
     data_loader = DataLoader(snapshot_sequence, batch_size=1, shuffle=True)
 
-    test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
-    test_predicted_labels, test_true_labels = evaluate_model(data_loader, test_masks, snapshot_sequence)
+    test_predicted_labels, test_true_labels = evaluate_model(data_loader, snapshot_sequence)
     logging.info(f'Test: Predicted Labels: \n{test_predicted_labels}')
     logging.info(f'Test: True Labels: \n{test_true_labels}') 
     precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
