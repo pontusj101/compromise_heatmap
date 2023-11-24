@@ -10,17 +10,22 @@ from torch_geometric.loader import DataLoader
 from simulator import produce_training_data_parallel
 
 class GCN(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes):
+    def __init__(self, layer_sizes):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(num_node_features, 16)
-        self.conv2 = GCNConv(16, num_classes)
+        self.layers = torch.nn.ModuleList()
+
+        for i in range(len(layer_sizes) - 1):
+            self.layers.append(GCNConv(layer_sizes[i], layer_sizes[i+1]))
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
+
+        for i, layer in enumerate(self.layers):
+            x = layer(x, edge_index)
+            if i < len(self.layers) - 1:  # Apply ReLU and Dropout to all but the last layer
+                x = F.relu(x)
+                x = F.dropout(x, training=self.training)
+        
         return F.log_softmax(x, dim=1)
 
 def evaluate_model(model, data_loader, masks):
@@ -54,13 +59,13 @@ def plot_training_results(loss_values, val_loss_values):
     plt.savefig('loss_curve.png')
     plt.close()
 
-def train_gnn(number_of_epochs=10, snapshot_sequence=None):
+def train_gnn(number_of_epochs=10, snapshot_sequence=None, learning_rate=0.01, hidden_layers=[16, 32, 16]):
 
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
 
-    model = GCN(num_node_features=actual_num_features, num_classes=2)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    model = GCN([actual_num_features] + hidden_layers + [2])
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     data_loader = DataLoader(snapshot_sequence, batch_size=1, shuffle=True)
 
     loss_values, val_loss_values = [], []
@@ -83,7 +88,7 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None):
         val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
         val_loss_values.append(val_loss)
         end_time = time.time()
-        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
+        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Hidden Layers: {hidden_layers}')
 
 
     plot_training_results(loss_values, val_loss_values)

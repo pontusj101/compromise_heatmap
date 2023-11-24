@@ -43,7 +43,16 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def train(methods=['tabular','gnn'], use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
+def train(methods=['tabular','gnn'], 
+          use_saved_data=False, 
+          n_simulations=2, 
+          log_window=300, game_time= 700, 
+          max_start_time_step=400, 
+          graph_size='medium', 
+          random_cyber_agent_seed=None, 
+          learning_rate=0.01, 
+          hidden_layers_list=[[16]], 
+          number_of_epochs=10):
 
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -79,7 +88,8 @@ def train(methods=['tabular','gnn'], use_saved_data=False, n_simulations=2, log_
         test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
         print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels)
     if 'gnn' in methods:
-        test_true_labels, test_predicted_labels = train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence)
-        print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels)
+        for hidden_layers in hidden_layers_list:
+            test_true_labels, test_predicted_labels = train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence, learning_rate=learning_rate, hidden_layers=hidden_layers)
+            print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels)
     
 
