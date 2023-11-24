@@ -1,5 +1,6 @@
 import logging
 import torch
+import numpy as np
 # import cProfile
 # import pstats
 # import io
@@ -8,17 +9,18 @@ from simulator import produce_training_data_parallel
 from tabular_trainer import train_tabular
 from gnn_trainer import train_gnn
 
-def create_masks(snapshot_sequence):
+def create_masks(snapshot_sequence, train_share=0.7, val_share=0.15, test_share=0.15):
+    assert train_share + val_share + test_share == 1
     for snapshot in snapshot_sequence:
         num_nodes = snapshot.num_nodes
         all_indices = torch.randperm(num_nodes)
 
-        train_size = int(0.7 * num_nodes)
-        val_size = int(0.15 * num_nodes)
+        test_size = int(np.ceil(test_share * num_nodes))
+        val_size = int(np.ceil(val_share * num_nodes))
 
-        train_indices = all_indices[:train_size]
-        val_indices = all_indices[train_size:train_size + val_size]
-        test_indices = all_indices[train_size + val_size:]
+        test_indices = all_indices[:test_size]
+        val_indices = all_indices[test_size:test_size + val_size]
+        train_indices = all_indices[test_size + val_size:]
 
         snapshot.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
         snapshot.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
@@ -29,16 +31,19 @@ def create_masks(snapshot_sequence):
         snapshot.test_mask[test_indices] = True
 
 def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels):
+    true_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 1))
+    false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
+    false_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 1))
+    true_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 0))
     logging.debug(f'Test: Predicted Labels: \n{test_predicted_labels}')
     logging.debug(f'Test: True Labels: \n{test_true_labels}') 
+    logging.info(f'{methods}. Test: True Positives: {true_positives}, False Positives: {false_positives}, False Negatives: {false_negatives}, True Negatives: {true_negatives}.')
     precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
 def train(methods=['tabular','gnn'], use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
-
-    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(message)s')
 
     # profiler = cProfile.Profile()
     # profiler.enable()

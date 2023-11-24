@@ -85,16 +85,6 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None):
         end_time = time.time()
         logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
 
-        precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
-        recall = recall_score(true_labels, predicted_labels, average='binary', zero_division=0)
-        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
-        # Compute the number of true positives, false positives, false negatives and true negatives
-        true_positives = np.sum(np.logical_and(predicted_labels == 1, true_labels == 1))
-        false_positives = np.sum(np.logical_and(predicted_labels == 1, true_labels == 0))
-        false_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 1))
-        true_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 0))
-        
-        logging.info(f'         F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}, TP: {true_positives}, FP: {false_positives}, FN: {false_negatives}, TN: {true_negatives}')
 
     plot_training_results(loss_values, val_loss_values)
 
