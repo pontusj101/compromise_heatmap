@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
+from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
-from sklearn.metrics import precision_score, recall_score, f1_score
 from simulator import produce_training_data_parallel
 
 class GCN(torch.nn.Module):
@@ -83,7 +83,7 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None):
         val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
         val_loss_values.append(val_loss)
         end_time = time.time()
-        logging.warning(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
+        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s')
 
         precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
         recall = recall_score(true_labels, predicted_labels, average='binary', zero_division=0)
@@ -94,15 +94,12 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None):
         false_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 1))
         true_negatives = np.sum(np.logical_and(predicted_labels == 0, true_labels == 0))
         
-        logging.warning(f'         F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}, TP: {true_positives}, FP: {false_positives}, FN: {false_negatives}, TN: {true_negatives}')
+        logging.info(f'         F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}, TP: {true_positives}, FP: {false_positives}, FN: {false_negatives}, TN: {true_negatives}')
 
     plot_training_results(loss_values, val_loss_values)
 
     test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)
-    precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    logging.warning(f'Test Loss: {test_loss:.4f}')
-    logging.warning(f'Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}.')
+
+    return test_predicted_labels, test_true_labels
 

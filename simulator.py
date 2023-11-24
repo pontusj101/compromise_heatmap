@@ -71,10 +71,10 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         labels = labels.to(torch.long)
         if (labels == 1).all():
             if log_steps_after_total_compromise == 0:
-                logging.warning(f'Step {step}: All attack steps were compromised. Continuing to log for {log_window/2} steps.')
+                logging.info(f'Step {step}: All attack steps were compromised. Continuing to log for {log_window/2} steps.')
             log_steps_after_total_compromise += 1
             if log_steps_after_total_compromise > log_window/2:
-                logging.warning(f'Step {step}: All attack steps were compromised. Terminating simulation.')
+                logging.info(f'Step {step}: All attack steps were compromised. Terminating simulation.')
                 break
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
         snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)

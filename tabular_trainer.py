@@ -2,7 +2,6 @@ import logging
 import torch
 import numpy as np
 from graph_index import GraphIndex
-from sklearn.metrics import precision_score, recall_score, f1_score
 from torch_geometric.loader import DataLoader
 from simulator import produce_training_data_parallel
 
@@ -73,9 +72,4 @@ def train_tabular(snapshot_sequence=None, graph_size='small'):
     data_loader = DataLoader(snapshot_sequence, batch_size=1, shuffle=True)
 
     test_predicted_labels, test_true_labels = evaluate_model(data_loader, snapshot_sequence)
-    logging.info(f'Test: Predicted Labels: \n{test_predicted_labels}')
-    logging.info(f'Test: True Labels: \n{test_true_labels}') 
-    precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    logging.warning(f'Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}.')
+    return test_true_labels, test_predicted_labels

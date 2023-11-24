@@ -3,6 +3,7 @@ import torch
 # import cProfile
 # import pstats
 # import io
+from sklearn.metrics import precision_score, recall_score, f1_score
 from simulator import produce_training_data_parallel
 from tabular_trainer import train_tabular
 from gnn_trainer import train_gnn
@@ -27,9 +28,17 @@ def create_masks(snapshot_sequence):
         snapshot.val_mask[val_indices] = True
         snapshot.test_mask[test_indices] = True
 
-def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
+def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels):
+    logging.debug(f'Test: Predicted Labels: \n{test_predicted_labels}')
+    logging.debug(f'Test: True Labels: \n{test_true_labels}') 
+    precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
+    logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+def train(methods=['tabular','gnn'], use_saved_data=False, n_simulations=2, log_window=300, game_time= 700, max_start_time_step=400, graph_size='medium', random_cyber_agent_seed=None, number_of_epochs=10):
+
+    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(message)s')
 
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -61,9 +70,11 @@ def train(method='gnn', use_saved_data=False, n_simulations=2, log_window=300, g
     #     stats.print_stats()
     # print("Profiling report saved to 'profiling_report.txt'")    
 
-    if method == 'gnn':
-        train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence)
-    elif method == 'tabular':
-        train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
-    else:
-        logging.error(f'No such training method: {method}')
+    if 'tabular' in methods:
+        test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
+        print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels)
+    if 'gnn' in methods:
+        test_true_labels, test_predicted_labels = train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence)
+        print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels)
+    
+
