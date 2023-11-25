@@ -48,7 +48,7 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
 def train(methods=['tabular','gnn'], 
           use_saved_data=False, 
           n_simulation_batches=1,
-          n_simulations_per_batch=2, 
+          n_simulations=2, 
           log_window=300, 
           game_time= 700, 
           max_start_time_step=400, 
@@ -64,8 +64,7 @@ def train(methods=['tabular','gnn'],
 
     start_time = time.time()
     n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
-                                                        n_simulation_batches=n_simulation_batches,
-                                                        n_simulations_per_batch=n_simulations_per_batch, 
+                                                        n_simulations=n_simulations, 
                                                         log_window=log_window, 
                                                         game_time=game_time,
                                                         max_start_time_step=max_start_time_step, 
@@ -79,7 +78,7 @@ def train(methods=['tabular','gnn'],
     # A snapshot that isn't compromised still has the initial attackstep pwned
     compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
     logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations_per_batch} simulations ended in complete compromise.')
+    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
     random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
     random_snapshot = snapshot_sequence[random_snapshot_index]
     logging.info(f'Random snapshot ({random_snapshot_index}) log sequence and labels:')

@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 import time
 import random
 import pickle
@@ -42,7 +43,7 @@ def vectorized_log_line(state, graph_index):
                         log_line[node_index] = 0.0
     return log_line
 
-def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, random_cyber_agent_seed):
+def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, tmp_path, random_cyber_agent_seed):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
     start_time = time.time()
@@ -89,19 +90,25 @@ def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_aft
     myEnv.close()
     end_time = time.time()
 
-    return snapshot_sequence
+    output_file = os.path.join(tmp_path, f"simulation_{sim_id}.pkl")
+    with open(output_file, 'wb') as file:
+        pickle.dump(snapshot_sequence, file)
+    
+    return output_file
+
 
 
 def produce_training_data_parallel(use_saved_data=False, 
-                                   n_simulation_batches=1,
-                                   n_simulations_per_batch=10, 
+                                   n_simulations=10, 
                                    log_window=25, 
                                    game_time=200, 
                                    max_start_time_step=100, 
                                    max_log_steps_after_total_compromise=50,
                                    graph_size='small', 
                                    rddl_path='content/', 
+                                   tmp_path='tmp/',
                                    random_cyber_agent_seed=None):
+    
     file_name = 'data_series_parallel.pkl'
     if use_saved_data:
         with open(file_name, 'rb') as file:
@@ -110,17 +117,21 @@ def produce_training_data_parallel(use_saved_data=False,
     else:
         create_instance(size=graph_size, horizon=game_time, rddl_path=rddl_path)
         n_processes = multiprocessing.cpu_count()
+        result_filenames = []
+        logging.info(f'Starting simulation.')
+        pool = multiprocessing.Pool(processes=n_processes)
+
+        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+
+        result_filenames = pool.starmap(simulation_worker, simulation_args)
+        pool.close()
+        pool.join()
+
         results = []
-        for i_simulation_batch in range(n_simulation_batches):
-            logging.info(f'Starting simulation batch {i_simulation_batch+1} of {n_simulation_batches}.')
-            pool = multiprocessing.Pool(processes=n_processes)
-
-            simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, random_cyber_agent_seed) for i in range(n_simulations_per_batch)]
-
-            batch_results = pool.starmap(simulation_worker, simulation_args)
-            pool.close()
-            pool.join()
-            results.extend(batch_results)
+        for output_file in result_filenames:
+            with open(output_file, 'rb') as file:
+                results.append(pickle.load(file))
+            os.remove(output_file) 
 
         n_completely_compromised = sum([(snapshot_sequence[-1].y[1:] == 1).all() for snapshot_sequence in results])
 
