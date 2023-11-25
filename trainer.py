@@ -55,6 +55,7 @@ def train(methods=['tabular','gnn'],
           max_log_steps_after_total_compromise=150,
           graph_size='medium', 
           random_cyber_agent_seed=None, 
+          batch_size=1,
           learning_rate_list=[0.01], 
           hidden_layers_list=[[16]], 
           number_of_epochs=10):
@@ -102,7 +103,12 @@ def train(methods=['tabular','gnn'],
     if 'gnn' in methods:
         for hidden_layers in hidden_layers_list:
             for learning_rate in learning_rate_list:
-                test_true_labels, test_predicted_labels = train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence, learning_rate=learning_rate, hidden_layers=hidden_layers)
+                test_true_labels, test_predicted_labels = train_gnn(
+                    number_of_epochs=number_of_epochs, 
+                    snapshot_sequence=snapshot_sequence, 
+                    learning_rate=learning_rate, 
+                    batch_size=batch_size, 
+                    hidden_layers=hidden_layers)
                 print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
     
 
