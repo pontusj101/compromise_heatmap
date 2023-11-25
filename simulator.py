@@ -42,7 +42,7 @@ def vectorized_log_line(state, graph_index):
                         log_line[node_index] = 0.0
     return log_line
 
-def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed):
+def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, random_cyber_agent_seed):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
     start_time = time.time()
@@ -71,9 +71,9 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
         labels = labels.to(torch.long)
         if (labels == 1).all():
             if log_steps_after_total_compromise == 0:
-                logging.debug(f'Step {step}: All attack steps were compromised. Continuing to log for {log_window/2} steps.')
+                logging.debug(f'Step {step}: All attack steps were compromised. Continuing to log for {int(log_window/2)} steps.')
             log_steps_after_total_compromise += 1
-            if log_steps_after_total_compromise > log_window/2:
+            if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
                 logging.debug(f'Step {step}: All attack steps were compromised. Terminating simulation.')
                 break
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
@@ -93,10 +93,12 @@ def simulation_worker(sim_id, log_window, max_start_time_step, graph_size, rddl_
 
 
 def produce_training_data_parallel(use_saved_data=False, 
-                                   n_simulations=10, 
+                                   n_simulation_batches=1,
+                                   n_simulations_per_batch=10, 
                                    log_window=25, 
                                    game_time=200, 
                                    max_start_time_step=100, 
+                                   max_log_steps_after_total_compromise=50,
                                    graph_size='small', 
                                    rddl_path='content/', 
                                    random_cyber_agent_seed=None):
@@ -108,13 +110,19 @@ def produce_training_data_parallel(use_saved_data=False,
     else:
         create_instance(size=graph_size, horizon=game_time, rddl_path=rddl_path)
         n_processes = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(processes=n_processes)
+        results = []
+        for i_simulation_batch in range(n_simulation_batches):
+            logging.info(f'Starting simulation batch {i_simulation_batch+1} of {n_simulation_batches}.')
+            pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, log_window, max_start_time_step, graph_size, rddl_path, random_cyber_agent_seed) for i in range(n_simulations)]
+            simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, random_cyber_agent_seed) for i in range(n_simulations_per_batch)]
 
-        results = pool.starmap(simulation_worker, simulation_args)
-        pool.close()
-        pool.join()
+            batch_results = pool.starmap(simulation_worker, simulation_args)
+            pool.close()
+            pool.join()
+            results.extend(batch_results)
+
+        n_completely_compromised = sum([(snapshot_sequence[-1].y[1:] == 1).all() for snapshot_sequence in results])
 
         # Flatten the list of lists (each sublist is the output from one simulation)
         data_series = [item for sublist in results for item in sublist]
@@ -123,4 +131,4 @@ def produce_training_data_parallel(use_saved_data=False,
             pickle.dump(data_series, file)
         logging.info(f'Data saved to {file_name}')
 
-    return data_series
+    return n_completely_compromised, data_series

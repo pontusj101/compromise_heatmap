@@ -88,7 +88,7 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None, learning_rate=0.01, h
         val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
         val_loss_values.append(val_loss)
         end_time = time.time()
-        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
 
 
     plot_training_results(loss_values, val_loss_values)
