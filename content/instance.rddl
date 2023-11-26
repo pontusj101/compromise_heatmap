@@ -1,63 +1,66 @@
-
 non-fluents simple_network {
-    domain = simple_compromise;
+	domain = simple_compromise;
 
-    objects{
-            host: {h1, h2, h3, h4, h5, h6};
-            credentials: {c1, c2, c3, c4, c5, c6};
-        };
+	objects{
+		host: {h1, h2, h3, h4, h5, h6};
+		credentials: {c1, c2, c3, c4, c5, c6};
+	};
 
-    non-fluents {
-            CONNECTED(h1, h2);
-            CONNECTED(h1, h3);
-            CONNECTED(h2, h4);
-            CONNECTED(h3, h6);
-            CONNECTED(h4, h5);
-            CONNECTED(h5, h6);
-            ACCESSES(c1, h1);
-            ACCESSES(c2, h2);
-            ACCESSES(c3, h3);
-            ACCESSES(c4, h4);
-            ACCESSES(c5, h5);
-            ACCESSES(c6, h6);
-            STORES(h1, c1);
-            STORES(h1, c2);
-            STORES(h6, c3);
-            STORES(h2, c4);
-            STORES(h4, c5);
-            STORES(h5, c6);
-            STORES(h4, c3);
-            ittc_crack_attack(c1) = 1;
-            ittc_crack_attack(c2) = 2;
-            ittc_crack_attack(c3) = 0;
-            ittc_crack_attack(c4) = 1;
-            ittc_crack_attack(c5) = 2;
-            ittc_crack_attack(c6) = 0;
-    };
+	non-fluents {
+		CONNECTED(h1, h2);
+		CONNECTED(h5, h6);
+		CONNECTED(h3, h4);
+		CONNECTED(h3, h5);
+		CONNECTED(h2, h3);
+		CONNECTED(h5, h1);
+		CONNECTED(h4, h1);
+		CONNECTED(h5, h3);
+		CONNECTED(h2, h6);
+		CONNECTED(h5, h2);
+		CONNECTED(h4, h5);
+		CONNECTED(h4, h3);
+		ACCESSES(c1, h4);
+		STORES(h1, c1);
+		ittc_crack_attack(c1) = 1;
+		ACCESSES(c2, h3);
+		STORES(h1, c2);
+		ittc_crack_attack(c2) = 2;
+		ACCESSES(c3, h2);
+		STORES(h1, c3);
+		ittc_crack_attack(c3) = 1;
+		ACCESSES(c4, h5);
+		STORES(h1, c4);
+		ittc_crack_attack(c4) = 0;
+		ACCESSES(c5, h5);
+		STORES(h1, c5);
+		ittc_crack_attack(c5) = 1;
+		ACCESSES(c6, h2);
+		STORES(h1, c6);
+		ittc_crack_attack(c6) = 2;
+	};
 }
 
 instance simple_network_instance {
-    domain = simple_compromise;
-    non-fluents = simple_network;
+	domain = simple_compromise;
+	non-fluents = simple_network;
 
-    init-state{
-        compromised(h1) = true;
+	init-state{
+		compromised(h1) = true;
+		rttc_crack_attack(c1) = 1;
+		rttc_crack_attack(c2) = 2;
+		rttc_crack_attack(c3) = 0;
+		rttc_crack_attack(c4) = 0;
+		rttc_crack_attack(c5) = 2;
+		rttc_crack_attack(c6) = 1;
+		value(h1) = 6;
+		value(h2) = 5;
+		value(h3) = 15;
+		value(h4) = 0;
+		value(h5) = 0;
+		value(h6) = 15;
+	};
 
-        rttc_crack_attack(c1) = 1;
-        rttc_crack_attack(c2) = 2;
-        rttc_crack_attack(c3) = 0;
-        rttc_crack_attack(c4) = 1;
-        rttc_crack_attack(c5) = 2;
-        rttc_crack_attack(c6) = 0;
-        value(h1) = 0;
-        value(h2) = 1;
-        value(h3) = 2;
-        value(h4) = 4;
-        value(h5) = 8;
-        value(h6) = 16;
-    };
-
-    max-nondef-actions = 1;
-    horizon = 500;
-    discount = 1.0;
+	max-nondef-actions = 1;
+	horizon = 500;
+	discount = 1.0;
 }

@@ -9,7 +9,6 @@ import logging
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
 from agents import PassiveCyberAgent, RandomCyberAgent
-from instance_creator import create_instance
 from graph_index import GraphIndex
 
 
@@ -104,6 +103,7 @@ def produce_training_data_parallel(use_saved_data=False,
                                    game_time=200, 
                                    max_start_time_step=100, 
                                    max_log_steps_after_total_compromise=50,
+                                   instance_type='static',
                                    graph_size='small', 
                                    rddl_path='content/', 
                                    tmp_path='tmp/',
@@ -118,7 +118,7 @@ def produce_training_data_parallel(use_saved_data=False,
             logging.info(f'Data retrieved from file {file_name}')
             n_completely_compromised = -1
     else:
-        create_instance(size=graph_size, horizon=game_time, rddl_path=rddl_path)
+        logging.info(f'Creating new instance specification of type {instance_type} with size {graph_size} and horizon {game_time}')
         n_processes = multiprocessing.cpu_count()
         result_filenames = []
         logging.info(f'Starting simulation.')
