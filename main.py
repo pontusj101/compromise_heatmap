@@ -18,6 +18,7 @@ for n_simulations in [1024]:
             graph_size='medium', 
             random_cyber_agent_seed=None, 
             batch_size=256,
+            batch_size=256,
             learning_rate_list=[0.005],
             hidden_layers_list=[[1024, 1024], [128, 128, 128, 128]],
             number_of_epochs=16)
