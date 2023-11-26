@@ -67,7 +67,12 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.savefig('loss_curves/' + filename)
     plt.close()
 
-def train_gnn(number_of_epochs=10, snapshot_sequence=None, learning_rate=0.01, batch_size=1, hidden_layers=[16, 32, 16]):
+def train_gnn(number_of_epochs=10, 
+              snapshot_sequence=None, 
+              learning_rate=0.01, 
+              batch_size=1, 
+              hidden_layers=[16, 32, 16],
+              model_path='models/'):
 
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
@@ -102,7 +107,7 @@ def train_gnn(number_of_epochs=10, snapshot_sequence=None, learning_rate=0.01, b
 
     filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}'
     plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
-    torch.save(model, f'model_{filename_root}.pt')
+    torch.save(model, f'{model_path}model_{filename_root}.pt')
 
     test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)

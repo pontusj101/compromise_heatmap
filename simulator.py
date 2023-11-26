@@ -107,9 +107,10 @@ def produce_training_data_parallel(use_saved_data=False,
                                    graph_size='small', 
                                    rddl_path='content/', 
                                    tmp_path='tmp/',
+                                   snapshot_sequence_path = 'snapshot_sequences/',
                                    random_cyber_agent_seed=None):
     
-    file_name = 'data_series_parallel.pkl'
+    file_name = snapshot_sequence_path + 'latest.pkl'
     if use_saved_data:
         logging.info(f'Using saved data from file {file_name}')
         with open(file_name, 'rb') as file:

@@ -47,7 +47,6 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
 
 def train(methods=['tabular','gnn'], 
           use_saved_data=False, 
-          n_simulation_batches=1,
           n_simulations=2, 
           log_window=300, 
           game_time= 700, 
@@ -73,6 +72,8 @@ def train(methods=['tabular','gnn'],
                                                         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
                                                         graph_size=graph_size, 
                                                         rddl_path='content/', 
+                                                        tmp_path='tmp/',
+                                                        snapshot_sequence_path = 'snapshot_sequences/',
                                                         random_cyber_agent_seed=random_cyber_agent_seed)
 
     create_masks(snapshot_sequence)

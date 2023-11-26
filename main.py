@@ -6,7 +6,7 @@ logging.warning('\n\n')
 
 # game_time=70 # Good for the small graph
 game_time=500 # Good for the medium-sized graph
-for n_simulations in [128]:
+for n_simulations in [32]:
     for log_window in [16, 64]:
         train(methods=['gnn'], # ['tabular', 'gnn']
             use_saved_data=False, 
