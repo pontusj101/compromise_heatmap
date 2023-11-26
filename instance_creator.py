@@ -205,8 +205,8 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
             num_hosts = 6
             num_credentials = 6
         elif size == 'large':
-            num_hosts = 10
-            num_credentials = 10
+            num_hosts = 32
+            num_credentials = 32
         instance_string, graph_index = create_random_instance(num_hosts, num_credentials, horizon=horizon, rddl_path=rddl_path)
 
     with open(rddl_path + 'instance.rddl', 'w') as f:
