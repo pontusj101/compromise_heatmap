@@ -48,13 +48,14 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
 def train(methods=['tabular','gnn'], 
           use_saved_data=False, 
           n_simulation_batches=1,
-          n_simulations_per_batch=2, 
+          n_simulations=2, 
           log_window=300, 
           game_time= 700, 
           max_start_time_step=400, 
           max_log_steps_after_total_compromise=150,
           graph_size='medium', 
           random_cyber_agent_seed=None, 
+          batch_size=1,
           learning_rate_list=[0.01], 
           hidden_layers_list=[[16]], 
           number_of_epochs=10):
@@ -63,9 +64,9 @@ def train(methods=['tabular','gnn'],
     # profiler.enable()
 
     start_time = time.time()
+    logging.info(f'Training data generation started.')
     n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
-                                                        n_simulation_batches=n_simulation_batches,
-                                                        n_simulations_per_batch=n_simulations_per_batch, 
+                                                        n_simulations=n_simulations, 
                                                         log_window=log_window, 
                                                         game_time=game_time,
                                                         max_start_time_step=max_start_time_step, 
@@ -79,10 +80,11 @@ def train(methods=['tabular','gnn'],
     # A snapshot that isn't compromised still has the initial attackstep pwned
     compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
     logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations_per_batch} simulations ended in complete compromise.')
+    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
     random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
     random_snapshot = snapshot_sequence[random_snapshot_index]
-    logging.info(f'Random snapshot ({random_snapshot_index}) log sequence and labels:')
+    logging.info(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+    logging.info(f'\n{random_snapshot.x[:,:1]}')
     logging.info(f'\n{random_snapshot.x[:,1:]}')
     logging.info(random_snapshot.y)
 
@@ -97,13 +99,20 @@ def train(methods=['tabular','gnn'],
     # print("Profiling report saved to 'profiling_report.txt'")    
 
     if 'tabular' in methods:
+        logging.info(f'Tabular training started.')
         start_time = time.time()
         test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
         print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
     if 'gnn' in methods:
+        logging.info(f'GNN training started.')
         for hidden_layers in hidden_layers_list:
             for learning_rate in learning_rate_list:
-                test_true_labels, test_predicted_labels = train_gnn(number_of_epochs=number_of_epochs, snapshot_sequence=snapshot_sequence, learning_rate=learning_rate, hidden_layers=hidden_layers)
+                test_true_labels, test_predicted_labels = train_gnn(
+                    number_of_epochs=number_of_epochs, 
+                    snapshot_sequence=snapshot_sequence, 
+                    learning_rate=learning_rate, 
+                    batch_size=batch_size, 
+                    hidden_layers=hidden_layers)
                 print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
     
 
