@@ -6,10 +6,10 @@ logging.warning('\n\n')
 
 # game_time=70 # Good for the small graph
 game_time=500 # Good for the medium-sized graph
-for n_simulations in [1024]:
+for n_simulations in [128]:
     for log_window in [16, 64]:
         train(methods=['gnn'], # ['tabular', 'gnn']
-            use_saved_data=True, 
+            use_saved_data=False, 
             n_simulations=n_simulations, 
             log_window=log_window, 
             game_time= game_time, 
@@ -18,7 +18,6 @@ for n_simulations in [1024]:
             graph_size='medium', 
             random_cyber_agent_seed=None, 
             batch_size=256,
-            batch_size=256,
             learning_rate_list=[0.005],
-            hidden_layers_list=[[1024, 1024], [128, 128, 128, 128]],
-            number_of_epochs=16)
+            hidden_layers_list=[[128, 128]],
+            number_of_epochs=8)
