@@ -9,7 +9,8 @@ logging.warning('\n\n')
 mode = 'both' # 'train' or 'animate' or 'both'
 model_file_name = 'models/model_hl_[256, 256]_n_421765_lr_0.005_bs_256.pt'
 
-create_instance(instance_type='random', size='medium', horizon=500, rddl_path='content/')
+logging.info(f'Creating new instance specification.')
+graph_index = create_instance(instance_type='random', size='medium', horizon=500, rddl_path='content/')
 
 if mode == 'train' or mode == 'both':
     # game_time=70 # Good for the small graph
@@ -23,12 +24,11 @@ if mode == 'train' or mode == 'both':
                 game_time= game_time, 
                 max_start_time_step=log_window + int((game_time-log_window)/2), 
                 max_log_steps_after_total_compromise=int(log_window/2),
-                instance_type='random',
-                graph_size='medium', 
+                graph_index=graph_index,
                 random_cyber_agent_seed=None, 
                 batch_size=256,
                 learning_rate_list=[0.005],
                 hidden_layers_list=[[64, 64]],
                 number_of_epochs=8)
 if mode == 'animate' or mode == 'both':
-    animate_snapshot_sequence(model_file_name)
+    animate_snapshot_sequence(model_file_name, graph_index=graph_index)

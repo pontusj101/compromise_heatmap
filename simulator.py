@@ -42,11 +42,10 @@ def vectorized_log_line(state, graph_index):
                         log_line[node_index] = 0.0
     return log_line
 
-def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, tmp_path, random_cyber_agent_seed):
+def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, rddl_path, tmp_path, random_cyber_agent_seed):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
 
     start_time = time.time()
-    graph_index = GraphIndex(size=graph_size)
     n_nodes = len(graph_index.node_features)
     start_step = random.randint(log_window, max_start_time_step)
 
@@ -103,8 +102,7 @@ def produce_training_data_parallel(use_saved_data=False,
                                    game_time=200, 
                                    max_start_time_step=100, 
                                    max_log_steps_after_total_compromise=50,
-                                   instance_type='static',
-                                   graph_size='small', 
+                                   graph_index=None,
                                    rddl_path='content/', 
                                    tmp_path='tmp/',
                                    snapshot_sequence_path = 'snapshot_sequences/',
@@ -118,13 +116,12 @@ def produce_training_data_parallel(use_saved_data=False,
             logging.info(f'Data retrieved from file {file_name}')
             n_completely_compromised = -1
     else:
-        logging.info(f'Creating new instance specification of type {instance_type} with size {graph_size} and horizon {game_time}')
         n_processes = multiprocessing.cpu_count()
         result_filenames = []
         logging.info(f'Starting simulation.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_size, rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(simulation_worker, simulation_args)
         pool.close()

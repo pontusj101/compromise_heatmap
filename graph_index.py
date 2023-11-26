@@ -1,8 +1,14 @@
 import torch
 
 class GraphIndex:
-    def __init__(self, size='small'):
-        if size == 'small':
+    def __init__(self, size=None):
+        if size is None:
+            self.log_mapping = dict()
+            self.attackstep_mapping = dict()
+            self.node_features = torch.tensor([], dtype=torch.float)
+            self.edge_index = torch.tensor([], dtype=torch.long)
+
+        elif size == 'small':
             self.log_mapping = {
                 'observed_compromise_attack___h1': 0,
                 'observed_compromise_attack___h2': 1,
