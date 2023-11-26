@@ -62,7 +62,7 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss Curve')
     plt.legend()
-    plt.savefig(filename)
+    plt.savefig('loss_curves/' + filename)
     plt.close()
 
 def train_gnn(number_of_epochs=10, snapshot_sequence=None, learning_rate=0.01, batch_size=1, hidden_layers=[16, 32, 16]):
