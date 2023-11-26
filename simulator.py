@@ -142,4 +142,4 @@ def produce_training_data_parallel(use_saved_data=False,
             pickle.dump(data_series, file)
         logging.info(f'Data saved to {file_name}')
 
-    return n_completely_compromised, data_series
+    return n_completely_compromised, data_series, file_name

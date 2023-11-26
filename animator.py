@@ -3,7 +3,40 @@ import logging
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import torch
+import pickle
 from simulator import produce_training_data_parallel
+
+class Predictor:
+    def __init__(self, predictor_type, file_name):
+        self.predictor_type = predictor_type
+        if predictor_type == 'gnn':
+            self.model = torch.load(file_name)
+            self.model.eval()
+        elif predictor_type == 'tabular':
+            with open(file_name, 'rb') as file:
+                self.snapshot_sequence = pickle.load(file)
+    
+    def frequency(self, target_log_sequence, snapshot_sequence):
+        n_labels = len(snapshot_sequence[0].y)
+        count = torch.zeros(n_labels)
+        hits = torch.zeros(n_labels)
+        for snapshot in snapshot_sequence:
+            log_sequence = snapshot.x[:, 1:]
+            if torch.equal(log_sequence, target_log_sequence):
+                for label_index in range(n_labels):
+                    count[label_index] += 1
+                    labels = snapshot.y
+                    if labels[label_index] == 1:
+                        hits[label_index] += 1
+        return torch.round(torch.nan_to_num(hits/count))
+
+
+    def predict(self, snapshot):
+        if self.predictor_type == 'gnn':
+            out = self.model(snapshot)
+            return out.max(1)[1]
+        elif self.predictor_type == 'tabular':
+            return self.frequency(snapshot.x[:, 1:], self.snapshot_sequence)
 
 
 def create_graph(snapshot):
@@ -21,12 +54,11 @@ def create_graph(snapshot):
 
     return G
 
-def update_graph(num, snapshots, pos, ax, model):
+def update_graph(num, snapshots, pos, ax, predictor):
     ax.clear()
     snapshot = snapshots[num]
 
-    out = model(snapshot)
-    prediction = out.max(1)[1]
+    prediction = predictor.predict(snapshot)
 
     G = create_graph(snapshot)
 
@@ -82,10 +114,9 @@ def update_graph(num, snapshots, pos, ax, model):
 
     ax.set_title(f"Step {num}")
 
-def create_animation(snapshot_sequence, model_filename):
+def create_animation(snapshot_sequence, predictor_type, predictor_filename):
 
-    model = torch.load(model_filename)
-    model.eval()
+    predictor = Predictor(predictor_type, predictor_filename)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
@@ -94,12 +125,12 @@ def create_animation(snapshot_sequence, model_filename):
     pos = nx.spring_layout(G_initial)  # You can use other layouts as well
 
     ani = animation.FuncAnimation(fig, update_graph, frames=len(snapshot_sequence), 
-                                fargs=(snapshot_sequence, pos, ax, model), interval=1000)
+                                fargs=(snapshot_sequence, pos, ax, predictor), interval=1000)
     ani.save('network_animation.gif', writer='pillow', fps=25)
 
 
-def animate_snapshot_sequence(model_file_name, graph_index=None):
-    n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=False, 
+def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None):
+    n_completely_compromised, snapshot_sequence, predictor_filename = produce_training_data_parallel(use_saved_data=False, 
                                                         n_simulations=1, 
                                                         log_window=16, 
                                                         game_time=500,
@@ -109,4 +140,4 @@ def animate_snapshot_sequence(model_file_name, graph_index=None):
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=None)
 
-    create_animation(snapshot_sequence, model_filename=model_file_name)
+    create_animation(snapshot_sequence, predictor_type, predictor_filename=predictor_filename)

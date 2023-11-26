@@ -43,9 +43,9 @@ def evaluate_model(data_loader, snapshot_sequence):
     return all_predicted_labels, all_true_labels
 
 
-def train_tabular(snapshot_sequence=None, graph_size='small'):
+def train_tabular(snapshot_sequence=None):
 
-    logging.info(f'Training tabular model on {graph_size} graph and {len(snapshot_sequence)} snapshots.')
+    logging.info(f'Training tabular model on {len(snapshot_sequence)} snapshots.')
 
     data_loader = DataLoader(snapshot_sequence, batch_size=1, shuffle=True)
     test_predicted_labels, test_true_labels = evaluate_model(data_loader, snapshot_sequence)

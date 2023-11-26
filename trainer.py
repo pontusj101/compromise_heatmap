@@ -61,7 +61,7 @@ def train(methods=['tabular','gnn'],
 
     start_time = time.time()
     logging.info(f'Training data generation started.')
-    n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
+    n_completely_compromised, snapshot_sequence, sequence_file_name = produce_training_data_parallel(use_saved_data=use_saved_data, 
                                                         n_simulations=n_simulations, 
                                                         log_window=log_window, 
                                                         game_time=game_time,
@@ -86,17 +86,18 @@ def train(methods=['tabular','gnn'],
     logging.info(f'\n{random_snapshot.x[:,1:]}')
     logging.info(random_snapshot.y)
 
-    mode_file_name = None
+    file_name = None
     if 'tabular' in methods:
         logging.info(f'Tabular training started.')
         start_time = time.time()
-        test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence, graph_size=graph_size)
+        test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence)
         print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
+        file_name = sequence_file_name
     if 'gnn' in methods:
         logging.info(f'GNN training started.')
         for hidden_layers in hidden_layers_list:
             for learning_rate in learning_rate_list:
-                test_true_labels, test_predicted_labels, mode_file_name = train_gnn(
+                test_true_labels, test_predicted_labels, file_name = train_gnn(
                     number_of_epochs=number_of_epochs, 
                     snapshot_sequence=snapshot_sequence, 
                     learning_rate=learning_rate, 
@@ -104,4 +105,4 @@ def train(methods=['tabular','gnn'],
                     hidden_layers=hidden_layers)
                 print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
     
-    return mode_file_name
+    return file_name
