@@ -59,9 +59,6 @@ def train(methods=['tabular','gnn'],
           hidden_layers_list=[[16]], 
           number_of_epochs=10):
 
-    # profiler = cProfile.Profile()
-    # profiler.enable()
-
     start_time = time.time()
     logging.info(f'Training data generation started.')
     n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=use_saved_data, 
@@ -89,16 +86,7 @@ def train(methods=['tabular','gnn'],
     logging.info(f'\n{random_snapshot.x[:,1:]}')
     logging.info(random_snapshot.y)
 
-    # profiler.disable()
-
-    # # Write the report to a file
-    # with open('profiling_report.txt', 'w') as file:
-    #     # Create a Stats object with the specified output stream
-    #     stats = pstats.Stats(profiler, stream=file)
-    #     stats.sort_stats('cumtime')
-    #     stats.print_stats()
-    # print("Profiling report saved to 'profiling_report.txt'")    
-
+    mode_file_name = None
     if 'tabular' in methods:
         logging.info(f'Tabular training started.')
         start_time = time.time()
@@ -108,7 +96,7 @@ def train(methods=['tabular','gnn'],
         logging.info(f'GNN training started.')
         for hidden_layers in hidden_layers_list:
             for learning_rate in learning_rate_list:
-                test_true_labels, test_predicted_labels = train_gnn(
+                test_true_labels, test_predicted_labels, mode_file_name = train_gnn(
                     number_of_epochs=number_of_epochs, 
                     snapshot_sequence=snapshot_sequence, 
                     learning_rate=learning_rate, 
@@ -116,4 +104,4 @@ def train(methods=['tabular','gnn'],
                     hidden_layers=hidden_layers)
                 print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
     
-
+    return mode_file_name

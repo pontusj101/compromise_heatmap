@@ -107,10 +107,11 @@ def train_gnn(number_of_epochs=10,
 
     filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}'
     plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
-    torch.save(model, f'{model_path}model_{filename_root}.pt')
+    mode_file_name = f'{model_path}model_{filename_root}.pt'
+    torch.save(model, mode_file_name)
 
     test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
     test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)
 
-    return test_predicted_labels, test_true_labels
+    return test_predicted_labels, test_true_labels, mode_file_name
 

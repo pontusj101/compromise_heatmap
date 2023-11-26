@@ -82,9 +82,9 @@ def update_graph(num, snapshots, pos, ax, model):
 
     ax.set_title(f"Step {num}")
 
-def create_animation(snapshot_sequence, model_path, model_filename):
+def create_animation(snapshot_sequence, model_filename):
 
-    model = torch.load(model_path+model_filename)
+    model = torch.load(model_filename)
     model.eval()
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -98,7 +98,7 @@ def create_animation(snapshot_sequence, model_path, model_filename):
     ani.save('network_animation.gif', writer='pillow', fps=25)
 
 
-def animate_snapshot_sequence():
+def animate_snapshot_sequence(model_file_name):
     n_completely_compromised, snapshot_sequence = produce_training_data_parallel(use_saved_data=False, 
                                                         n_simulations=1, 
                                                         log_window=16, 
@@ -109,4 +109,4 @@ def animate_snapshot_sequence():
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=None)
 
-    create_animation(snapshot_sequence, model_path='models/', model_filename='model_hl_[256, 256]_n_421915_lr_0.005_bs_256.pt')
+    create_animation(snapshot_sequence, model_filename=model_file_name)
