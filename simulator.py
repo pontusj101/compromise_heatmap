@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import time
+from datetime import datetime
 import random
 import pickle
 import numpy
@@ -73,7 +74,7 @@ def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_aft
                 logging.debug(f'Step {step}: All attack steps were compromised. Continuing to log for {int(log_window/2)} steps.')
             log_steps_after_total_compromise += 1
             if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
-                logging.debug(f'Step {step}: All attack steps were compromised. Terminating simulation.')
+                logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised. Terminating simulation.')
                 break
         combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
         snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
@@ -108,7 +109,8 @@ def produce_training_data_parallel(use_saved_data=False,
                                    snapshot_sequence_path = 'snapshot_sequences/',
                                    random_cyber_agent_seed=None):
     
-    file_name = snapshot_sequence_path + 'latest.pkl'
+    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = snapshot_sequence_path + 'latest' + date_time_str + '.pkl'
     if use_saved_data:
         logging.info(f'Using saved data from file {file_name}')
         with open(file_name, 'rb') as file:

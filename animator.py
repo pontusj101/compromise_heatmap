@@ -113,6 +113,8 @@ def update_graph(num, snapshots, pos, ax, predictor):
     nx.draw_networkx_labels(G, pos, ax=ax)
 
     ax.set_title(f"Step {num}")
+    logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
+
 
 def create_animation(snapshot_sequence, predictor_type, predictor_filename):
 
@@ -129,13 +131,13 @@ def create_animation(snapshot_sequence, predictor_type, predictor_filename):
     ani.save('network_animation.gif', writer='pillow', fps=25)
 
 
-def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None):
-    n_completely_compromised, snapshot_sequence, predictor_filename = produce_training_data_parallel(use_saved_data=False, 
+def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None, game_time=500, max_start_time_step=266, max_log_steps_after_total_compromise=8, log_window=16):
+    n_completely_compromised, snapshot_sequence, dont_use_predictor_filename = produce_training_data_parallel(use_saved_data=False, 
                                                         n_simulations=1, 
-                                                        log_window=16, 
-                                                        game_time=500,
-                                                        max_start_time_step=266, 
-                                                        max_log_steps_after_total_compromise=8,
+                                                        log_window=log_window, 
+                                                        game_time=game_time,
+                                                        max_start_time_step=max_start_time_step, 
+                                                        max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
                                                         graph_index=graph_index, 
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=None)

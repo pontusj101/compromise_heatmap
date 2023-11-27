@@ -57,7 +57,8 @@ def train(methods=['tabular','gnn'],
           batch_size=1,
           learning_rate_list=[0.01], 
           hidden_layers_list=[[16]], 
-          number_of_epochs=10):
+          number_of_epochs=10,
+          evaluate=True):
 
     start_time = time.time()
     logging.info(f'Training data generation started.')
@@ -88,10 +89,11 @@ def train(methods=['tabular','gnn'],
 
     file_name = None
     if 'tabular' in methods:
-        logging.info(f'Tabular training started.')
-        start_time = time.time()
-        test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence)
-        print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
+        if evaluate:
+            logging.info(f'Tabular training started.')
+            start_time = time.time()
+            test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence)
+            print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
         file_name = sequence_file_name
     if 'gnn' in methods:
         logging.info(f'GNN training started.')
