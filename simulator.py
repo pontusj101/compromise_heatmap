@@ -7,6 +7,7 @@ import pickle
 import numpy
 import torch
 import logging
+import numpy as np
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
 from agents import PassiveCyberAgent, RandomCyberAgent
@@ -97,24 +98,26 @@ def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_aft
 
 
 
-def produce_training_data_parallel(use_saved_data=False, 
-                                   n_simulations=10, 
-                                   log_window=25, 
-                                   game_time=200, 
-                                   max_start_time_step=100, 
-                                   max_log_steps_after_total_compromise=50,
-                                   graph_index=None,
-                                   rddl_path='content/', 
-                                   tmp_path='tmp/',
-                                   snapshot_sequence_path = 'snapshot_sequences/',
-                                   random_cyber_agent_seed=None):
+def produce_training_data_parallel(
+    use_saved_data=False, 
+    n_simulations=10, 
+    log_window=25, 
+    game_time=200, 
+    max_start_time_step=100, 
+    max_log_steps_after_total_compromise=50,
+    graph_index=None,
+    rddl_path='content/', 
+    tmp_path='tmp/',
+    snapshot_sequence_path = 'snapshot_sequences/',
+    random_cyber_agent_seed=None):
     
+    start_time = time.time()
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_name = snapshot_sequence_path + 'latest' + date_time_str + '.pkl'
     if use_saved_data:
         logging.info(f'Using saved data from file {file_name}')
         with open(file_name, 'rb') as file:
-            data_series = pickle.load(file)
+            snapshot_sequence = pickle.load(file)
             logging.info(f'Data retrieved from file {file_name}')
             n_completely_compromised = -1
     else:
@@ -135,13 +138,24 @@ def produce_training_data_parallel(use_saved_data=False,
                 results.append(pickle.load(file))
             os.remove(output_file) 
 
-        n_completely_compromised = sum([(snapshot_sequence[-1].y[1:] == 1).all() for snapshot_sequence in results])
+        n_completely_compromised = sum([(snap_seq[-1].y[1:] == 1).all() for snap_seq in results])
 
         # Flatten the list of lists (each sublist is the output from one simulation)
-        data_series = [item for sublist in results for item in sublist]
+        snapshot_sequence = [item for sublist in results for item in sublist]
 
         with open(file_name, 'wb') as file:
-            pickle.dump(data_series, file)
+            pickle.dump(snapshot_sequence, file)
         logging.info(f'Data saved to {file_name}')
 
-    return n_completely_compromised, data_series, file_name
+    compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
+    logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
+    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
+    random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
+    random_snapshot = snapshot_sequence[random_snapshot_index]
+    logging.info(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+    logging.info(f'\n{random_snapshot.x[:,:1]}')
+    logging.info(f'\n{random_snapshot.x[:,1:]}')
+    logging.info(random_snapshot.y)
+
+
+    return n_completely_compromised, snapshot_sequence, file_name

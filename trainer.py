@@ -45,15 +45,8 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def train(methods=['tabular','gnn'], 
-          use_saved_data=False, 
-          n_simulations=2, 
-          log_window=300, 
-          game_time= 700, 
-          max_start_time_step=400, 
-          max_log_steps_after_total_compromise=150,
-          graph_index=None,
-          random_cyber_agent_seed=None, 
+def train(snapshot_sequence,
+          methods=['tabular','gnn'], 
           batch_size=1,
           learning_rate_list=[0.01], 
           hidden_layers_list=[[16]], 
@@ -62,39 +55,9 @@ def train(methods=['tabular','gnn'],
 
     start_time = time.time()
     logging.info(f'Training data generation started.')
-    n_completely_compromised, snapshot_sequence, sequence_file_name = produce_training_data_parallel(use_saved_data=use_saved_data, 
-                                                        n_simulations=n_simulations, 
-                                                        log_window=log_window, 
-                                                        game_time=game_time,
-                                                        max_start_time_step=max_start_time_step, 
-                                                        max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-                                                        graph_index=graph_index,
-                                                        rddl_path='content/', 
-                                                        tmp_path='tmp/',
-                                                        snapshot_sequence_path = 'snapshot_sequences/',
-                                                        random_cyber_agent_seed=random_cyber_agent_seed)
-
+ 
     create_masks(snapshot_sequence)
 
-    # A snapshot that isn't compromised still has the initial attackstep pwned
-    compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
-    logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-    logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
-    random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
-    random_snapshot = snapshot_sequence[random_snapshot_index]
-    logging.info(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-    logging.info(f'\n{random_snapshot.x[:,:1]}')
-    logging.info(f'\n{random_snapshot.x[:,1:]}')
-    logging.info(random_snapshot.y)
-
-    file_name = None
-    if 'tabular' in methods:
-        if evaluate:
-            logging.info(f'Tabular training started.')
-            start_time = time.time()
-            test_true_labels, test_predicted_labels = train_tabular(snapshot_sequence=snapshot_sequence)
-            print_results('Tabular', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
-        file_name = sequence_file_name
     if 'gnn' in methods:
         logging.info(f'GNN training started.')
         for hidden_layers in hidden_layers_list:
