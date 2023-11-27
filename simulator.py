@@ -158,4 +158,4 @@ def produce_training_data_parallel(
     logging.info(random_snapshot.y)
 
 
-    return n_completely_compromised, snapshot_sequence, file_name
+    return file_name

@@ -116,12 +116,15 @@ def update_graph(num, snapshots, pos, ax, predictor):
     logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
 
 
-def create_animation(snapshot_sequence, predictor_type, predictor_filename):
+def create_animation(test_sequence_filename, predictor_type, predictor_filename):
 
     predictor = Predictor(predictor_type, predictor_filename)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
+    with open(test_sequence_filename, 'rb') as file:
+        snapshot_sequence = pickle.load(file)
+
     # Calculate layout once
     G_initial = create_graph(snapshot_sequence[0])
     pos = nx.spring_layout(G_initial)  # You can use other layouts as well
@@ -132,7 +135,7 @@ def create_animation(snapshot_sequence, predictor_type, predictor_filename):
 
 
 def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None, game_time=500, max_start_time_step=266, max_log_steps_after_total_compromise=8, log_window=16):
-    n_completely_compromised, snapshot_sequence, dont_use_predictor_filename = produce_training_data_parallel(use_saved_data=False, 
+    test_sequence_filename = produce_training_data_parallel(use_saved_data=False, 
                                                         n_simulations=1, 
                                                         log_window=log_window, 
                                                         game_time=game_time,
@@ -142,4 +145,4 @@ def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=No
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=None)
 
-    create_animation(snapshot_sequence, predictor_type, predictor_filename=predictor_filename)
+    create_animation(test_sequence_filename, predictor_type, predictor_filename=predictor_filename)
