@@ -15,7 +15,7 @@ game_time=70 # Good for the small graph
 # game_time = 1000 # Good for the large graph
 log_window = 3
 max_start_time_step = log_window + int((game_time-log_window)/2)
-max_log_steps_after_total_compromise = int(log_window/2),
+max_log_steps_after_total_compromise = int(log_window/2)
 
 graph_index = create_instance(instance_type='static', size='small', horizon=game_time, rddl_path='content/')
 
@@ -36,6 +36,7 @@ if mode == 'train' or mode == 'both':
             number_of_epochs=8,
             evaluate=False)
 if mode == 'animate' or mode == 'both':
+    
     animate_snapshot_sequence(predictor_type='tabular', 
                               predictor_filename=model_file_name, 
                               graph_index=graph_index, 

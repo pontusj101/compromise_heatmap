@@ -128,7 +128,7 @@ def create_animation(snapshot_sequence, predictor_type, predictor_filename):
 
     ani = animation.FuncAnimation(fig, update_graph, frames=len(snapshot_sequence), 
                                 fargs=(snapshot_sequence, pos, ax, predictor), interval=1000)
-    ani.save('network_animation.gif', writer='pillow', fps=25)
+    ani.save('network_animation.gif', writer='pillow', fps=5)
 
 
 def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None, game_time=500, max_start_time_step=266, max_log_steps_after_total_compromise=8, log_window=16):
@@ -136,8 +136,8 @@ def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=No
                                                         n_simulations=1, 
                                                         log_window=log_window, 
                                                         game_time=game_time,
-                                                        max_start_time_step=max_start_time_step, 
-                                                        max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
+                                                        max_start_time_step=log_window+1, 
+                                                        max_log_steps_after_total_compromise=log_window/2,
                                                         graph_index=graph_index, 
                                                         rddl_path='content/', 
                                                         random_cyber_agent_seed=None)

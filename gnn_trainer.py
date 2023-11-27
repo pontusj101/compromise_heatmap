@@ -45,9 +45,7 @@ def evaluate_model(model, data_loader, masks):
             loss = F.nll_loss(out[adjusted_mask], batch.y[adjusted_mask])
             total_loss += loss.item()
             predicted_labels = out[adjusted_mask].max(1)[1]
-            predicted_labels = out[adjusted_mask].max(1)[1]
             all_predicted_labels.append(predicted_labels.cpu().numpy())
-            true_labels = batch.y[adjusted_mask]
             true_labels = batch.y[adjusted_mask]
             all_true_labels.append(true_labels.cpu().numpy())
 
