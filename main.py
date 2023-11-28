@@ -26,7 +26,7 @@ parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', h
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/latest20231127_192822.pkl', help='Filename for training sequence')
 parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/latest20231127_191906.pkl', help='Filename for animation sequence')
 parser.add_argument('--animation_predictor_filename', default='models/model_hl_[64, 64]_n_6287_lr_0.005_bs_256.pt', help='Filename for the animation predictor model')
-parser.add_argument('--animation_predictor_type', default='gnn', choices=['gnn', 'other'], help='Type of animation predictor')
+parser.add_argument('--animation_predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of animation predictor')
 
 # Parse arguments
 args = parser.parse_args()
