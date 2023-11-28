@@ -116,13 +116,13 @@ def update_graph(num, snapshots, pos, ax, predictor):
     logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
 
 
-def create_animation(test_sequence_filename, predictor_type, predictor_filename):
+def create_animation(animation_sequence_filename, predictor_type, predictor_filename):
 
     predictor = Predictor(predictor_type, predictor_filename)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
-    with open(test_sequence_filename, 'rb') as file:
+    with open(animation_sequence_filename, 'rb') as file:
         snapshot_sequence = pickle.load(file)
 
     # Calculate layout once
@@ -134,15 +134,6 @@ def create_animation(test_sequence_filename, predictor_type, predictor_filename)
     ani.save('network_animation.gif', writer='pillow', fps=5)
 
 
-def animate_snapshot_sequence(predictor_type, predictor_filename, graph_index=None, game_time=500, max_start_time_step=266, max_log_steps_after_total_compromise=8, log_window=16):
-    test_sequence_filename = produce_training_data_parallel(use_saved_data=False, 
-                                                        n_simulations=1, 
-                                                        log_window=log_window, 
-                                                        game_time=game_time,
-                                                        max_start_time_step=log_window+1, 
-                                                        max_log_steps_after_total_compromise=log_window/2,
-                                                        graph_index=graph_index, 
-                                                        rddl_path='content/', 
-                                                        random_cyber_agent_seed=None)
+def animate_snapshot_sequence(predictor_type, predictor_filename, test_sequence_filename, game_time=500, max_start_time_step=266, max_log_steps_after_total_compromise=8, log_window=16):
 
     create_animation(test_sequence_filename, predictor_type, predictor_filename=predictor_filename)

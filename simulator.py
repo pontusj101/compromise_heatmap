@@ -44,8 +44,11 @@ def vectorized_log_line(state, graph_index):
                         log_line[node_index] = 0.0
     return log_line
 
-def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, rddl_path, tmp_path, random_cyber_agent_seed):
+def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_after_total_compromise, rddl_path, tmp_path, random_cyber_agent_seed):
     myEnv = RDDLEnv.RDDLEnv(domain=rddl_path+'domain.rddl', instance=rddl_path+'instance.rddl')
+
+    with open(rddl_path+'graph_index.pkl', 'rb') as file:
+        graph_index = pickle.load(file)
 
     start_time = time.time()
     n_nodes = len(graph_index.node_features)
@@ -99,13 +102,10 @@ def simulation_worker(sim_id, log_window, max_start_time_step, max_log_steps_aft
 
 
 def produce_training_data_parallel(
-    use_saved_data=False, 
     n_simulations=10, 
     log_window=25, 
-    game_time=200, 
     max_start_time_step=100, 
     max_log_steps_after_total_compromise=50,
-    graph_index=None,
     rddl_path='content/', 
     tmp_path='tmp/',
     snapshot_sequence_path = 'snapshot_sequences/',
@@ -114,38 +114,32 @@ def produce_training_data_parallel(
     start_time = time.time()
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_name = snapshot_sequence_path + 'latest' + date_time_str + '.pkl'
-    if use_saved_data:
-        logging.info(f'Using saved data from file {file_name}')
-        with open(file_name, 'rb') as file:
-            snapshot_sequence = pickle.load(file)
-            logging.info(f'Data retrieved from file {file_name}')
-            n_completely_compromised = -1
-    else:
-        n_processes = multiprocessing.cpu_count()
-        result_filenames = []
-        logging.info(f'Starting simulation.')
-        pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+    n_processes = multiprocessing.cpu_count()
+    result_filenames = []
+    logging.info(f'Starting simulation.')
+    pool = multiprocessing.Pool(processes=n_processes)
 
-        result_filenames = pool.starmap(simulation_worker, simulation_args)
-        pool.close()
-        pool.join()
+    simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
-        results = []
-        for output_file in result_filenames:
-            with open(output_file, 'rb') as file:
-                results.append(pickle.load(file))
-            os.remove(output_file) 
+    result_filenames = pool.starmap(simulation_worker, simulation_args)
+    pool.close()
+    pool.join()
 
-        n_completely_compromised = sum([(snap_seq[-1].y[1:] == 1).all() for snap_seq in results])
+    results = []
+    for output_file in result_filenames:
+        with open(output_file, 'rb') as file:
+            results.append(pickle.load(file))
+        os.remove(output_file) 
 
-        # Flatten the list of lists (each sublist is the output from one simulation)
-        snapshot_sequence = [item for sublist in results for item in sublist]
+    n_completely_compromised = sum([(snap_seq[-1].y[1:] == 1).all() for snap_seq in results])
 
-        with open(file_name, 'wb') as file:
-            pickle.dump(snapshot_sequence, file)
-        logging.info(f'Data saved to {file_name}')
+    # Flatten the list of lists (each sublist is the output from one simulation)
+    snapshot_sequence = [item for sublist in results for item in sublist]
+
+    with open(file_name, 'wb') as file:
+        pickle.dump(snapshot_sequence, file)
+    logging.info(f'Data saved to {file_name}')
 
     compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
     logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')

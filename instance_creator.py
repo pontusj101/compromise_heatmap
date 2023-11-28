@@ -1,5 +1,6 @@
 import random
 import torch
+import pickle
 from graph_index import GraphIndex
 
 def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='content/'):
@@ -209,7 +210,12 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
             num_credentials = 32
         instance_string, graph_index = create_random_instance(num_hosts, num_credentials, horizon=horizon, rddl_path=rddl_path)
 
-    with open(rddl_path + 'instance.rddl', 'w') as f:
+    rddl_file_path = rddl_path + 'instance.rddl'
+    with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
 
-    return graph_index
+    graph_index_file_path = rddl_path + 'graph_index.pkl'
+    with open(graph_index_file_path, 'wb') as f:
+        pickle.dump(graph_index, f)
+
+    return rddl_file_path, graph_index_file_path
