@@ -9,6 +9,12 @@ class GraphIndex:
             self.edge_index = torch.tensor([], dtype=torch.long)
 
         elif size == 'small':
+            self.object_mapping = {
+                'h1': 0,
+                'h2': 1,
+                'c1': 2,
+                'c2': 3}
+
             self.log_mapping = {
                 'observed_compromise_attack___h1': 0,
                 'observed_compromise_attack___h2': 1,
@@ -34,6 +40,20 @@ class GraphIndex:
                 [1, 2, 3, 0, 1]
             ], dtype=torch.long)
         elif size == 'medium':
+            self.object_mapping = {
+                'h1': 0,
+                'h2': 1,
+                'h3': 2,
+                'h4': 3,
+                'h5': 4,
+                'h6': 5,
+                'c1': 6,
+                'c2': 7,
+                'c3': 8,
+                'c4': 9,
+                'c5': 10,
+                'c6': 11}
+            
             self.log_mapping = {
                 'observed_compromise_attack___h1': 0,
                 'observed_compromise_attack___h2': 1,

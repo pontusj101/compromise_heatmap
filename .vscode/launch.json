@@ -5,10 +5,38 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Create Instance",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["create_instance"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Produce Training Data",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["produce_training_data"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Train GNN",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["train_gnn"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Animate",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["animate"],
             "console": "integratedTerminal",
             "justMyCode": true
         }

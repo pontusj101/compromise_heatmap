@@ -11,10 +11,12 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='conte
     credentials = [f'c{i}' for i in range(1, num_credentials + 1)]
 
     for i, host in enumerate(hosts):
+        graph_index.object_mapping[host] = i
         graph_index.log_mapping[f'observed_compromise_attack___{host}'] = i
         graph_index.attackstep_mapping[f'compromised___{host}'] = i
     
     for i, credential in enumerate(credentials):
+        graph_index.object_mapping[host] = i + num_hosts
         graph_index.log_mapping[f'observed_crack_attack___{credential}'] = i + num_hosts
         graph_index.attackstep_mapping[f'cracked___{credential}'] = i + num_hosts
 
