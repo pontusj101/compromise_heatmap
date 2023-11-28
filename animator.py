@@ -8,8 +8,17 @@ from simulator import produce_training_data_parallel
 from predictor import Predictor
 
 class Animator:
-    def create_graph(self, snapshot):
+    def __init__(self, animation_sequence_filename):
+        with open(animation_sequence_filename, 'rb') as file:
+            indexed_snapshot_sequence = pickle.load(file)
+            self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+            self.graph_index = indexed_snapshot_sequence['graph_index']
+
+
+
+    def create_graph(self, num):
         G = nx.Graph()
+        snapshot = self.snapshot_sequence[num]
         edge_index = snapshot.edge_index.numpy()
         node_status = snapshot.y.numpy()
         node_type = snapshot.x[:, 0].numpy()  # Assuming 1 for host, 0 for credentials
@@ -23,13 +32,13 @@ class Animator:
 
         return G
 
-    def update_graph(self, num, snapshots, pos, ax, predictor):
+    def update_graph(self, num, pos, ax, predictor):
         ax.clear()
-        snapshot = snapshots[num]
+        snapshot = self.snapshot_sequence[num]
 
         prediction = predictor.predict(snapshot)
 
-        G = self.create_graph(snapshot)
+        G = self.create_graph(num=num)
 
         # Separate nodes by type
         host_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 1]
@@ -85,20 +94,17 @@ class Animator:
         logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
 
 
-    def create_animation(self, animation_sequence_filename, predictor_type, predictor_filename):
+    def create_animation(self, predictor_type, predictor_filename):
 
         predictor = Predictor(predictor_type, predictor_filename)
 
         fig, ax = plt.subplots(figsize=(8, 6))
         
-        with open(animation_sequence_filename, 'rb') as file:
-            snapshot_sequence = pickle.load(file)
-
         # Calculate layout once
-        G_initial = self.create_graph(snapshot_sequence[0])
+        G_initial = self.create_graph(num=0)
         pos = nx.spring_layout(G_initial)  # You can use other layouts as well
 
-        ani = animation.FuncAnimation(fig, self.update_graph, frames=len(snapshot_sequence), 
-                                    fargs=(snapshot_sequence, pos, ax, predictor), interval=1000)
+        ani = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+                                    fargs=(pos, ax, predictor), interval=1000)
         ani.save('network_animation.gif', writer='pillow', fps=5)
 

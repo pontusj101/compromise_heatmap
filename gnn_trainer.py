@@ -113,7 +113,8 @@ def train_gnn(number_of_epochs=10,
     logging.info(f'GNN training started.')
 
     with open(sequence_file_name, 'rb') as file:
-        snapshot_sequence = pickle.load(file)
+        indexed_snapshot_sequence = pickle.load(file)
+        snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
 
 
         first_graph = snapshot_sequence[0]
