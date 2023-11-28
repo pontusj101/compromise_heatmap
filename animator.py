@@ -13,22 +13,31 @@ class Animator:
             indexed_snapshot_sequence = pickle.load(file)
             self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
             self.graph_index = indexed_snapshot_sequence['graph_index']
-
-
+            
+        # Create a reverse mapping from node indices to names
+        self.reverse_mapping = {v: k for k, v in self.graph_index.object_mapping.items()}
 
     def create_graph(self, num):
         G = nx.Graph()
         snapshot = self.snapshot_sequence[num]
         edge_index = snapshot.edge_index.numpy()
         node_status = snapshot.y.numpy()
-        node_type = snapshot.x[:, 0].numpy()  # Assuming 1 for host, 0 for credentials
+        node_type = snapshot.x[:, 0].numpy()
 
         for i in range(edge_index.shape[1]):
-            G.add_edge(edge_index[0, i], edge_index[1, i])
+            node_u_index = edge_index[0, i]
+            node_v_index = edge_index[1, i]
 
-        for node, status in enumerate(node_status):
-            G.nodes[node]['status'] = status
-            G.nodes[node]['type'] = node_type[node]
+            # Use reverse mapping to get the correct node names
+            node_u_name = self.reverse_mapping.get(node_u_index, f"Unknown_{node_u_index}")
+            node_v_name = self.reverse_mapping.get(node_v_index, f"Unknown_{node_v_index}")
+
+            G.add_edge(node_u_name, node_v_name)
+
+        for node_index, status in enumerate(node_status):
+            node_name = self.reverse_mapping.get(node_index, f"Unknown_{node_index}")
+            G.nodes[node_name]['status'] = status
+            G.nodes[node_name]['type'] = node_type[node_index]
 
         return G
 
@@ -51,9 +60,11 @@ class Animator:
 
         # Update node colors based on their status
         color_map_host = []
-        for node in host_nodes:
-            status = G.nodes[node]['status']
-            pred = prediction[node].item()  # Assuming prediction is a tensor, use .item() to get the value
+        color_map_host = []
+        for node_name in host_nodes:
+            node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
+            status = G.nodes[node_name]['status']
+            pred = prediction[node_index].item()  # Access prediction using index
 
             if pred == 1 and status == 0:
                 color = color_red
@@ -67,9 +78,10 @@ class Animator:
             color_map_host.append(color)
 
         color_map_credential = []
-        for node in credential_nodes:
-            status = G.nodes[node]['status']
-            pred = prediction[node].item()  # Assuming prediction is a tensor, use .item() to get the value
+        for node_name in credential_nodes:
+            node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
+            status = G.nodes[node_name]['status']
+            pred = prediction[node_index].item()  # Access prediction using index
 
             if pred == 1 and status == 0:
                 color = color_red
@@ -82,17 +94,15 @@ class Animator:
 
             color_map_credential.append(color)
 
-        # Draw nodes separately according to their type
         nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, node_shape='s', ax=ax)
         nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, node_shape='o', ax=ax)
 
         # Draw edges and labels
         nx.draw_networkx_edges(G, pos, ax=ax)
-        nx.draw_networkx_labels(G, pos, ax=ax)
+        nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()})
 
         ax.set_title(f"Step {num}")
         logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
-
 
     def create_animation(self, predictor_type, predictor_filename):
 
