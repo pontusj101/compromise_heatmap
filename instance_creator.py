@@ -1,6 +1,7 @@
 import random
 import torch
 import pickle
+from datetime import datetime
 from graph_index import GraphIndex
 
 def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='content/'):
@@ -212,11 +213,13 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
             num_credentials = 32
         instance_string, graph_index = create_random_instance(num_hosts, num_credentials, horizon=horizon, rddl_path=rddl_path)
 
-    rddl_file_path = rddl_path + 'instance.rddl'
+    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    rddl_file_path = rddl_path + 'instance_' + date_time_str + '.rddl'
     with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
 
-    graph_index_file_path = rddl_path + 'graph_index.pkl'
+    graph_index_file_path = rddl_path + 'graph_index_' + date_time_str + '.pkl'
     with open(graph_index_file_path, 'wb') as f:
         pickle.dump(graph_index, f)
 

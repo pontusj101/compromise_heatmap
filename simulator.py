@@ -138,7 +138,7 @@ def produce_training_data_parallel(
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = snapshot_sequence_path + 'latest' + date_time_str + '.pkl'
+        file_name = snapshot_sequence_path + 'snapshot_sequence_' + date_time_str + '.pkl'
         with open(file_name, 'wb') as file:
             pickle.dump(indexed_snapshot_sequence, file)
         logging.info(f'Data saved to {file_name}')
