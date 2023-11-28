@@ -84,22 +84,27 @@ class Animator:
             pred = prediction[node_index].item()  # Access prediction using index
 
             if pred == 1 and status == 0:
-                color = color_red
+                color = color_yellow
             elif pred == 1 and status == 1:
                 color = color_orange
             elif pred == 0 and status == 1:
-                color = color_yellow
+                color = color_red
             else:  # pred == 0 and status == 0
                 color = color_grey
 
             color_map_credential.append(color)
 
-        nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, node_shape='s', ax=ax)
-        nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, node_shape='o', ax=ax)
+    # Node drawing
+        nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, 
+                            node_shape='s', ax=ax, edgecolors='grey')  # Added grey border for host nodes
+        nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, 
+                            node_shape='o', ax=ax, edgecolors='grey')  # Added grey border for credential nodes
 
-        # Draw edges and labels
-        nx.draw_networkx_edges(G, pos, ax=ax)
-        nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()})
+        # Edge drawing with grey color
+        nx.draw_networkx_edges(G, pos, ax=ax, edge_color='grey')
+
+        # Label drawing with smaller font size
+        nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()}, font_size=10)  # Reduced font size
 
         ax.set_title(f"Step {num}")
         logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
