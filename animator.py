@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import torch
 import pickle
-from simulator import produce_training_data_parallel
 from predictor import Predictor
 
 class Animator:

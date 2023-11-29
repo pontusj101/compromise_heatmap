@@ -2,7 +2,7 @@ import argparse
 import logging
 from animator import Animator
 from instance_creator import create_instance
-from simulator import produce_training_data_parallel
+from simulator import Simulator
 from gnn_trainer import train_gnn
 
 # Initialize parser
@@ -22,6 +22,9 @@ parser.add_argument('--batch_size', type=int, default=256, help='Batch size for 
 parser.add_argument('--hidden_layers', nargs='+', type=int, default=[64, 64], help='Hidden layers configuration for GNN')
 parser.add_argument('--rddl_path', default='content/', help='Path to the RDDL files')
 parser.add_argument('--tmp_path', default='tmp/', help='Temporary file path')
+parser.add_argument('--domain_rddl_path', default='content/domain.rddl', help='Path to RDDL domain specification')
+parser.add_argument('--instance_rddl_path', default='content/instance_20231128_115356.rddl', help='Path to RDDL instance specification')
+parser.add_argument('--graph_index_path', default='content/graph_index_20231128_115356.pkl', help='Path to pickled GraphIndex class.')
 parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/latest20231127_192822.pkl', help='Filename for training sequence')
 parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/latest20231128_083715.pkl', help='Filename for animation sequence')
@@ -43,14 +46,22 @@ max_log_steps_after_total_compromise = int(args.log_window / 2)
 if args.mode == 'create_instance':
     # TODO: Write graph_index to file 
     logging.info(f'Creating new instance specification.')
-    rddl_file_path, graph_index_file_path = create_instance(instance_type=args.instance_type, size=args.size, horizon=args.game_time, rddl_path=args.rddl_path)
+    rddl_file_path, graph_index_file_path = create_instance(
+        instance_type=args.instance_type, 
+        size=args.size, 
+        horizon=args.game_time, 
+        rddl_path=args.rddl_path)
     s = f'Instance specification written to {rddl_file_path}. Graph index written to {graph_index_file_path}.'
     logging.info(s)
     print(s)
 
 elif args.mode == 'produce_training_data':
     logging.info(f'Producing training data.')
-    sequence_file_name = produce_training_data_parallel(
+    simulator = Simulator()
+    sequence_file_name = simulator.produce_training_data_parallel(
+        domain_rddl_path=args.domain_rddl_path,
+        instance_rddl_path=args.instance_rddl_path,
+        graph_index_path=args.graph_index_path,
         n_simulations=args.n_simulations, 
         log_window=args.log_window, 
         max_start_time_step=max_start_time_step, 

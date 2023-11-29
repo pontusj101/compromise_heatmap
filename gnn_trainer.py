@@ -8,7 +8,6 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.loader import DataLoader
-from simulator import produce_training_data_parallel
 
 class GCN(torch.nn.Module):
     def __init__(self, layer_sizes):
