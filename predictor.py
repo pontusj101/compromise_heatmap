@@ -29,7 +29,6 @@ class Predictor:
                         hits[label_index] += 1
         return torch.round(torch.nan_to_num(hits/count))
 
-
     def predict(self, snapshot):
         if self.predictor_type == 'gnn':
             out = self.model(snapshot)

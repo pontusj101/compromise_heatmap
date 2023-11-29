@@ -3,8 +3,6 @@ import torch
 import numpy as np
 from graph_index import GraphIndex
 from torch_geometric.loader import DataLoader
-from simulator import produce_training_data_parallel
-
 def frequency(target_log_sequence, snapshot_sequence, train_masks):
     n_labels = len(snapshot_sequence[0].y)
     count = torch.zeros(n_labels)

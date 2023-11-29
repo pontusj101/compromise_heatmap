@@ -3,6 +3,7 @@ import logging
 from animator import Animator
 from instance_creator import create_instance
 from simulator import Simulator
+from evaluator import Evaluator
 from gnn_trainer import train_gnn
 
 # Initialize parser
@@ -27,9 +28,10 @@ parser.add_argument('--instance_rddl_path', default='content/instance_20231128_1
 parser.add_argument('--graph_index_path', default='content/graph_index_20231128_115356.pkl', help='Path to pickled GraphIndex class.')
 parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/latest20231127_192822.pkl', help='Filename for training sequence')
+parser.add_argument('--evaluation_sequence_file_name', default='snapshot_sequences/latest20231128_083715.pkl', help='Filename for evaulation sequence')
 parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/latest20231128_083715.pkl', help='Filename for animation sequence')
-parser.add_argument('--animation_predictor_filename', default='models/model_hl_[64, 64]_n_6287_lr_0.005_bs_256.pt', help='Filename for the animation predictor model')
-parser.add_argument('--animation_predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of animation predictor')
+parser.add_argument('--predictor_filename', default='models/model_hl_[64, 64]_n_6287_lr_0.005_bs_256.pt', help='Filename for the predictor model')
+parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
 
 # Parse arguments
 args = parser.parse_args()
@@ -89,8 +91,13 @@ elif args.mode == 'train_gnn':
 elif args.mode == 'animate':
     logging.info(f'Creating animation.')
     animator = Animator(args.animation_sequence_filename)
-    animator.create_animation(predictor_type=args.animation_predictor_type, 
-                             predictor_filename=args.animation_predictor_filename)
+    animator.create_animation(predictor_type=args.predictor_type, 
+                             predictor_filename=args.predictor_filename)
     s = f'Animation written to file network_animation.gif.'
     logging.info(s)
     print(s)
+
+elif args.mode == 'evaluate':
+    logging.info(f'Evaluating {args.predictor_type} predictor {args.predictor_filename} on {args.evaluation_sequence_file_name}.')
+    evaluator = Evaluator()
+    evaluator.evaluate(args.predictor_type, args.predictor_filename, args.evaluation_sequence_file_name)
