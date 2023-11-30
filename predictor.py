@@ -9,17 +9,19 @@ class Predictor:
             self.model.eval()
         elif predictor_type == 'tabular':
             with open(file_name, 'rb') as file:
-                self.snapshot_sequence = pickle.load(file)
+                indexed_snapshot_sequence = pickle.load(file)
+                self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+
         elif predictor_type == 'none':
             pass
         else:
             raise ValueError(f'Unknown predictor type: {predictor_type}')
     
-    def frequency(self, target_log_sequence, snapshot_sequence):
-        n_labels = len(snapshot_sequence[0].y)
+    def frequency(self, target_log_sequence):
+        n_labels = len(self.snapshot_sequence[0].y)
         count = torch.zeros(n_labels)
         hits = torch.zeros(n_labels)
-        for snapshot in snapshot_sequence:
+        for snapshot in self.snapshot_sequence:
             log_sequence = snapshot.x[:, 1:]
             if torch.equal(log_sequence, target_log_sequence):
                 for label_index in range(n_labels):
@@ -34,7 +36,7 @@ class Predictor:
             out = self.model(snapshot)
             return out.max(1)[1]
         elif self.predictor_type == 'tabular':
-            return self.frequency(snapshot.x[:, 1:], self.snapshot_sequence)
+            return self.frequency(snapshot.x[:, 1:])
         elif self.predictor_type == 'none':
             return torch.zeros(len(snapshot.y))
         

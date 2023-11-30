@@ -29,9 +29,9 @@ parser.add_argument('--graph_index_path', default='rddl/graph_index_20231128_115
 parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/latest20231127_192822.pkl', help='Filename for training sequence')
 parser.add_argument('--evaluation_sequence_file_name', default='snapshot_sequences/latest20231128_083715.pkl', help='Filename for evaulation sequence')
-parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/latest20231128_083715.pkl', help='Filename for animation sequence')
-parser.add_argument('--predictor_filename', default='models/model_hl_[64, 64]_n_6287_lr_0.005_bs_256.pt', help='Filename for the predictor model')
-parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
+parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/snapshot_sequence_1_static_small.pkl', help='Filename for animation sequence')
+parser.add_argument('--predictor_filename', default='snapshot_sequences/snapshot_sequence_128_static_small.pkl', help='Filename for the predictor model')
+parser.add_argument('--predictor_type', default='tabular', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
 
 # Parse arguments
 args = parser.parse_args()

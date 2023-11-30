@@ -66,11 +66,11 @@ class Animator:
             pred = prediction[node_index].item()  # Access prediction using index
 
             if pred == 1 and status == 0:
-                color = color_red
+                color = color_yellow
             elif pred == 1 and status == 1:
                 color = color_orange
             elif pred == 0 and status == 1:
-                color = color_yellow
+                color = color_red
             else:  # pred == 0 and status == 0
                 color = color_grey
 

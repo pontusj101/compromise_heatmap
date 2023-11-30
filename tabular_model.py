@@ -3,14 +3,13 @@ import torch
 import numpy as np
 from graph_index import GraphIndex
 from torch_geometric.loader import DataLoader
-from simulator import produce_training_data_parallel
 
 class TabularModel:
     def __init__(self, snapshot_sequence):
         self.snapshot_sequence = snapshot_sequence
     
     def predict(self, snapshot):
-        return torch.round(self.frequency(snapshot.x[:, 1:], self.snapshot_sequence, [snapshot.test_mask]))
+        return torch.round(self.frequency(snapshot.x[:, 1:]))
     
     def frequency(self, target_log_sequence, snapshot_sequence, train_masks):
         n_labels = len(snapshot_sequence[0].y)
