@@ -4,7 +4,7 @@ import pickle
 from datetime import datetime
 from graph_index import GraphIndex
 
-def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='content/'):
+def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/'):
 
     graph_index = GraphIndex(size=None)
     # Generate hosts and credentials
@@ -102,7 +102,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='conte
     return instance_string, graph_index
 
 
-def create_static_instance(size='medium', horizon=150, rddl_path='content/'):
+def create_static_instance(size='medium', horizon=150, rddl_path='rddl/'):
     instance_string = '''
 non-fluents simple_network {
     domain = simple_compromise;
@@ -197,7 +197,7 @@ instance simple_network_instance {
 '''
     return instance_string
 
-def create_instance(instance_type='static', size='medium', horizon=150, rddl_path='content/'):
+def create_instance(instance_type='static', size='medium', horizon=150, rddl_path='rddl/'):
     if instance_type == 'static':
         instance_string = create_static_instance(size=size, horizon=horizon, rddl_path=rddl_path)
         graph_index = GraphIndex(size=size)

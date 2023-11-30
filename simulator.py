@@ -117,7 +117,7 @@ class Simulator:
         log_window=25, 
         max_start_time_step=100, 
         max_log_steps_after_total_compromise=50,
-        rddl_path='content/', 
+        rddl_path='rddl/', 
         tmp_path='tmp/',
         snapshot_sequence_path = 'snapshot_sequences/',
         random_cyber_agent_seed=None):
