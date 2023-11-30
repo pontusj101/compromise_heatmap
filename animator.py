@@ -52,58 +52,61 @@ class Animator:
         host_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 1]
         credential_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 0]
 
-        color_grey = '#C0C0C0'
-        color_orange = '#FFCC99'
+        color_dark_grey = '#C0C0C0'
+        color_light_grey = '#D3D3D3'
         color_red = '#FF9999'
         color_yellow = '#FFFF99'
 
-        # Update node colors based on their status
+        # Update node colors and border styles based on their status and prediction
         color_map_host = []
-        color_map_host = []
+        edge_colors_host = []
+        edge_widths_host = []
         for node_name in host_nodes:
             node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
             status = G.nodes[node_name]['status']
             pred = prediction[node_index].item()  # Access prediction using index
 
-            if pred == 1 and status == 0:
-                color = color_yellow
-            elif pred == 1 and status == 1:
-                color = color_orange
-            elif pred == 0 and status == 1:
-                color = color_red
-            else:  # pred == 0 and status == 0
-                color = color_grey
+            # Determine node color
+            color = color_yellow if pred == 1 else color_light_grey
+
+            # Determine node border color and width
+            edge_color = color_red if status == 1 else color_dark_grey
+            edge_width = 2 if status == 1 else 1
 
             color_map_host.append(color)
+            edge_colors_host.append(edge_color)
+            edge_widths_host.append(edge_width)
 
         color_map_credential = []
+        edge_colors_credential = []
+        edge_widths_credential = []
         for node_name in credential_nodes:
             node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
             status = G.nodes[node_name]['status']
             pred = prediction[node_index].item()  # Access prediction using index
 
-            if pred == 1 and status == 0:
-                color = color_yellow
-            elif pred == 1 and status == 1:
-                color = color_orange
-            elif pred == 0 and status == 1:
-                color = color_red
-            else:  # pred == 0 and status == 0
-                color = color_grey
+            # Determine node color
+            color = color_yellow if pred == 1 else color_dark_grey
+
+            # Determine node border color and width
+            edge_color = color_red if status == 1 else 'grey'
+            edge_width = 2 if status == 1 else 1
 
             color_map_credential.append(color)
+            edge_colors_credential.append(edge_color)
+            edge_widths_credential.append(edge_width)
 
-    # Node drawing
+        # Node drawing with specific border colors and widths
         nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, 
-                            node_shape='s', ax=ax, edgecolors='grey')  # Added grey border for host nodes
+                            node_shape='s', ax=ax, edgecolors=edge_colors_host, linewidths=edge_widths_host)
         nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, 
-                            node_shape='o', ax=ax, edgecolors='grey')  # Added grey border for credential nodes
+                            node_shape='o', ax=ax, edgecolors=edge_colors_credential, linewidths=edge_widths_credential)
 
         # Edge drawing with grey color
         nx.draw_networkx_edges(G, pos, ax=ax, edge_color='grey')
 
         # Label drawing with smaller font size
-        nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()}, font_size=10)  # Reduced font size
+        nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()}, font_size=10)
 
         ax.set_title(f"Step {num}")
         logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
