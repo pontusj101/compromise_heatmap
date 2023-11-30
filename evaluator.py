@@ -6,8 +6,11 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from predictor import Predictor
 
 class Evaluator:
+    def __init__(self, trigger_threshold=0.5):
+        self.trigger_threshold = trigger_threshold
+        
     def print_results(self, methods, snapshot_sequence, test_true_labels, test_predicted_probs, start_time):
-        test_predicted_labels = (test_predicted_probs > 0.5).astype(int)
+        test_predicted_labels = (test_predicted_probs > self.trigger_threshold).astype(int)
         true_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 1))
         false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
         false_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 1))
@@ -43,5 +46,5 @@ class Evaluator:
             logging.debug(f'Snapshot {i} of {len(snapshot_sequence)} completed.')
         all_predicted_labels = np.concatenate(all_predicted_labels)
         all_true_labels = np.concatenate(all_true_labels)
-        self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time)
+        self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time, trigger_threshold=0.5)
         return all_predicted_labels, all_true_labels

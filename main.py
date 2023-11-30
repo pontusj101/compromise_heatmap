@@ -29,6 +29,7 @@ parser.add_argument('--graph_index_path', default='rddl/graph_index_static_small
 parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/snapshot_sequence_1024_static_small.pkl', help='Filename for training sequence')
 parser.add_argument('--evaluation_sequence_file_name', default='snapshot_sequences/snapshot_sequence_1_static_small.pkl', help='Filename for evaulation sequence')
+parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/snapshot_sequence_1_static_small.pkl', help='Filename for animation sequence')
 parser.add_argument('--predictor_filename', default='models/model_hl_[64, 64]_n_50390_lr_0.005_bs_256.pt', help='Filename for the predictor model')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
@@ -99,5 +100,5 @@ elif args.mode == 'animate':
 
 elif args.mode == 'evaluate':
     logging.info(f'Evaluating {args.predictor_type} predictor {args.predictor_filename} on {args.evaluation_sequence_file_name}.')
-    evaluator = Evaluator()
+    evaluator = Evaluator(trigger_threshold=0.5)
     evaluator.evaluate_test_set(args.predictor_type, args.predictor_filename, args.evaluation_sequence_file_name)
