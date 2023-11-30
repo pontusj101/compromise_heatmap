@@ -1,4 +1,5 @@
 import time
+import random
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -28,47 +29,43 @@ class GCN(torch.nn.Module):
         
         return F.log_softmax(x, dim=1)
 
-def create_masks(snapshot_sequence, train_share=0.7, val_share=0.15, test_share=0.15):
-    assert train_share + val_share + test_share == 1
-    for snapshot in snapshot_sequence:
-        num_nodes = snapshot.num_nodes
-        all_indices = torch.randperm(num_nodes)
+def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
+    """
+    Split the snapshots into training and validation sets.
+    """
+    n_snapshots = len(snapshot_sequence)
+    n_train = int(train_share * n_snapshots)
+    n_val = int(val_share * n_snapshots)
 
-        test_size = int(np.ceil(test_share * num_nodes))
-        val_size = int(np.ceil(val_share * num_nodes))
+    # Ensure that we have at least one snapshot in each set
+    n_train = max(1, n_train)
+    n_val = max(1, n_val)
 
-        test_indices = all_indices[:test_size]
-        val_indices = all_indices[test_size:test_size + val_size]
-        train_indices = all_indices[test_size + val_size:]
+    # Shuffle and split the snapshot indices
+    indices = list(range(n_snapshots))
+    random.shuffle(indices)
+    train_indices = indices[:n_train]
+    val_indices = indices[n_train:n_train + n_val]
 
-        snapshot.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        snapshot.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        snapshot.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    train_snapshots = [snapshot_sequence[i] for i in train_indices]
+    val_snapshots = [snapshot_sequence[i] for i in val_indices]
 
-        snapshot.train_mask[train_indices] = True
-        snapshot.val_mask[val_indices] = True
-        snapshot.test_mask[test_indices] = True
+    return train_snapshots, val_snapshots
 
 
-def adjust_mask_for_batch(original_masks, batch):
-    batch_size = len(batch)
-    adjusted_mask = torch.cat([original_masks[i] for i in range(batch_size)], dim=0)
-    return adjusted_mask
-
-def evaluate_model(model, data_loader, masks):
+def evaluate_model(model, data_loader):
     model.eval()
     total_loss = 0
     all_predicted_labels = []
     all_true_labels = []
     with torch.no_grad():
-        for batch, mask in zip(data_loader, masks):
+        for batch in data_loader:
             out = model(batch)
-            adjusted_mask = adjust_mask_for_batch(masks, batch)
-            loss = F.nll_loss(out[adjusted_mask], batch.y[adjusted_mask])
+            loss = F.nll_loss(out, batch.y)
             total_loss += loss.item()
-            predicted_labels = out[adjusted_mask].max(1)[1]
+            predicted_labels = out.max(1)[1]
             all_predicted_labels.append(predicted_labels.cpu().numpy())
-            true_labels = batch.y[adjusted_mask]
+            true_labels = batch.y
             all_true_labels.append(true_labels.cpu().numpy())
 
     all_predicted_labels = np.concatenate(all_predicted_labels)
@@ -114,16 +111,13 @@ def train_gnn(number_of_epochs=10,
     with open(sequence_file_name, 'rb') as file:
         indexed_snapshot_sequence = pickle.load(file)
         snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
-
-
         first_graph = snapshot_sequence[0]
         actual_num_features = first_graph.num_node_features
-
-        create_masks(snapshot_sequence)
-
+        train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
         model = GCN([actual_num_features] + hidden_layers + [2])
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        data_loader = DataLoader(snapshot_sequence, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
         n_snapshots = len(snapshot_sequence)
 
         loss_values, val_loss_values = [], []
@@ -132,32 +126,26 @@ def train_gnn(number_of_epochs=10,
             start_time = time.time()
             model.train()
             epoch_loss = 0.0
-            for batch in data_loader:
+            for batch in train_loader:
                 optimizer.zero_grad()
                 out = model(batch)
-                loss = F.nll_loss(out[batch.train_mask], batch.y[batch.train_mask])
+                loss = F.nll_loss(out, batch.y)
                 loss.backward()
                 optimizer.step()
                 epoch_loss += loss.item()
 
-            epoch_loss /= len(data_loader)
+            epoch_loss /= len(train_loader)
             loss_values.append(epoch_loss)
 
-            val_masks = [snapshot.val_mask for snapshot in snapshot_sequence]
-            val_loss, predicted_labels, true_labels = evaluate_model(model, data_loader, val_masks)
+            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
             val_loss_values.append(val_loss)
             end_time = time.time()
             logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
 
         filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}'
         plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
-        mode_file_name = f'{model_path}model_{filename_root}.pt'
-        torch.save(model, mode_file_name)
+        model_file_name = f'{model_path}model_{filename_root}.pt'
+        torch.save(model, model_file_name)
 
-        test_masks = [snapshot.test_mask for snapshot in snapshot_sequence]
-        test_loss, test_predicted_labels, test_true_labels = evaluate_model(model, data_loader, test_masks)
-
-        print_results('GNN', snapshot_sequence, test_true_labels, test_predicted_labels, start_time)
-
-        return test_predicted_labels, test_true_labels, mode_file_name
+        return model_file_name
 

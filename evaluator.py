@@ -20,13 +20,16 @@ class Evaluator:
         f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
         logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-    def evaluate(self, predictor_type, predictor_filename, test_snapshot_sequence_path):
+    def evaluate_test_set(self, predictor_type, predictor_filename, test_snapshot_sequence_path):
         logging.info(f'Tabular training started.')
-        start_time = time.time()
         predictor = Predictor(predictor_type, predictor_filename)
         with open(test_snapshot_sequence_path, 'rb') as file:
             indexed_snapshot_sequence = pickle.load(file)
             snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        return self.evaluate_sequence(predictor, snapshot_sequence)
+
+    def evaluate_sequence(self, predictor, snapshot_sequence):
+        start_time = time.time()
         all_predicted_labels = []
         all_true_labels = []
         i = 0

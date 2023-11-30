@@ -78,7 +78,7 @@ elif args.mode == 'produce_training_data':
 
 elif args.mode == 'train_gnn':
     logging.info(f'Training GNN.')
-    test_true_labels, test_predicted_labels, predictor_filename = train_gnn(
+    predictor_filename = train_gnn(
                     number_of_epochs=args.number_of_epochs, 
                     sequence_file_name=args.training_sequence_file_name, 
                     learning_rate=args.learning_rate, 
@@ -100,4 +100,4 @@ elif args.mode == 'animate':
 elif args.mode == 'evaluate':
     logging.info(f'Evaluating {args.predictor_type} predictor {args.predictor_filename} on {args.evaluation_sequence_file_name}.')
     evaluator = Evaluator()
-    evaluator.evaluate(args.predictor_type, args.predictor_filename, args.evaluation_sequence_file_name)
+    evaluator.evaluate_test_set(args.predictor_type, args.predictor_filename, args.evaluation_sequence_file_name)
