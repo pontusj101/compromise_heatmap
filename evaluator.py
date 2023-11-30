@@ -6,7 +6,8 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from predictor import Predictor
 
 class Evaluator:
-    def print_results(self, methods, snapshot_sequence, test_true_labels, test_predicted_labels, start_time):
+    def print_results(self, methods, snapshot_sequence, test_true_labels, test_predicted_probs, start_time):
+        test_predicted_labels = (test_predicted_probs > 0.5).astype(int)
         true_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 1))
         false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
         false_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 1))
@@ -38,7 +39,7 @@ class Evaluator:
             true_labels = snapshot.y
             predicted_labels = predictor.predict(snapshot)
             all_true_labels.append(true_labels.cpu().numpy())
-            all_predicted_labels.append(predicted_labels.cpu().numpy())
+            all_predicted_labels.append(predicted_labels.cpu().detach().numpy())
             logging.debug(f'Snapshot {i} of {len(snapshot_sequence)} completed.')
         all_predicted_labels = np.concatenate(all_predicted_labels)
         all_true_labels = np.concatenate(all_true_labels)
