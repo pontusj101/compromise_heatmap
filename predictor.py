@@ -1,4 +1,5 @@
 import torch
+from torch.nn.functional import softmax
 import pickle
 
 class Predictor:
@@ -29,12 +30,16 @@ class Predictor:
                     labels = snapshot.y
                     if labels[label_index] == 1:
                         hits[label_index] += 1
-        return torch.round(torch.nan_to_num(hits/count))
+        return torch.nan_to_num(hits/count)
+        # return torch.round(torch.nan_to_num(hits/count))
 
     def predict(self, snapshot):
         if self.predictor_type == 'gnn':
-            out = self.model(snapshot)
-            return out.max(1)[1]
+            logits = self.model(snapshot)  # Get the raw logits from the model
+            probabilities = softmax(logits, dim=1)  # Apply softmax to get probabilities
+            return probabilities[:,1]  # Return the probability of the positive class
+            # out = self.model(snapshot)
+            # return out.max(1)[1]
         elif self.predictor_type == 'tabular':
             return self.frequency(snapshot.x[:, 1:])
         elif self.predictor_type == 'none':

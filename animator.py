@@ -2,6 +2,7 @@ import networkx as nx
 import logging
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.colors as mcolors
 import torch
 import pickle
 from predictor import Predictor
@@ -15,6 +16,13 @@ class Animator:
             
         # Create a reverse mapping from node indices to names
         self.reverse_mapping = {v: k for k, v in self.graph_index.object_mapping.items()}
+
+    def interpolate_color(self, color_start, color_end, probability):
+        """ Interpolates between two colors based on a probability value. """
+        color_start_rgb = mcolors.to_rgb(color_start)
+        color_end_rgb = mcolors.to_rgb(color_end)
+        interpolated_rgb = [start + (end - start) * probability for start, end in zip(color_start_rgb, color_end_rgb)]
+        return mcolors.to_hex(interpolated_rgb)
 
     def create_graph(self, num):
         G = nx.Graph()
@@ -64,13 +72,13 @@ class Animator:
         for node_name in host_nodes:
             node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
             status = G.nodes[node_name]['status']
-            pred = prediction[node_index].item()  # Access prediction using index
+            prob = prediction[node_index].item()  # Access probability using index
 
-            # Determine node color
-            color = color_yellow if pred == 1 else color_light_grey
+            # Interpolate color based on probability
+            color = self.interpolate_color('white', 'red', prob)
 
             # Determine node border color and width
-            edge_color = color_red if status == 1 else color_dark_grey
+            edge_color = 'black' if status == 1 else color_dark_grey
             edge_width = 2 if status == 1 else 1
 
             color_map_host.append(color)
@@ -86,10 +94,10 @@ class Animator:
             pred = prediction[node_index].item()  # Access prediction using index
 
             # Determine node color
-            color = color_yellow if pred == 1 else color_dark_grey
+            color = self.interpolate_color('white', 'red', prob)
 
             # Determine node border color and width
-            edge_color = color_red if status == 1 else 'grey'
+            edge_color = 'black' if status == 1 else color_dark_grey
             edge_width = 2 if status == 1 else 1
 
             color_map_credential.append(color)

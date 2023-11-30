@@ -27,7 +27,8 @@ class GCN(torch.nn.Module):
                 x = F.relu(x)
                 x = F.dropout(x, training=self.training)
         
-        return F.log_softmax(x, dim=1)
+        # return F.log_softmax(x, dim=1)
+        return x
 
 def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
     """
