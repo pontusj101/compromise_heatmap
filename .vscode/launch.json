@@ -10,7 +10,7 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["create_instance"],
+            "args": ["instance"],
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -19,7 +19,7 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["produce_training_data"],
+            "args": ["simuate"],
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -28,7 +28,7 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["train_gnn"],
+            "args": ["train"],
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -47,6 +47,15 @@
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
             "args": ["evaluate"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+        {
+            "name": "Train and evaluate",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["train_and_eval"],
             "console": "integratedTerminal",
             "justMyCode": true
         }

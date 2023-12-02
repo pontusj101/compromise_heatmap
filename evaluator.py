@@ -15,7 +15,7 @@ class Evaluator:
         false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
         false_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 1))
         true_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 0))
-        logging.info(f'{methods} training completed. Time: {time.time() - start_time:.2f}s.')
+        logging.info(f'{methods} evaulation completed. Time: {time.time() - start_time:.2f}s.')
         logging.debug(f'Test: Predicted Labels: \n{test_predicted_labels}')
         logging.debug(f'Test: True Labels: \n{test_true_labels}') 
         logging.info(f'{methods}. Test: True Positives: {true_positives}, False Positives: {false_positives}, False Negatives: {false_negatives}, True Negatives: {true_negatives}.')
@@ -46,5 +46,5 @@ class Evaluator:
             logging.debug(f'Snapshot {i} of {len(snapshot_sequence)} completed.')
         all_predicted_labels = np.concatenate(all_predicted_labels)
         all_true_labels = np.concatenate(all_true_labels)
-        self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time, trigger_threshold=0.5)
+        self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time)
         return all_predicted_labels, all_true_labels
