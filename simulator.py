@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import re
 import time
 from datetime import datetime
 import random
@@ -151,8 +152,12 @@ class Simulator:
 
             indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
+            match = re.search(r'instance_(.*?)\.rddl', instance_rddl_path)
+            instance_name = match.group(1) if match else None
+
+
             date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = snapshot_sequence_path + 'snapshot_sequence_' + date_time_str + '.pkl'
+            file_name = f'{snapshot_sequence_path}snapshot_sequence_n{n_simulations}_l{log_window}_{instance_name}.pkl'
             with open(file_name, 'wb') as file:
                 pickle.dump(indexed_snapshot_sequence, file)
             logging.info(f'Data saved to {file_name}')

@@ -10,12 +10,12 @@ from gnn_trainer import train_gnn
 parser = argparse.ArgumentParser(description='Run different modes of the security simulation program.')
 
 # Adding arguments
-parser.add_argument('mode', choices=['create_instance', 'produce_training_data', 'train_gnn', 'animate', 'evaluate'], help='Mode of operation')
+parser.add_argument('mode', choices=['instance', 'simulate', 'train', 'animate', 'evaluate'], help='Mode of operation')
 parser.add_argument('--instance_type', default='static', choices=['static', 'dynamic'], help='Type of instance to create')
 parser.add_argument('--size', default='small', choices=['small', 'medium', 'large'], help='Size of the graph')
 parser.add_argument('--game_time', type=int, default=70, help='Time horizon for the simulation')
-parser.add_argument('--n_simulations', type=int, default=128, help='Number of simulations to run')
-parser.add_argument('--log_window', type=int, default=3, help='Size of the logging window')
+parser.add_argument('-n', '--n_simulations', type=int, default=16, help='Number of simulations to run')
+parser.add_argument('-l', '--log_window', type=int, default=3, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 parser.add_argument('--number_of_epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate for GNN training')
