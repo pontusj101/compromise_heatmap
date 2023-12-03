@@ -3,6 +3,7 @@ import torch
 class GraphIndex:
     def __init__(self, size=None):
         if size is None:
+            self.object_mapping = dict()
             self.log_mapping = dict()
             self.attackstep_mapping = dict()
             self.node_features = torch.tensor([], dtype=torch.float)

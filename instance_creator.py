@@ -42,9 +42,8 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
        
     # Assign credentials to hosts
     credential_to_host = {}
-    for credential in credentials:
-        possible_hosts = set(hosts)
-        credential_to_host[credential] = random.choice(list(possible_hosts))
+    for i, credential in enumerate(credentials):
+        credential_to_host[credential] = hosts[i]
 
     credentials_stored_on_host = {}
     for i in range(num_credentials):
@@ -216,6 +215,8 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
         elif size == 'large':
             num_hosts = 32
             num_credentials = 32
+        else:  
+            raise ValueError(f'Instance type {instance_type} not recognized.')
         instance_string, graph_index = create_random_instance(num_hosts, num_credentials, horizon=horizon, rddl_path=rddl_path)
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")

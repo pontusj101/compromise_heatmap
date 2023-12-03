@@ -71,7 +71,7 @@ class Simulator:
         for step in range(myEnv.horizon):
             if step == start_step:
                 agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
-                logging.debug(f'Step {step}: Now initiating attack.')
+                logging.debug(f'Simulation {sim_id}. Step {step}: Now initiating attack.')
 
             action = agent.sample_action()
             state, reward, done, info = myEnv.step(action)
@@ -83,10 +83,10 @@ class Simulator:
             labels = labels.to(torch.long)
             if (labels == 1).all():
                 if log_steps_after_total_compromise == 0:
-                    logging.debug(f'Step {step}: All attack steps were compromised. Continuing to log for {int(log_window/2)} steps.')
+                    logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised. Continuing to log for {max_log_steps_after_total_compromise} steps.')
                 log_steps_after_total_compromise += 1
                 if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
-                    logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised. Terminating simulation.')
+                    logging.debug(f'Simulation {sim_id}. Step {step}: Logged {max_log_steps_after_total_compromise} after all steps compromised. Terminating simulation.')
                     break
             combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
             snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, edge_type=graph_index.edge_type, y=labels)
