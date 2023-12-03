@@ -119,7 +119,7 @@ class Animator:
 
         ax.set_title(f"Step {num}")
 
-    def create_animation(self, predictor_type, predictor_filename):
+    def create_animation(self, predictor_type, predictor_filename, frames_per_second=25):
         logging.info(f'Animating {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
         predictor = Predictor(predictor_type, predictor_filename)
@@ -131,6 +131,6 @@ class Animator:
         pos = nx.spring_layout(G_initial)  # You can use other layouts as well
 
         ani = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=40)
-        ani.save('network_animation.gif', writer='pillow', fps=25)
+                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+        ani.save('network_animation.gif', writer='pillow', fps=frames_per_second)
 
