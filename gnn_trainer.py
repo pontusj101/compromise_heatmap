@@ -7,8 +7,9 @@ import logging
 import pickle
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
 from torch_geometric.loader import DataLoader
+
 
 class GCN(torch.nn.Module):
     def __init__(self, layer_sizes):
@@ -29,6 +30,45 @@ class GCN(torch.nn.Module):
         
         # return F.log_softmax(x, dim=1)
         return x
+
+
+class RGCN(torch.nn.Module):
+    def __init__(self, layer_sizes, num_relations):
+        super(RGCN, self).__init__()
+        self.layers = torch.nn.ModuleList()
+        
+        # Create RGCN layers based on layer sizes
+        for i in range(len(layer_sizes) - 1):
+            self.layers.append(RGCNConv(layer_sizes[i], layer_sizes[i+1], num_relations=num_relations))
+
+    def forward(self, data):
+        x, edge_index, edge_type = data.x, data.edge_index, data.edge_type
+        for i, layer in enumerate(self.layers):
+            x = layer(x, edge_index, edge_type)
+            if i < len(self.layers) - 1:  # Apply ReLU and Dropout to all but the last layer
+                x = F.relu(x)
+                x = F.dropout(x, training=self.training)
+        return x
+
+
+class GIN(torch.nn.Module):
+    def __init__(self, layer_sizes):
+        super(GIN, self).__init__()
+
+        self.layers = Sequential('x, edge_index', [
+            (GINConv(Sequential('x', [
+                (torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1]), 'x -> x'),
+                (torch.nn.ReLU(inplace=True), 'x -> x'),
+                (torch.nn.BatchNorm1d(layer_sizes[i + 1]), 'x -> x')
+            ])), 'x, edge_index -> x')
+            for i in range(len(layer_sizes) - 1)
+        ])
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        x = self.layers(x, edge_index)
+        return x
+
 
 def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
     """
@@ -117,10 +157,12 @@ def train_gnn(number_of_epochs=10,
         snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
         first_graph = snapshot_sequence[0]
         actual_num_features = first_graph.num_node_features
+        num_relations = first_graph.num_edge_types
         train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
 
         for hidden_layers in hidden_layers_list:
-            model = GCN([actual_num_features] + hidden_layers + [2])
+            # model = GCN([actual_num_features] + hidden_layers + [2])
+            model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
             val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)

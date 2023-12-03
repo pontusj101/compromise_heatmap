@@ -53,20 +53,25 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
     # Edges
     source_nodes = []
     target_nodes = []
+    graph_index.edge_type = []
 
     for (h1, h2) in connected_pairs:
         source_nodes.append(hosts.index(h1))
         target_nodes.append(hosts.index(h2))
+        graph_index.edge_type.append(0)
         source_nodes.append(hosts.index(h2))
         target_nodes.append(hosts.index(h1))
+        graph_index.edge_type.append(0)
 
     for credential, host in credential_to_host.items():
         source_nodes.append(credentials.index(credential) + num_hosts)
         target_nodes.append(hosts.index(host))
-
+        graph_index.edge_type.append(1)
+        
     for credential, host in credentials_stored_on_host.items():
         source_nodes.append(hosts.index(host))
         target_nodes.append(credentials.index(credential) + num_hosts)  
+        graph_index.edge_type.append(2)
 
     # Convert lists to a PyTorch tensor in 2xN format
     graph_index.edge_index = torch.tensor([source_nodes, target_nodes], dtype=torch.long)
@@ -215,11 +220,11 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    rddl_file_path = rddl_path + 'instance_' + date_time_str + '.rddl'
+    rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}_{date_time_str}.rddl'
     with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
 
-    graph_index_file_path = rddl_path + 'graph_index_' + date_time_str + '.pkl'
+    graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}_{date_time_str}.pkl'
     with open(graph_index_file_path, 'wb') as f:
         pickle.dump(graph_index, f)
 

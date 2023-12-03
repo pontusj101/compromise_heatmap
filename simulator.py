@@ -89,7 +89,7 @@ class Simulator:
                     logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised. Terminating simulation.')
                     break
             combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
-            snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, y=labels)
+            snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, edge_type=graph_index.edge_type, y=labels)
 
             # Only add snapshots after the log window has been filled with unmalicious log lines
             if step >= log_window:

@@ -6,7 +6,7 @@
     "configurations": [
 
         {
-            "name": "Create Instance",
+            "name": "Instance",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
@@ -15,16 +15,16 @@
             "justMyCode": true
         },
         {
-            "name": "Produce Training Data",
+            "name": "Simulate",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["simuate"],
+            "args": ["simulate"],
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Train GNN",
+            "name": "Train",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",

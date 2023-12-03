@@ -7,6 +7,7 @@ class GraphIndex:
             self.attackstep_mapping = dict()
             self.node_features = torch.tensor([], dtype=torch.float)
             self.edge_index = torch.tensor([], dtype=torch.long)
+            self.edge_type = torch.tensor([], dtype=torch.long)
 
         elif size == 'small':
             self.object_mapping = {
@@ -39,6 +40,9 @@ class GraphIndex:
                 [0, 0, 0, 2, 3],
                 [1, 2, 3, 0, 1]
             ], dtype=torch.long)
+
+            self.edge_type = torch.tensor([0, 2, 2, 1, 1], dtype=torch.long) # 0: CONNECTED, 1: ACCESSES, 2: STORES
+
         elif size == 'medium':
             self.object_mapping = {
                 'h1': 0,
@@ -93,5 +97,10 @@ class GraphIndex:
                 [0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 5, 1, 3, 3, 4],
                 [1, 2, 3, 5, 4, 5, 0, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 8, 11]
             ], dtype=torch.long)
+
+
+
+            self.edge_type = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, ], dtype=torch.long) # 0: CONNECTED, 1: ACCESSES, 2: STORES
+
         elif size == 'large':
             print('Not implemented yet')
