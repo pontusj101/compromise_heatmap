@@ -53,6 +53,7 @@ parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular'
 
 # Animation
 parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/snapshot_sequence_n1_l8_random_large_2500_20231203_174808.pkl', help='Filename for animation sequence')
+parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 # and --predictor_filename and --predictor_type
 
 # Parse arguments
@@ -182,7 +183,8 @@ if 'animate' in args.modes:
         logging.info(f'Using newly generated predictor {predictor_filename}.')
     animator = Animator(animation_sequence_filename)
     animator.create_animation(predictor_type=args.predictor_type, 
-                             predictor_filename=predictor_filename)
+                             predictor_filename=predictor_filename,
+                             frames_per_second=args.frames_per_second)
     s = f'Animation written to file network_animation.gif.'
     logging.info(s)
     print(s)
