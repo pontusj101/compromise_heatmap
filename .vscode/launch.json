@@ -33,15 +33,6 @@
             "justMyCode": true
         },
         {
-            "name": "Animate",
-            "type": "python",
-            "request": "launch",
-            "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["animate"],
-            "console": "integratedTerminal",
-            "justMyCode": true
-        }
-        {
             "name": "Evaluate",
             "type": "python",
             "request": "launch",
@@ -51,11 +42,11 @@
             "justMyCode": true
         }
         {
-            "name": "Train and evaluate",
+            "name": "Animate",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["train_and_eval"],
+            "args": ["animate"],
             "console": "integratedTerminal",
             "justMyCode": true
         }

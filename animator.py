@@ -9,6 +9,7 @@ from predictor import Predictor
 
 class Animator:
     def __init__(self, animation_sequence_filename):
+        self.animation_sequence_filename = animation_sequence_filename
         with open(animation_sequence_filename, 'rb') as file:
             indexed_snapshot_sequence = pickle.load(file)
             self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
@@ -117,9 +118,9 @@ class Animator:
         nx.draw_networkx_labels(G, pos, ax=ax, labels={node: node for node in G.nodes()}, font_size=10)
 
         ax.set_title(f"Step {num}")
-        logging.info(f'Updated graph for step {num}. Prediction: {prediction}. Truth: {snapshot.y}')
 
     def create_animation(self, predictor_type, predictor_filename):
+        logging.info(f'Animating {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
         predictor = Predictor(predictor_type, predictor_filename)
 
@@ -130,6 +131,6 @@ class Animator:
         pos = nx.spring_layout(G_initial)  # You can use other layouts as well
 
         ani = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=1000)
-        ani.save('network_animation.gif', writer='pillow', fps=5)
+                                    fargs=(pos, ax, predictor), interval=40)
+        ani.save('network_animation.gif', writer='pillow', fps=25)
 

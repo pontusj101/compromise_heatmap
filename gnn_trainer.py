@@ -1,4 +1,5 @@
 import time
+import re
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -193,7 +194,11 @@ def train_gnn(number_of_epochs=10,
 
             filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}'
             plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
-            model_file_name = f'{model_path}model_{filename_root}.pt'
+
+            match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+            snapshot_name = match.group(1) if match else None
+
+            model_file_name = f'{model_path}model_{snapshot_name}_{filename_root}.pt'
             torch.save(model, model_file_name)
 
         return model_file_name

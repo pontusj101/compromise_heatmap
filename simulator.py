@@ -86,7 +86,7 @@ class Simulator:
                     logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised. Continuing to log for {max_log_steps_after_total_compromise} steps.')
                 log_steps_after_total_compromise += 1
                 if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
-                    logging.debug(f'Simulation {sim_id}. Step {step}: Logged {max_log_steps_after_total_compromise} after all steps compromised. Terminating simulation.')
+                    logging.debug(f'Simulation {sim_id}. Step {step}: Logged {max_log_steps_after_total_compromise} snapshots after all steps were compromised. Terminating simulation.')
                     break
             combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
             snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, edge_type=graph_index.edge_type, y=labels)

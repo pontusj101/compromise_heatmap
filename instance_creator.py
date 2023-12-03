@@ -17,7 +17,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
         graph_index.attackstep_mapping[f'compromised___{host}'] = i
     
     for i, credential in enumerate(credentials):
-        graph_index.object_mapping[host] = i + num_hosts
+        graph_index.object_mapping[credential] = i + num_hosts
         graph_index.log_mapping[f'observed_crack_attack___{credential}'] = i + num_hosts
         graph_index.attackstep_mapping[f'cracked___{credential}'] = i + num_hosts
 
@@ -52,28 +52,29 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
     # Edges
     source_nodes = []
     target_nodes = []
-    graph_index.edge_type = []
+    edge_type = []
 
     for (h1, h2) in connected_pairs:
         source_nodes.append(hosts.index(h1))
         target_nodes.append(hosts.index(h2))
-        graph_index.edge_type.append(0)
+        edge_type.append(0)
         source_nodes.append(hosts.index(h2))
         target_nodes.append(hosts.index(h1))
-        graph_index.edge_type.append(0)
+        edge_type.append(0)
 
     for credential, host in credential_to_host.items():
         source_nodes.append(credentials.index(credential) + num_hosts)
         target_nodes.append(hosts.index(host))
-        graph_index.edge_type.append(1)
+        edge_type.append(1)
         
     for credential, host in credentials_stored_on_host.items():
         source_nodes.append(hosts.index(host))
         target_nodes.append(credentials.index(credential) + num_hosts)  
-        graph_index.edge_type.append(2)
+        edge_type.append(2)
 
     # Convert lists to a PyTorch tensor in 2xN format
     graph_index.edge_index = torch.tensor([source_nodes, target_nodes], dtype=torch.long)
+    graph_index.edge_type = torch.tensor(edge_type, dtype=torch.long)
 
     # Define non-fluents
     non_fluents = 'non-fluents simple_network {\n\tdomain = simple_compromise;\n\n\tobjects{\n\t\thost: {'

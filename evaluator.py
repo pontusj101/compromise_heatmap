@@ -25,7 +25,7 @@ class Evaluator:
         logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
     def evaluate_test_set(self, predictor_type, predictor_filename, test_snapshot_sequence_path):
-        logging.info(f'Tabular training started.')
+        logging.info(f'Evaluating {predictor_type} predictor {predictor_filename} on {test_snapshot_sequence_path}.')
         predictor = Predictor(predictor_type, predictor_filename)
         with open(test_snapshot_sequence_path, 'rb') as file:
             indexed_snapshot_sequence = pickle.load(file)
