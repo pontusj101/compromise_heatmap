@@ -48,6 +48,7 @@ class Animator:
         return G
 
     def update_graph(self, num, pos, ax, predictor):
+        logging.debug(f'Animating step {num}.')
         ax.clear()
         snapshot = self.snapshot_sequence[num]
 
@@ -118,7 +119,7 @@ class Animator:
         ax.set_title(f"Step {num}")
 
     def create_animation(self, predictor_type, predictor_filename, frames_per_second=25):
-        logging.info(f'Animating {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
+        logging.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
         predictor = Predictor(predictor_type, predictor_filename)
 

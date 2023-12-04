@@ -34,7 +34,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
         connected_pairs.add((hosts[i], hosts[i + 1]))
 
     # Additional random connections (optional, for more complexity)
-    while len(connected_pairs) < 2 * num_hosts:
+    while len(connected_pairs) < int(num_hosts/2):
         a, b = random.sample(hosts, 2)
         if a != b:
             connected_pairs.add((a, b))
@@ -46,7 +46,10 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
 
     credentials_stored_on_host = {}
     for i in range(num_credentials):
-        credentials_stored_on_host[credentials[i]] = hosts[0]
+        if i == 0:
+            credentials_stored_on_host[credentials[0]] = hosts[0]
+        else:
+            credentials_stored_on_host[credentials[i]] = hosts[random.randint(0, i)]
 
     # Edges
     source_nodes = []
