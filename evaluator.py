@@ -43,7 +43,7 @@ class Evaluator:
             predicted_labels = predictor.predict(snapshot)
             all_true_labels.append(true_labels.cpu().numpy())
             all_predicted_labels.append(predicted_labels.cpu().detach().numpy())
-            logging.debug(f'Snapshot {i} of {len(snapshot_sequence)} completed.')
+            # logging.debug(f'Snapshot {i} of {len(snapshot_sequence)} completed.')
         all_predicted_labels = np.concatenate(all_predicted_labels)
         all_true_labels = np.concatenate(all_true_labels)
         self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time)
