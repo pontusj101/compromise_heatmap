@@ -28,20 +28,20 @@ parser.add_argument('--rddl_path', default='rddl/', help='Path to the RDDL files
 
 # Simulation
 parser.add_argument('-n', '--n_simulations', type=int, default=16, help='Number of simulations to run')
-parser.add_argument('-l', '--log_window', type=int, default=8, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=64, help='Size of the logging window')
 parser.add_argument('--domain_rddl_path', default='rddl/domain.rddl', help='Path to RDDL domain specification')
-parser.add_argument('--instance_rddl_path', default='rddl/instance_random_large_2500_20231203_174808.rddl' , help='Path to RDDL instance specification')
-parser.add_argument('--graph_index_path', default='rddl/graph_index_random_large_2500_20231203_174808.pkl', help='Path to pickled GraphIndex class.')
+parser.add_argument('--instance_rddl_path', default='rddl/instance_random_large_2500_20231204_041052.rddl' , help='Path to RDDL instance specification')
+parser.add_argument('--graph_index_path', default='rddl/graph_index_random_large_2500_20231204_041052.pkl', help='Path to pickled GraphIndex class.')
 parser.add_argument('--tmp_path', default='tmp/', help='Temporary file path')
 parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
-parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
+parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[64, 64]]", help='Hidden layers configuration for GNN')
 parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/snapshot_sequence_n16_l8_random_large_2500_20231203_174808.pkl', help='Filename for training sequence')
 
 # Evaluation
@@ -58,13 +58,37 @@ parser.add_argument('--frames_per_second', type=int, default=25, help='Frames pe
 
 # Parse arguments
 args = parser.parse_args()
-
 hidden_layers_str = args.hidden_layers
 # hidden_layers_str = hidden_layers_str.strip("[]'\"")
 hidden_layers = ast.literal_eval(hidden_layers_str)
 
-# Set up logging
-logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(asctime)s - %(message)s')
+# Get the root logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)  # Set the log level
+
+# Clear existing handlers
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Create a file handler and set level to debug
+file_handler = logging.FileHandler('log.log')
+file_handler.setLevel(logging.DEBUG)
+
+# Create a console (stream) handler and set level to debug
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create a formatter
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+
+# Set formatter for file and console handlers
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add file and console handlers to the root logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 logging.warning('\n\n')

@@ -130,7 +130,7 @@ class Simulator:
 
             n_processes = multiprocessing.cpu_count()
             result_filenames = []
-            logging.info(f'Starting simulation.')
+            logging.info(f'Starting simulation of {instance_rddl_path} with {n_simulations} simulations and a log window of {log_window}.')
             pool = multiprocessing.Pool(processes=n_processes)
 
             simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, domain_rddl_path, instance_rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
@@ -167,10 +167,10 @@ class Simulator:
             logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
             random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
             random_snapshot = snapshot_sequence[random_snapshot_index]
-            logging.info(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-            logging.info(f'\n{random_snapshot.x[:,:1]}')
-            logging.info(f'\n{random_snapshot.x[:,1:]}')
-            logging.info(random_snapshot.y)
+            logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+            logging.debug(f'\n{random_snapshot.x[:,:1]}')
+            logging.debug(f'\n{random_snapshot.x[:,1:]}')
+            logging.debug(random_snapshot.y)
 
 
             return file_name
