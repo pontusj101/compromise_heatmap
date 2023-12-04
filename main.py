@@ -2,11 +2,15 @@ import argparse
 import logging
 import warnings
 import ast
+import json
 from animator import Animator
 from instance_creator import create_instance
 from simulator import Simulator
 from evaluator import Evaluator
 from gnn_trainer import train_gnn
+
+# Constants
+CONFIG_FILE = 'config.json'
 
 # Initialize parser
 parser = argparse.ArgumentParser(description='Run different modes of the security simulation program.')
@@ -23,36 +27,26 @@ parser.add_argument(
 # Instance creation
 parser.add_argument('--instance_type', default='random', choices=['static', 'random'], help='Type of instance to create')
 parser.add_argument('--size', default='large', choices=['small', 'medium', 'large'], help='Size of the graph')
-parser.add_argument('--game_time', type=int, default=2500, help='Time horizon for the simulation')
-parser.add_argument('--rddl_path', default='rddl/', help='Path to the RDDL files')
+parser.add_argument('--game_time', type=int, default=2500, help='Time horizon for the simulation') # small: 70, large: 2500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=16, help='Number of simulations to run')
-parser.add_argument('-l', '--log_window', type=int, default=64, help='Size of the logging window')
-parser.add_argument('--domain_rddl_path', default='rddl/domain.rddl', help='Path to RDDL domain specification')
-parser.add_argument('--instance_rddl_path', default='rddl/instance_random_large_2500_20231204_041052.rddl' , help='Path to RDDL instance specification')
-parser.add_argument('--graph_index_path', default='rddl/graph_index_random_large_2500_20231204_041052.pkl', help='Path to pickled GraphIndex class.')
-parser.add_argument('--tmp_path', default='tmp/', help='Temporary file path')
-parser.add_argument('--snapshot_sequence_path', default='snapshot_sequences/', help='Path to snapshot sequences')
+parser.add_argument('-n', '--n_simulations', type=int, default=8, help='Number of simulations to run')
+parser.add_argument('-l', '--log_window', type=int, default=511, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
-parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
+parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[64, 64]]", help='Hidden layers configuration for GNN')
-parser.add_argument('--training_sequence_file_name', default='snapshot_sequences/snapshot_sequence_n16_l8_random_large_2500_20231203_174808.pkl', help='Filename for training sequence')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[32]]", help='Hidden layers configuration for GNN')
 
 # Evaluation
-parser.add_argument('--evaluation_sequence_path', default='snapshot_sequences/snapshot_sequence_n1_l8_random_large_2500_20231203_174808.pkl', help='Filename for evaulation sequence')
 parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
-parser.add_argument('--predictor_filename', default='models/model_n16_l8_random_large_2500_20231203_174808_hl_[128, 128]_n_29270_lr_0.001_bs_256.pt', help='Filename for the predictor model')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
 # and --predictor_filename and --predictor_type
 
 # Animation
-parser.add_argument('--animation_sequence_filename', default='snapshot_sequences/snapshot_sequence_n1_l8_random_large_2500_20231203_174808.pkl', help='Filename for animation sequence')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 # and --predictor_filename and --predictor_type
 
@@ -65,30 +59,24 @@ hidden_layers = ast.literal_eval(hidden_layers_str)
 # Get the root logger
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)  # Set the log level
-
 # Clear existing handlers
 for handler in logger.handlers[:]:
     logger.removeHandler(handler)
-
 # Create a file handler and set level to debug
 file_handler = logging.FileHandler('log.log')
 file_handler.setLevel(logging.DEBUG)
-
 # Create a console (stream) handler and set level to debug
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
-
 # Create a formatter
 formatter = logging.Formatter('%(asctime)s - %(message)s')
-
 # Set formatter for file and console handlers
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
-
 # Add file and console handlers to the root logger
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
-
+# Supress unwanted logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 logging.warning('\n\n')
@@ -96,118 +84,92 @@ logging.warning('\n\n')
 max_start_time_step = args.log_window + int((args.game_time - args.log_window) / 2)
 max_log_steps_after_total_compromise = int(args.log_window / 2)
 
-predictor_filename = None
-instance_rddl_path = None
-graph_index_path = None
-training_sequence_path = None
-evaluation_sequence_path = None
+with open(CONFIG_FILE, 'r') as f:
+    config = json.load(f)
 
 # Modes
 if 'instance' in args.modes:
     # TODO: Write graph_index to file 
     logging.info(f'Creating new instance specification.')
-    instance_rddl_path, graph_index_path = create_instance(
+    instance_rddl_filepath, graph_index_filepath = create_instance( 
+        rddl_path=config['rddl_dirpath'],
         instance_type=args.instance_type, 
         size=args.size, 
-        horizon=args.game_time, 
-        rddl_path=args.rddl_path)
-    s = f'Instance specification written to {instance_rddl_path}. Graph index written to {graph_index_path}.'
-    logging.info(s)
-    print(s)
+        horizon=args.game_time)
+    config['instance_rddl_filepath'] = instance_rddl_filepath
+    config['graph_index_filepath'] = graph_index_filepath
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+
+    logging.info(f'Instance specification written to {instance_rddl_filepath}. Graph index written to {graph_index_filepath}.')
 
 if 'simulate' in args.modes:
-    if instance_rddl_path is None:
-        instance_rddl_path = args.instance_rddl_path
-    if graph_index_path is None:
-        graph_index_path = args.graph_index_path
-    else:
-        logging.info(f'Using newly generated instance {instance_rddl_path} and graph index {graph_index_path}.')
     logging.info(f'Producing training data.')
     simulator = Simulator()
-    training_sequence_path = simulator.produce_training_data_parallel(
-        domain_rddl_path=args.domain_rddl_path,
-        instance_rddl_path=instance_rddl_path,
-        graph_index_path=graph_index_path,
+    training_sequence_filepath = simulator.produce_training_data_parallel(
+        domain_rddl_path=config['domain_rddl_filepath'],
+        instance_rddl_filepath=config['instance_rddl_filepath'],
+        graph_index_filepath=config['graph_index_filepath'],
+        rddl_path=config['rddl_dirpath'], 
+        tmp_path=config['tmp_dirpath'],
+        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
         n_simulations=args.n_simulations, 
         log_window=args.log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-        rddl_path=args.rddl_path, 
-        tmp_path=args.tmp_path,
-        snapshot_sequence_path=args.snapshot_sequence_path,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    s = f'Training data produced and written to {training_sequence_path}.'
-    logging.info(s)
-    print(s)
+    config['training_sequence_filepath'] = training_sequence_filepath
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'Training data produced and written to {training_sequence_filepath}.')
 
 if 'eval_seq' in args.modes:
-    if instance_rddl_path is None:
-        instance_rddl_path = args.instance_rddl_path
-    if graph_index_path is None:
-        graph_index_path = args.graph_index_path
-    else:
-        logging.info(f'Using newly generated instance {instance_rddl_path} and graph index {graph_index_path}.')
     logging.info(f'Producing single evaluation snapshot sequence.')
     simulator = Simulator()
-    evaluation_sequence_path = simulator.produce_training_data_parallel(
-        domain_rddl_path=args.domain_rddl_path,
-        instance_rddl_path=instance_rddl_path,
-        graph_index_path=graph_index_path,
+    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+        domain_rddl_path=config['domain_rddl_filepath'],
+        instance_rddl_filepath=config['instance_rddl_filepath'],
+        graph_index_filepath=config['graph_index_filepath'],
+        rddl_path=config['rddl_dirpath'], 
+        tmp_path=config['tmp_dirpath'],
+        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
         n_simulations=1, 
         log_window=args.log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-        rddl_path=args.rddl_path, 
-        tmp_path=args.tmp_path,
-        snapshot_sequence_path=args.snapshot_sequence_path,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    s = f'Training data produced and written to {training_sequence_path}.'
-    logging.info(s)
-    print(s)
+    config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
+    config['animation_sequence_filepath'] = evaluation_sequence_filepath
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
 
 if 'train' in args.modes:
-    if training_sequence_path is None:
-        training_sequence_path = args.training_sequence_file_name
-    else:
-        logging.info(f'Using newly generated training sequence {training_sequence_path}.')
     logging.info(f'Training GNN.')
     predictor_filename = train_gnn(
+                    sequence_file_name=config['training_sequence_filepath'], 
                     number_of_epochs=args.epochs, 
-                    sequence_file_name=args.training_sequence_file_name, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
                     hidden_layers_list=hidden_layers)
-    s = f'GNN trained. Model written to {predictor_filename}.'
-    logging.info(s)
-    print(s)
+    config['predictor_filename'] = predictor_filename
+    config['predictor_type'] = 'gnn'
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'evaluate' in args.modes:
-    if evaluation_sequence_path is None:
-        evaluation_sequence_path = args.evaluation_sequence_path
-    if predictor_filename is None:
-        predictor_filename = args.predictor_filename
-    else:
-        logging.info(f'Using newly generated predictor {predictor_filename}.')
     evaluator = Evaluator(trigger_threshold=0.5)
     evaluator.evaluate_test_set(
-        args.predictor_type, 
-        predictor_filename, 
-        args.evaluation_sequence_path)
+        predictor_type=config['predictor_type'], 
+        predictor_filename=config['predictor_filename'], 
+        test_snapshot_sequence_path=config['evaluation_sequence_filepath'])
 
 if 'animate' in args.modes:
     logging.info(f'Creating animation.')
-    if evaluation_sequence_path is None:
-        evaluation_sequence_path = args.evaluation_sequence_path
-        animation_sequence_filename = args.animation_sequence_filename
-    else:
-        animation_sequence_filename = evaluation_sequence_path
-    if predictor_filename is None:
-        predictor_filename = args.predictor_filename
-    else:
-        logging.info(f'Using newly generated predictor {predictor_filename}.')
-    animator = Animator(animation_sequence_filename)
-    animator.create_animation(predictor_type=args.predictor_type, 
-                             predictor_filename=predictor_filename,
+    animator = Animator(config['animation_sequence_filepath'])
+    animator.create_animation(predictor_type=config['predictor_type'], 
+                             predictor_filename=config['predictor_filename'],
                              frames_per_second=args.frames_per_second)
     s = f'Animation written to file network_animation.gif.'
     logging.info(s)

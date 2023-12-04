@@ -1,6 +1,7 @@
 import time
 import re
 import random
+from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -192,7 +193,8 @@ def train_gnn(number_of_epochs=10,
                 end_time = time.time()
                 logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
 
-            filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}'
+            date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
             plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
             match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)

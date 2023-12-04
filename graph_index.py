@@ -18,10 +18,10 @@ class GraphIndex:
                 'c2': 3}
 
             self.log_mapping = {
-                'observed_compromise_attack___h1': 0,
-                'observed_compromise_attack___h2': 1,
-                'observed_crack_attack___c1': 2,
-                'observed_crack_attack___c2': 3}
+                'observed_compromised___h1': 0,
+                'observed_compromised___h2': 1,
+                'observed_crack_attempt___c1': 2,
+                'observed_crack_attempt___c2': 3}
 
             self.attackstep_mapping = {
                 'compromised___h1': 0,
@@ -60,18 +60,18 @@ class GraphIndex:
                 'c6': 11}
             
             self.log_mapping = {
-                'observed_compromise_attack___h1': 0,
-                'observed_compromise_attack___h2': 1,
-                'observed_compromise_attack___h3': 2,
-                'observed_compromise_attack___h4': 3,
-                'observed_compromise_attack___h5': 4,
-                'observed_compromise_attack___h6': 5,
-                'observed_crack_attack___c1': 6,
-                'observed_crack_attack___c2': 7,
-                'observed_crack_attack___c3': 8,
-                'observed_crack_attack___c4': 9,
-                'observed_crack_attack___c5': 10,
-                'observed_crack_attack___c6': 11}
+                'observed_compromised___h1': 0,
+                'observed_compromised___h2': 1,
+                'observed_compromised___h3': 2,
+                'observed_compromised___h4': 3,
+                'observed_compromised___h5': 4,
+                'observed_compromised___h6': 5,
+                'observed_crack_attempt___c1': 6,
+                'observed_crack_attempt___c2': 7,
+                'observed_crack_attempt___c3': 8,
+                'observed_crack_attempt___c4': 9,
+                'observed_crack_attempt___c5': 10,
+                'observed_crack_attempt___c6': 11}
 
             self.attackstep_mapping = {
                 'compromised___h1': 0,

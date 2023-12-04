@@ -13,12 +13,12 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
 
     for i, host in enumerate(hosts):
         graph_index.object_mapping[host] = i
-        graph_index.log_mapping[f'observed_compromise_attack___{host}'] = i
+        graph_index.log_mapping[f'observed_compromised___{host}'] = i
         graph_index.attackstep_mapping[f'compromised___{host}'] = i
     
     for i, credential in enumerate(credentials):
         graph_index.object_mapping[credential] = i + num_hosts
-        graph_index.log_mapping[f'observed_crack_attack___{credential}'] = i + num_hosts
+        graph_index.log_mapping[f'observed_crack_attempt___{credential}'] = i + num_hosts
         graph_index.attackstep_mapping[f'cracked___{credential}'] = i + num_hosts
 
     # Node features
@@ -86,7 +86,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
         non_fluents += f'\t\tCONNECTED({h1}, {h2});\n'
     for credential, host in credential_to_host.items():
         non_fluents += f'\t\tACCESSES({credential}, {host});\n'
-        non_fluents += f'\t\tittc_crack_attack({credential}) = {random.randint(0, 2)};\n'
+        non_fluents += f'\t\tittc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
     for credential, host in credentials_stored_on_host.items():
         non_fluents += f'\t\tSTORES({host}, {credential});\n'
     non_fluents += '\t};\n}'
@@ -96,7 +96,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
     initial_host = 'h1'
     instance += f'\t\tcompromised({initial_host}) = true;\n'
     for credential in credentials:
-        instance += f'\t\trttc_crack_attack({credential}) = {random.randint(0, 2)};\n'
+        instance += f'\t\trttc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
     for host in hosts:
         instance += f'\t\tvalue({host}) = {random.randint(0, 16)};\n'
     instance += '\t};\n\n\tmax-nondef-actions = 1;\n\thorizon = '
@@ -154,14 +154,14 @@ non-fluents simple_network {
             STORES(h5, c6);
             STORES(h4, c3);'''
     instance_string += '''
-            ittc_crack_attack(c1) = 1;
-            ittc_crack_attack(c2) = 2;'''
+            ittc_crack_attempt(c1) = 1;
+            ittc_crack_attempt(c2) = 2;'''
     if size == "medium":
         instance_string += '''
-            ittc_crack_attack(c3) = 0;
-            ittc_crack_attack(c4) = 1;
-            ittc_crack_attack(c5) = 2;
-            ittc_crack_attack(c6) = 0;'''
+            ittc_crack_attempt(c3) = 0;
+            ittc_crack_attempt(c4) = 1;
+            ittc_crack_attempt(c5) = 2;
+            ittc_crack_attempt(c6) = 0;'''
     instance_string += '''
     };
 }
@@ -173,14 +173,14 @@ instance simple_network_instance {
     init-state{
         compromised(h1) = true;
 
-        rttc_crack_attack(c1) = 1;
-        rttc_crack_attack(c2) = 2;'''
+        rttc_crack_attempt(c1) = 1;
+        rttc_crack_attempt(c2) = 2;'''
     if size == "medium":
         instance_string += '''
-        rttc_crack_attack(c3) = 0;
-        rttc_crack_attack(c4) = 1;
-        rttc_crack_attack(c5) = 2;
-        rttc_crack_attack(c6) = 0;'''
+        rttc_crack_attempt(c3) = 0;
+        rttc_crack_attempt(c4) = 1;
+        rttc_crack_attempt(c5) = 2;
+        rttc_crack_attempt(c6) = 0;'''
     instance_string += '''
         value(h1) = 0;
         value(h2) = 1;'''
@@ -223,10 +223,12 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}_{date_time_str}.rddl'
+    graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}_{date_time_str}.pkl'
+    if instance_type == 'static':
+        rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}.rddl'
+        graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}.pkl'
     with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
-
-    graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}_{date_time_str}.pkl'
     with open(graph_index_file_path, 'wb') as f:
         pickle.dump(graph_index, f)
 

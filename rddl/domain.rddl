@@ -17,18 +17,19 @@ domain simple_compromise {
         cracked(credentials) : { state-fluent, bool, default = false };
 
         // Attacker action fluents
-        compromise_attack(host) : { action-fluent, bool, default = false };
-        crack_attack(credentials) : { action-fluent, bool, default = false };
+        compromise_attempt(host) : { action-fluent, bool, default = false };
+        crack_attempt(credentials) : { action-fluent, bool, default = false };
 
-        // Detector observations for crack_attack. (Doing these as state-fluents instead of observ-fluents because the latter hides all state-fluents.)
-        observed_crack_attack(credentials) : { state-fluent, bool, default = false };
-        observed_compromise_attack(host) : { state-fluent, bool, default = false };
+        // Detector observations. (Doing these as state-fluents instead of observ-fluents because the latter hides all state-fluents.)
+        observed_crack_attempt(credentials) : { state-fluent, bool, default = false };
+        observed_compromised(host) : { state-fluent, bool, default = false };
+        
 
         // Initial TTCs
-        ittc_crack_attack(credentials) : { non-fluent, int, default = 0 };
+        ittc_crack_attempt(credentials) : { non-fluent, int, default = 0 };
 
         // Remaining TTCs
-        rttc_crack_attack(credentials) : { state-fluent, int, default = 0 };
+        rttc_crack_attempt(credentials) : { state-fluent, int, default = 0 };
 
         // Host value
         value(host) : { state-fluent, int, default = 0 };
@@ -37,27 +38,27 @@ domain simple_compromise {
 
     cpfs {
         compromised'(?ht) =
-            if (~compromised(?ht) ^ exists_{?hs : host, ?c : credentials} [CONNECTED(?hs, ?ht) ^ compromised(?hs) ^ ACCESSES(?c, ?ht) ^ cracked(?c) ^ compromise_attack(?ht)])
+            if (~compromised(?ht) ^ exists_{?hs : host, ?c : credentials} [CONNECTED(?hs, ?ht) ^ compromised(?hs) ^ ACCESSES(?c, ?ht) ^ cracked(?c) ^ compromise_attempt(?ht)])
                 then KronDelta(true)
             else compromised(?ht);
 
+        observed_compromised'(?ht) =
+            if (~compromised(?ht) ^ exists_{?hs : host, ?c : credentials} [CONNECTED(?hs, ?ht) ^ compromised(?hs) ^ ACCESSES(?c, ?ht) ^ cracked(?c) ^ compromise_attempt(?ht)])
+                then Bernoulli(0.999)
+            else Bernoulli(0.001);
+
         cracked'(?c) =
-            if (~cracked(?c) ^ crack_attack(?c) ^ rttc_crack_attack(?c) < 1 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
+            if (~cracked(?c) ^ crack_attempt(?c) ^ rttc_crack_attempt(?c) < 1 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
                 then KronDelta(true)
             else cracked(?c);
 
-        rttc_crack_attack'(?c) =
-            if (~cracked(?c) ^ crack_attack(?c) ^ rttc_crack_attack(?c) > 0 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
-                then (rttc_crack_attack(?c) - 1)
-            else rttc_crack_attack(?c);
+        rttc_crack_attempt'(?c) =
+            if (~cracked(?c) ^ crack_attempt(?c) ^ rttc_crack_attempt(?c) > 0 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
+                then (rttc_crack_attempt(?c) - 1)
+            else rttc_crack_attempt(?c);
 
-        observed_crack_attack'(?c) = 
-            if (crack_attack(?c)) 
-              then Bernoulli(0.999)
-            else Bernoulli(0.001);
-
-        observed_compromise_attack'(?c) = 
-            if (compromise_attack(?c)) 
+        observed_crack_attempt'(?c) = 
+            if (crack_attempt(?c)) 
               then Bernoulli(0.999)
             else Bernoulli(0.001);
 

@@ -33,6 +33,15 @@
             "justMyCode": true
         },
         {
+            "name": "Evaluation sequence",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["eval_seq"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Evaluate",
             "type": "python",
             "request": "launch",

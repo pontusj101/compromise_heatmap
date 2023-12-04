@@ -53,10 +53,10 @@ class Simulator:
                           max_log_steps_after_total_compromise, 
                           graph_index, 
                           domain_rddl_path, 
-                          instance_rddl_path, 
+                          instance_rddl_filepath, 
                           tmp_path, 
                           random_cyber_agent_seed):
-        myEnv = RDDLEnv.RDDLEnv(domain=domain_rddl_path, instance=instance_rddl_path)
+        myEnv = RDDLEnv.RDDLEnv(domain=domain_rddl_path, instance=instance_rddl_filepath)
 
         start_time = time.time()
         n_nodes = len(graph_index.node_features)
@@ -112,8 +112,8 @@ class Simulator:
     def produce_training_data_parallel(
         self, 
         domain_rddl_path,
-        instance_rddl_path,
-        graph_index_path,
+        instance_rddl_filepath,
+        graph_index_filepath,
         n_simulations=10, 
         log_window=25, 
         max_start_time_step=100, 
@@ -125,15 +125,15 @@ class Simulator:
         
         start_time = time.time()
 
-        with open(graph_index_path, 'rb') as file:
+        with open(graph_index_filepath, 'rb') as file:
             graph_index = pickle.load(file)
 
             n_processes = multiprocessing.cpu_count()
             result_filenames = []
-            logging.info(f'Starting simulation of {instance_rddl_path} with {n_simulations} simulations and a log window of {log_window}.')
+            logging.info(f'Starting simulation of {instance_rddl_filepath} with {n_simulations} simulations and a log window of {log_window}.')
             pool = multiprocessing.Pool(processes=n_processes)
 
-            simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, domain_rddl_path, instance_rddl_path, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+            simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, domain_rddl_path, instance_rddl_filepath, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
             result_filenames = pool.starmap(self.simulation_worker, simulation_args)
             pool.close()
@@ -152,7 +152,7 @@ class Simulator:
 
             indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
-            match = re.search(r'instance_(.*?)\.rddl', instance_rddl_path)
+            match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepath)
             instance_name = match.group(1) if match else None
 
 
