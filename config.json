@@ -5,7 +5,7 @@
     "domain_rddl_filepath": "rddl/domain.rddl",
     "instance_rddl_filepath": "rddl/instance_random_large_2500_20231204_122239.rddl",
     "graph_index_filepath": "rddl/graph_index_random_large_2500_20231204_122239.pkl",
-    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n32_l511_random_large_2500_20231204_122239.pkl",
+    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n64_l511_random_large_2500_20231204_122239.pkl",
     "predictor_filepath": "models/model_n16_l8_random_large_2500_20231203_174808_hl_[128, 128]_n_29270_lr_0.001_bs_256.pt",
     "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l511_random_large_2500_20231204_122239.pkl",
     "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l511_random_large_2500_20231204_122239.pkl",

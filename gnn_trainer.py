@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
-import pickle
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
@@ -154,54 +153,53 @@ def train_gnn(number_of_epochs=10,
 
     logging.info(f'GNN training started.')
 
-    with open(sequence_file_name, 'rb') as file:
-        indexed_snapshot_sequence = pickle.load(file)
-        snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
-        first_graph = snapshot_sequence[0]
-        actual_num_features = first_graph.num_node_features
-        num_relations = first_graph.num_edge_types
-        train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+    indexed_snapshot_sequence = torch.load(sequence_file_name)
+    snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+    first_graph = snapshot_sequence[0]
+    actual_num_features = first_graph.num_node_features
+    num_relations = first_graph.num_edge_types
+    train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
 
-        for hidden_layers in hidden_layers_list:
-            # model = GCN([actual_num_features] + hidden_layers + [2])
-            model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-            train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
-            val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
-            n_snapshots = len(snapshot_sequence)
+    for hidden_layers in hidden_layers_list:
+        # model = GCN([actual_num_features] + hidden_layers + [2])
+        model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
+        n_snapshots = len(snapshot_sequence)
 
-            loss_values, val_loss_values = [], []
-            logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
-            for epoch in range(number_of_epochs):
-                start_time = time.time()
-                model.train()
-                epoch_loss = 0.0
-                for batch in train_loader:
-                    optimizer.zero_grad()
-                    out = model(batch)
-                    out = F.log_softmax(out, dim=1)
-                    loss = F.nll_loss(out, batch.y)
-                    loss.backward()
-                    optimizer.step()
-                    epoch_loss += loss.item()
+        loss_values, val_loss_values = [], []
+        logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
+        for epoch in range(number_of_epochs):
+            start_time = time.time()
+            model.train()
+            epoch_loss = 0.0
+            for batch in train_loader:
+                optimizer.zero_grad()
+                out = model(batch)
+                out = F.log_softmax(out, dim=1)
+                loss = F.nll_loss(out, batch.y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
 
-                epoch_loss /= len(train_loader)
-                loss_values.append(epoch_loss)
+            epoch_loss /= len(train_loader)
+            loss_values.append(epoch_loss)
 
-                val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-                val_loss_values.append(val_loss)
-                end_time = time.time()
-                logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+            val_loss_values.append(val_loss)
+            end_time = time.time()
+            logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
 
-            date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
-            plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
+        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename_root = f'hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+        plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
-            match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-            snapshot_name = match.group(1) if match else None
+        match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+        snapshot_name = match.group(1) if match else None
 
-            model_file_name = f'{model_path}model_{snapshot_name}_{filename_root}.pt'
-            torch.save(model, model_file_name)
+        model_file_name = f'{model_path}model_{snapshot_name}_{filename_root}.pt'
+        torch.save(model, model_file_name)
 
-        return model_file_name
+    return model_file_name
 

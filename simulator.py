@@ -4,7 +4,6 @@ import re
 import time
 from datetime import datetime
 import random
-import pickle
 import numpy
 import torch
 import logging
@@ -102,8 +101,7 @@ class Simulator:
         end_time = time.time()
 
         output_file = os.path.join(tmp_path, f"simulation_{sim_id}.pkl")
-        with open(output_file, 'wb') as file:
-            pickle.dump(snapshot_sequence, file)
+        torch.save(snapshot_sequence, output_file)
         
         return output_file
 
@@ -125,52 +123,49 @@ class Simulator:
         
         start_time = time.time()
 
-        with open(graph_index_filepath, 'rb') as file:
-            graph_index = pickle.load(file)
+        graph_index = torch.load(graph_index_filepath)
 
-            n_processes = multiprocessing.cpu_count()
-            result_filenames = []
-            logging.info(f'Starting simulation of {instance_rddl_filepath} with {n_simulations} simulations and a log window of {log_window}.')
-            pool = multiprocessing.Pool(processes=n_processes)
+        n_processes = multiprocessing.cpu_count()
+        result_filenames = []
+        logging.info(f'Starting simulation of {instance_rddl_filepath} with {n_simulations} simulations and a log window of {log_window}.')
+        pool = multiprocessing.Pool(processes=n_processes)
 
-            simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, domain_rddl_path, instance_rddl_filepath, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index, domain_rddl_path, instance_rddl_filepath, tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
-            result_filenames = pool.starmap(self.simulation_worker, simulation_args)
-            pool.close()
-            pool.join()
+        result_filenames = pool.starmap(self.simulation_worker, simulation_args)
+        pool.close()
+        pool.join()
 
-            results = []
-            for output_file in result_filenames:
-                with open(output_file, 'rb') as file:
-                    results.append(pickle.load(file))
-                os.remove(output_file) 
+        results = []
+        for output_file in result_filenames:
+            results.append(torch.load(output_file))
+            os.remove(output_file) 
 
-            n_completely_compromised = sum([(snap_seq[-1].y[1:] == 1).all() for snap_seq in results])
+        n_completely_compromised = sum([(snap_seq[-1].y[1:] == 1).all() for snap_seq in results])
 
-            # Flatten the list of lists (each sublist is the output from one simulation)
-            snapshot_sequence = [item for sublist in results for item in sublist]
+        # Flatten the list of lists (each sublist is the output from one simulation)
+        snapshot_sequence = [item for sublist in results for item in sublist]
 
-            indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
+        indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
-            match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepath)
-            instance_name = match.group(1) if match else None
+        match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepath)
+        instance_name = match.group(1) if match else None
 
 
-            date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f'{snapshot_sequence_path}snapshot_sequence_n{n_simulations}_l{log_window}_{instance_name}.pkl'
-            with open(file_name, 'wb') as file:
-                pickle.dump(indexed_snapshot_sequence, file)
-            logging.info(f'Data saved to {file_name}')
+        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name = f'{snapshot_sequence_path}snapshot_sequence_n{n_simulations}_l{log_window}_{instance_name}.pkl'
+        torch.save(indexed_snapshot_sequence, file_name)
+        logging.info(f'Data saved to {file_name}')
 
-            compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
-            logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-            logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
-            random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
-            random_snapshot = snapshot_sequence[random_snapshot_index]
-            logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-            logging.debug(f'\n{random_snapshot.x[:,:1]}')
-            logging.debug(f'\n{random_snapshot.x[:,1:]}')
-            logging.debug(random_snapshot.y)
+        compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
+        logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
+        logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
+        random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
+        random_snapshot = snapshot_sequence[random_snapshot_index]
+        logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+        logging.debug(f'\n{random_snapshot.x[:,:1]}')
+        logging.debug(f'\n{random_snapshot.x[:,1:]}')
+        logging.debug(random_snapshot.y)
 
 
-            return file_name
+        return file_name

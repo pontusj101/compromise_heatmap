@@ -4,16 +4,14 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.colors as mcolors
 import torch
-import pickle
 from predictor import Predictor
 
 class Animator:
     def __init__(self, animation_sequence_filename):
         self.animation_sequence_filename = animation_sequence_filename
-        with open(animation_sequence_filename, 'rb') as file:
-            indexed_snapshot_sequence = pickle.load(file)
-            self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
-            self.graph_index = indexed_snapshot_sequence['graph_index']
+        indexed_snapshot_sequence = torch.load(animation_sequence_filename)
+        self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        self.graph_index = indexed_snapshot_sequence['graph_index']
             
         # Create a reverse mapping from node indices to names
         self.reverse_mapping = {v: k for k, v in self.graph_index.object_mapping.items()}

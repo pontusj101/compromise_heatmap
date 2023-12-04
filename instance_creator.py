@@ -1,6 +1,5 @@
 import random
 import torch
-import pickle
 from datetime import datetime
 from graph_index import GraphIndex
 
@@ -229,7 +228,6 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
         graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}.pkl'
     with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
-    with open(graph_index_file_path, 'wb') as f:
-        pickle.dump(graph_index, f)
+    torch.save(graph_index, graph_index_file_path)
 
     return rddl_file_path, graph_index_file_path

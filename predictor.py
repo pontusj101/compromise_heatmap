@@ -1,6 +1,5 @@
 import torch
 from torch.nn.functional import softmax
-import pickle
 
 class Predictor:
     def __init__(self, predictor_type, file_name):
@@ -9,9 +8,8 @@ class Predictor:
             self.model = torch.load(file_name)
             self.model.eval()
         elif predictor_type == 'tabular':
-            with open(file_name, 'rb') as file:
-                indexed_snapshot_sequence = pickle.load(file)
-                self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+            indexed_snapshot_sequence = torch.load(file_name)
+            self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
 
         elif predictor_type == 'none':
             pass
