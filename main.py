@@ -27,11 +27,11 @@ parser.add_argument(
 # Instance creation
 parser.add_argument('--instance_type', default='random', choices=['static', 'random'], help='Type of instance to create')
 parser.add_argument('--size', default='large', choices=['small', 'medium', 'large'], help='Size of the graph')
-parser.add_argument('--game_time', type=int, default=5000, help='Time horizon for the simulation') # small: 70, large: 2500
+parser.add_argument('--game_time', type=int, default=500, help='Time horizon for the simulation') # small: 70, large: 2500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=32, help='Number of simulations to run')
-parser.add_argument('-l', '--log_window', type=int, default=511, help='Size of the logging window')
+parser.add_argument('-n', '--n_simulations', type=int, default=256, help='Number of simulations to run')
+parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -64,7 +64,7 @@ for handler in logger.handlers[:]:
     logger.removeHandler(handler)
 # Create a file handler and set level to debug
 file_handler = logging.FileHandler('log.log')
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 # Create a console (stream) handler and set level to debug
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)

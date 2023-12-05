@@ -72,7 +72,7 @@ class Simulator:
                 agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
                 logging.debug(f'Simulation {sim_id}. Step {step}: Now initiating attack.')
 
-            action = agent.sample_action()
+            action = agent.sample_action(state=state)
             state, reward, done, info = myEnv.step(action)
             total_reward += reward
 

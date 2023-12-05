@@ -1,4 +1,5 @@
 import random
+import logging
 from collections import OrderedDict
 from pyRDDLGym.Core.Policies.Agents import BaseAgent
 
@@ -20,11 +21,24 @@ class RandomCyberAgent(BaseAgent):
         if seed is not None:
             self.action_space.seed(seed)
 
+    def action_horizon(self, state):
+        actionable_items = []
+        for key, value in state.items():
+            if key.startswith("available_for_") and value:
+                action_key = key.replace("available_for_", "")
+                actionable_items.append(action_key)
+        return actionable_items
+
     def sample_action(self, state=None):
+        logging.debug(f"RandomCyberAgent: {state}")
+        possible_actions = self.action_horizon(state)
         s = self.action_space.sample()
         action = {}
-        selected_action = self.rng.sample(list(s), 1)[0]
-        action[selected_action] = s[selected_action]
+        if len(possible_actions) > 0:
+            selected_action = random.choice(possible_actions)
+            action[selected_action] = 1
+        else:
+            action[list(s.keys())[0]] = 0
         return action
 
 class KeyboardCyberAgent(BaseAgent):

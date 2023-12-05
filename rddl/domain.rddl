@@ -23,6 +23,8 @@ domain simple_compromise {
         // Detector observations. (Doing these as state-fluents instead of observ-fluents because the latter hides all state-fluents.)
         observed_crack_attempt(credentials) : { state-fluent, bool, default = false };
         observed_compromised(host) : { state-fluent, bool, default = false };
+        available_for_compromise_attempt(host) : { state-fluent, bool, default = false };
+        available_for_crack_attempt(credentials) : { state-fluent, bool, default = false };
         
 
         // Initial TTCs
@@ -61,6 +63,16 @@ domain simple_compromise {
             if (crack_attempt(?c)) 
               then Bernoulli(0.999)
             else Bernoulli(0.001);
+
+        available_for_compromise_attempt'(?ht) =
+            if (~compromised(?ht) ^ exists_{?hs : host} [CONNECTED(?hs, ?ht) ^ compromised(?hs)])
+                then KronDelta(true)
+            else KronDelta(false);
+
+        available_for_crack_attempt'(?c) =
+            if (~cracked(?c) ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])
+                then KronDelta(true)
+            else KronDelta(false);
 
         value'(?h) = 
             if (compromised(?h))

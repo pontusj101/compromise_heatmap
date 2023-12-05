@@ -45,11 +45,11 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
         credential_to_host[credential] = hosts[i]
 
     credentials_stored_on_host = {}
-    for i in range(num_credentials):
-        if i == 0:
-            credentials_stored_on_host[credentials[0]] = hosts[0]
+    for i, credential in enumerate(credentials):
+        if i < 2:
+            credentials_stored_on_host[credential] = hosts[0]
         else:
-            credentials_stored_on_host[credentials[i]] = hosts[random.randint(0, i)]
+            credentials_stored_on_host[credential] = hosts[random.randint(0, i - 1)]
 
     # Edges
     source_nodes = []
