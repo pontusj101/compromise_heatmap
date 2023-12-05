@@ -26,20 +26,20 @@ parser.add_argument(
 
 # Instance creation
 parser.add_argument('--instance_type', default='random', choices=['static', 'random'], help='Type of instance to create')
-parser.add_argument('--size', default='medium', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
-parser.add_argument('--game_time', type=int, default=200, help='Time horizon for the simulation') # small: 70, large: 500
+parser.add_argument('--size', default='larger', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
+parser.add_argument('--game_time', type=int, default=1500, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
 parser.add_argument('-n', '--n_simulations', type=int, default=8, help='Number of simulations to run')
-parser.add_argument('-l', '--log_window', type=int, default=64, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=500, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
-parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
+parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[8]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[32]]", help='Hidden layers configuration for GNN')
 
 # Evaluation
 parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
