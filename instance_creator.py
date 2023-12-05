@@ -3,7 +3,7 @@ import torch
 from datetime import datetime
 from graph_index import GraphIndex
 
-def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/'):
+def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_connection_ratio=0.25, rddl_path='rddl/'):
 
     graph_index = GraphIndex(size=None)
     # Generate hosts and credentials
@@ -34,7 +34,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, rddl_path='rddl/
         connected_pairs.add((hosts[i], hosts[i + 1]))
 
     # Additional random connections (optional, for more complexity)
-    while len(connected_pairs) < int(num_hosts/2):
+    while len(connected_pairs) < int(extra_host_host_connection_ratio*num_hosts):
         a, b = random.sample(hosts, 2)
         if a != b:
             connected_pairs.add((a, b))
@@ -218,9 +218,17 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
         elif size == 'large':
             num_hosts = 32
             num_credentials = 32
+        elif size == 'larger':
+            num_hosts = 128
+            num_credentials = 128
         else:  
             raise ValueError(f'Instance type {instance_type} not recognized.')
-        instance_string, graph_index = create_random_instance(num_hosts, num_credentials, horizon=horizon, rddl_path=rddl_path)
+        instance_string, graph_index = create_random_instance(
+            num_hosts, 
+            num_credentials, 
+            horizon=horizon, 
+            extra_host_host_connection_ratio=0.25, 
+            rddl_path=rddl_path)
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 

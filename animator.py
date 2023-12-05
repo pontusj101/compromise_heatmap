@@ -123,7 +123,7 @@ class Animator:
 
         predictor = Predictor(predictor_type, predictor_filename)
 
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(30, 30))
         
         # Calculate layout once
         G_initial = self.create_graph(num=0)
@@ -131,5 +131,11 @@ class Animator:
 
         ani = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
                                     fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
-        ani.save('network_animation.gif', writer='pillow', fps=frames_per_second)
+
+        # Save as MP4
+        ani.save('network_animation.mp4', writer='ffmpeg', fps=frames_per_second)
+
+        # Optional: Close the plot to prevent display issues in some environments
+        plt.close(fig)
+        
 

@@ -3,12 +3,12 @@
     "snapshot_sequence_dirpath": "snapshot_sequences/",
     "tmp_dirpath": "tmp/",
     "domain_rddl_filepath": "rddl/domain.rddl",
-    "instance_rddl_filepath": "rddl/instance_random_large_500_20231205_080538.rddl",
-    "graph_index_filepath": "rddl/graph_index_random_large_500_20231205_080538.pkl",
-    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n64_l128_random_large_500_20231205_080538.pkl",
+    "instance_rddl_filepath": "rddl/instance_random_medium_200_20231205_105253.rddl",
+    "graph_index_filepath": "rddl/graph_index_random_medium_200_20231205_105253.pkl",
+    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n8_l64_random_medium_200_20231205_105253.pkl",
     "predictor_filepath": "models/model_n16_l8_random_large_2500_20231203_174808_hl_[128, 128]_n_29270_lr_0.001_bs_256.pt",
-    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_random_large_500_20231205_080538.pkl",
-    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_random_large_500_20231205_080538.pkl",
+    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l64_random_medium_200_20231205_105253.pkl",
+    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l64_random_medium_200_20231205_105253.pkl",
     "predictor_type": "gnn",
-    "predictor_filename": "models/model_n64_l128_random_large_500_20231205_080538_hl_[32]_n_18873_lr_0.001_bs_256_20231205_082019.pt"
+    "predictor_filename": "models/model_n8_l64_random_medium_200_20231205_105253_hl_[8]_n_768_lr_0.001_bs_256_20231205_105257.pt"
 }
