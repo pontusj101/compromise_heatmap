@@ -59,5 +59,14 @@
             "console": "integratedTerminal",
             "justMyCode": true
         }
+        {
+            "name": "Explore",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["explore"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
     ]
 }

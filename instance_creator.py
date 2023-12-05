@@ -109,7 +109,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_
     return instance_string, graph_index
 
 
-def create_mini_instance(horizon, rddl_path='rddl/'):
+def create_mini_instance(rddl_path='rddl/'):
 
     # Generate hosts and credentials
     hosts = ['h1', 'h2']
@@ -159,9 +159,7 @@ def create_mini_instance(horizon, rddl_path='rddl/'):
         instance += f'\t\trttc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
     for host in hosts:
         instance += f'\t\tvalue({host}) = {random.randint(0, 16)};\n'
-    instance += '\t};\n\n\tmax-nondef-actions = 1;\n\thorizon = '
-    instance += f'{horizon}'
-    instance += ';\n\tdiscount = 1.0;\n}'
+    instance += '\t};\n\n\tmax-nondef-actions = 1;\n\thorizon = 2;\n\tdiscount = 1.0;\n}'
 
     instance_string = non_fluents + '\n\n' + instance
     return instance_string, gi
@@ -331,7 +329,7 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
             extra_host_host_connection_ratio=0.25, 
             rddl_path=rddl_path)
     elif instance_type == 'mini':
-        instance_string, graph_index = create_mini_instance(horizon=horizon, rddl_path=rddl_path)
+        instance_string, graph_index = create_mini_instance(rddl_path=rddl_path)
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 

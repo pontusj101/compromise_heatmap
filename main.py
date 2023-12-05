@@ -4,6 +4,7 @@ import warnings
 import ast
 import json
 from animator import Animator
+from gnn_explorer import Explorer
 from instance_creator import create_instance, create_mini_instance
 from simulator import Simulator
 from evaluator import Evaluator
@@ -19,19 +20,19 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate', 'all'], 
-    help='Mode(s) of operation. Choose one or more from: instance, simulate, train, animate, evaluate.'
+    choices=['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate', 'explore', 'all'], 
+    help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, evaluate, animate, explore and all.'
 )
 
 
 # Instance creation
 parser.add_argument('--instance_type', default='random', choices=['static', 'random', 'mini'], help='Type of instance to create')
-parser.add_argument('--size', default='larger', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
-parser.add_argument('--game_time', type=int, default=1500, help='Time horizon for the simulation') # small: 70, large: 500
+parser.add_argument('--size', default='large', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
+parser.add_argument('--game_time', type=int, default=500, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=8, help='Number of simulations to run')
-parser.add_argument('-l', '--log_window', type=int, default=500, help='Size of the logging window')
+parser.add_argument('-n', '--n_simulations', type=int, default=64, help='Number of simulations to run')
+parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -91,9 +92,6 @@ with open(CONFIG_FILE, 'r') as f:
 # Modes
 if 'all' in args.modes:
     args.modes = ['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate']
-
-if 'retain_instance' in args.modes:
-    args.modes = ['simulate', 'eval_seq', 'train', 'evaluate', 'animate']
 
 if 'instance' in args.modes:
     logging.info(f'Creating new instance specification.')
@@ -180,4 +178,8 @@ if 'animate' in args.modes:
     logging.info(s)
     print(s)
 
+if 'explore' in args.modes:
+    logging.info(f'Exploring.')
+    explorer = Explorer(config['predictor_type'], config['predictor_filename'])
+    explorer.explore(config['evaluation_sequence_filepath'])
 

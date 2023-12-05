@@ -2,17 +2,18 @@ import logging
 import time
 import torch
 import numpy as np
+from pyRDDLGym import RDDLEnv
 from predictor import Predictor
 
 class Explorer:
     def __init__(self, predictor_type, predictor_filename):
-        predictor = Predictor(predictor_type, predictor_filename)
+        self.predictor = Predictor(predictor_type, predictor_filename)
 
+    def explore(self, snapshot_filepath):
+        indexed_snapshot_sequence = torch.load(snapshot_filepath)
+        snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        snapshot = snapshot_sequence[0]
 
-    def evaluate_sequence(self):
-        combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
-        snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, edge_type=graph_index.edge_type, y=labels)
-
-        predicted_labels = predictor.predict(snapshot)
+        predicted_labels = self.predictor.predict(snapshot)
 
     
