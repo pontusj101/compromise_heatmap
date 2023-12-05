@@ -4,7 +4,7 @@ import warnings
 import ast
 import json
 from animator import Animator
-from instance_creator import create_instance
+from instance_creator import create_instance, create_mini_instance
 from simulator import Simulator
 from evaluator import Evaluator
 from gnn_trainer import train_gnn
@@ -19,13 +19,13 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate', 'all', 'retain_instance'], 
+    choices=['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate', 'all'], 
     help='Mode(s) of operation. Choose one or more from: instance, simulate, train, animate, evaluate.'
 )
 
 
 # Instance creation
-parser.add_argument('--instance_type', default='random', choices=['static', 'random'], help='Type of instance to create')
+parser.add_argument('--instance_type', default='random', choices=['static', 'random', 'mini'], help='Type of instance to create')
 parser.add_argument('--size', default='larger', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
 parser.add_argument('--game_time', type=int, default=1500, help='Time horizon for the simulation') # small: 70, large: 500
 
@@ -39,7 +39,7 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[32]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[8]]", help='Hidden layers configuration for GNN')
 
 # Evaluation
 parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
@@ -96,7 +96,6 @@ if 'retain_instance' in args.modes:
     args.modes = ['simulate', 'eval_seq', 'train', 'evaluate', 'animate']
 
 if 'instance' in args.modes:
-    # TODO: Write graph_index to file 
     logging.info(f'Creating new instance specification.')
     instance_rddl_filepath, graph_index_filepath = create_instance( 
         rddl_path=config['rddl_dirpath'],
@@ -107,7 +106,6 @@ if 'instance' in args.modes:
     config['graph_index_filepath'] = graph_index_filepath
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-
     logging.info(f'Instance specification written to {instance_rddl_filepath}. Graph index written to {graph_index_filepath}.')
 
 if 'simulate' in args.modes:

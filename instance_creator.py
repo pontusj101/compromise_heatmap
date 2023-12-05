@@ -109,6 +109,107 @@ def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_
     return instance_string, graph_index
 
 
+def create_mini_instance(horizon, rddl_path='rddl/'):
+
+    # Generate hosts and credentials
+    hosts = ['h1', 'h2']
+    credentials = ['c1', 'c2']
+
+    # Node features
+    node_features = []
+    for host in hosts:
+        node_features.append([1])
+    for credential in credentials:
+        node_features.append([0])
+
+    connected_pairs = set()
+    connected_pairs.add(('h1', 'h2'))
+       
+    # Assign credentials to hosts
+    credential_to_host = {}
+    credentials_stored_on_host = {}
+    for i, credential in enumerate(credentials):
+        credential_to_host[credential] = hosts[i]
+        credentials_stored_on_host[credential] = 'h1'
+
+    source_nodes, target_nodes, edge_type = get_edges(connected_pairs, credential_to_host, credentials_stored_on_host, hosts, credentials)
+
+    gi = graph_index(hosts, credentials, node_features, source_nodes, target_nodes, edge_type)
+
+    # Define non-fluents
+    non_fluents = 'non-fluents simple_network {\n\tdomain = simple_compromise;\n\n\tobjects{\n\t\thost: {'
+    non_fluents += ', '.join(hosts)
+    non_fluents += '};\n\t\tcredentials: {'
+    non_fluents += ', '.join(credentials)
+    non_fluents += '};\n\t};\n\n\tnon-fluents {\n'
+    for (h1, h2) in connected_pairs:
+        non_fluents += f'\t\tCONNECTED({h1}, {h2});\n'
+    for credential, host in credential_to_host.items():
+        non_fluents += f'\t\tACCESSES({credential}, {host});\n'
+        non_fluents += f'\t\tittc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
+    for credential, host in credentials_stored_on_host.items():
+        non_fluents += f'\t\tSTORES({host}, {credential});\n'
+    non_fluents += '\t};\n}'
+
+    # Define instance
+    instance = 'instance simple_network_instance {\n\tdomain = simple_compromise;\n\tnon-fluents = simple_network;\n\n\tinit-state{\n'
+    initial_host = 'h1'
+    instance += f'\t\tcompromised({initial_host}) = true;\n'
+    for credential in credentials:
+        instance += f'\t\trttc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
+    for host in hosts:
+        instance += f'\t\tvalue({host}) = {random.randint(0, 16)};\n'
+    instance += '\t};\n\n\tmax-nondef-actions = 1;\n\thorizon = '
+    instance += f'{horizon}'
+    instance += ';\n\tdiscount = 1.0;\n}'
+
+    instance_string = non_fluents + '\n\n' + instance
+    return instance_string, gi
+
+def graph_index(hosts, credentials, node_features, source_nodes, target_nodes, edge_type):
+    graph_index = GraphIndex(size=None)
+    for i, host in enumerate(hosts):
+        graph_index.object_mapping[host] = i
+        graph_index.log_mapping[f'observed_compromised___{host}'] = i
+        graph_index.attackstep_mapping[f'compromised___{host}'] = i
+    
+    for i, credential in enumerate(credentials):
+        graph_index.object_mapping[credential] = i + len(hosts)
+        graph_index.log_mapping[f'observed_crack_attempt___{credential}'] = i + len(hosts)
+        graph_index.attackstep_mapping[f'cracked___{credential}'] = i + len(hosts)
+    graph_index.node_features = torch.tensor(node_features, dtype=torch.float)
+    # Convert lists to a PyTorch tensor in 2xN format
+    graph_index.edge_index = torch.tensor([source_nodes, target_nodes], dtype=torch.long)
+    graph_index.edge_type = torch.tensor(edge_type, dtype=torch.long)
+    return graph_index
+
+def get_edges(connected_pairs, credential_to_host, credentials_stored_on_host, hosts, credentials):
+        # Edges
+    source_nodes = []
+    target_nodes = []
+    edge_type = []
+
+    for (h1, h2) in connected_pairs:
+        source_nodes.append(hosts.index(h1))
+        target_nodes.append(hosts.index(h2))
+        edge_type.append(0)
+        source_nodes.append(hosts.index(h2))
+        target_nodes.append(hosts.index(h1))
+        edge_type.append(0)
+
+    for credential, host in credential_to_host.items():
+        source_nodes.append(credentials.index(credential) + len(hosts))
+        target_nodes.append(hosts.index(host))
+        edge_type.append(1)
+        
+    for credential, host in credentials_stored_on_host.items():
+        source_nodes.append(hosts.index(host))
+        target_nodes.append(credentials.index(credential) + len(hosts))  
+        edge_type.append(2)
+
+    return source_nodes, target_nodes, edge_type
+
+
 def create_static_instance(size='medium', horizon=150, rddl_path='rddl/'):
     instance_string = '''
 non-fluents simple_network {
@@ -229,6 +330,8 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
             horizon=horizon, 
             extra_host_host_connection_ratio=0.25, 
             rddl_path=rddl_path)
+    elif instance_type == 'mini':
+        instance_string, graph_index = create_mini_instance(horizon=horizon, rddl_path=rddl_path)
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -237,6 +340,9 @@ def create_instance(instance_type='static', size='medium', horizon=150, rddl_pat
     if instance_type == 'static':
         rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}.rddl'
         graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}.pkl'
+    elif instance_type == 'mini':
+        rddl_file_path = f'{rddl_path}instance_{instance_type}.rddl'
+        graph_index_file_path = f'{rddl_path}graph_index_{instance_type}.pkl'
     with open(rddl_file_path, 'w') as f:
         f.write(instance_string)
     torch.save(graph_index, graph_index_file_path)
