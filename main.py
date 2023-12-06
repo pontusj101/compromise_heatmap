@@ -31,7 +31,7 @@ parser.add_argument('--size', default='large', choices=['small', 'medium', 'larg
 parser.add_argument('--game_time', type=int, default=500, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=128, help='Number of simulations to run')
+parser.add_argument('-n', '--n_simulations', type=int, default=4, help='Number of simulations to run')
 parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
@@ -128,6 +128,7 @@ if 'simulate' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'Training data produced and written to {training_sequence_filepath}.')
 
+
 if 'eval_seq' in args.modes:
     logging.info(f'Producing single evaluation snapshot sequence.')
     simulator = Simulator()
@@ -150,7 +151,7 @@ if 'eval_seq' in args.modes:
     logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
 
 if 'train' in args.modes:
-    logging.info(f'Training GNN.')
+    logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
                     sequence_file_name=config['training_sequence_filepath'], 
                     number_of_epochs=args.epochs, 
@@ -162,6 +163,7 @@ if 'train' in args.modes:
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
+
 
 if 'evaluate' in args.modes:
     evaluator = Evaluator(trigger_threshold=0.5)
