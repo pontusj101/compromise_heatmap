@@ -68,11 +68,17 @@ def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_
         source_nodes.append(credentials.index(credential) + num_hosts)
         target_nodes.append(hosts.index(host))
         edge_type.append(1)
+        target_nodes.append(credentials.index(credential) + num_hosts)
+        source_nodes.append(hosts.index(host))
+        edge_type.append(2)
         
     for credential, host in credentials_stored_on_host.items():
         source_nodes.append(hosts.index(host))
         target_nodes.append(credentials.index(credential) + num_hosts)  
-        edge_type.append(2)
+        edge_type.append(3)
+        target_nodes.append(hosts.index(host))
+        source_nodes.append(credentials.index(credential) + num_hosts)  
+        edge_type.append(4)
 
     # Convert lists to a PyTorch tensor in 2xN format
     graph_index.edge_index = torch.tensor([source_nodes, target_nodes], dtype=torch.long)

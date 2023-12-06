@@ -91,7 +91,7 @@ class Animator:
         for node_name in credential_nodes:
             node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
             status = G.nodes[node_name]['status']
-            pred = prediction[node_index].item()  # Access prediction using index
+            prob = prediction[node_index].item()  # Access prediction using index
 
             # Determine node color
             color = self.interpolate_color('white', 'red', prob)
