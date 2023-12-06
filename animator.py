@@ -60,13 +60,16 @@ class Animator:
         host_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 1]
         credential_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 0]
 
-        color_dark_grey = '#C0C0C0'
+        color_dark_grey = '#808080'
         color_light_grey = '#D3D3D3'
         color_red = '#FF9999'
         color_yellow = '#FFFF99'
+        normal_size = 2*600  # Define normal size
+        enlarged_size = 2 * normal_size  # Define enlarged size
 
         # Update node colors and border styles based on their status and prediction
         color_map_host = []
+        size_map_host = []
         edge_colors_host = []
         edge_widths_host = []
         for node_name in host_nodes:
@@ -77,15 +80,21 @@ class Animator:
             # Interpolate color based on probability
             color = self.interpolate_color('white', 'red', prob)
 
+            # Node size depends on latest monitored event
+            node_size = enlarged_size if snapshot.x[node_index,-1] == 1 else normal_size
+
             # Determine node border color and width
-            edge_color = 'black' if status == 1 else color_dark_grey
-            edge_width = 2 if status == 1 else 1
+            edge_color = 'black' if status == 1 else 'green'
+            edge_width = 5 if status == 1 else 2
+
 
             color_map_host.append(color)
+            size_map_host.append(node_size)
             edge_colors_host.append(edge_color)
             edge_widths_host.append(edge_width)
 
         color_map_credential = []
+        size_map_credential = []
         edge_colors_credential = []
         edge_widths_credential = []
         for node_name in credential_nodes:
@@ -96,18 +105,22 @@ class Animator:
             # Determine node color
             color = self.interpolate_color('white', 'red', prob)
 
+            # Node size depends on latest monitored event
+            node_size = enlarged_size if snapshot.x[node_index,-1] == 1 else normal_size
+
             # Determine node border color and width
-            edge_color = 'black' if status == 1 else color_dark_grey
-            edge_width = 2 if status == 1 else 1
+            edge_color = 'black' if status == 1 else 'green'
+            edge_width = 5 if status == 1 else 2
 
             color_map_credential.append(color)
+            size_map_credential.append(node_size)
             edge_colors_credential.append(edge_color)
             edge_widths_credential.append(edge_width)
 
         # Node drawing with specific border colors and widths
-        nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, 
+        nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, node_size=size_map_host,
                             node_shape='s', ax=ax, edgecolors=edge_colors_host, linewidths=edge_widths_host)
-        nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, 
+        nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, node_size=size_map_credential,
                             node_shape='o', ax=ax, edgecolors=edge_colors_credential, linewidths=edge_widths_credential)
 
         # Edge drawing with grey color

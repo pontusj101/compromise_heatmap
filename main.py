@@ -31,13 +31,13 @@ parser.add_argument('--size', default='large', choices=['small', 'medium', 'larg
 parser.add_argument('--game_time', type=int, default=500, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=64, help='Number of simulations to run')
+parser.add_argument('-n', '--n_simulations', type=int, default=128, help='Number of simulations to run')
 parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
-parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
+parser.add_argument('--epochs', type=int, default=16, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
 parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
