@@ -26,12 +26,12 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--instance_type', default='random', choices=['static', 'random', 'mini'], help='Type of instance to create')
-parser.add_argument('--size', default='large', choices=['small', 'medium', 'large', 'larger'], help='Size of the graph')
+parser.add_argument('--n_instances', type=int, default=1, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=8, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=32, help='Maximum number of hosts in each instance')
 parser.add_argument('--game_time', type=int, default=500, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-n', '--n_simulations', type=int, default=4, help='Number of simulations to run')
 parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
@@ -97,28 +97,28 @@ if 'all' in args.modes:
 
 if 'instance' in args.modes:
     logging.info(f'Creating new instance specification.')
-    instance_rddl_filepath, graph_index_filepath = create_instance( 
+    instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        instance_type=args.instance_type, 
-        size=args.size, 
+        n_instances=args.n_instances,
+        min_size=args.min_size,
+        max_size=args.max_size,
         horizon=args.game_time)
-    config['instance_rddl_filepath'] = instance_rddl_filepath
-    config['graph_index_filepath'] = graph_index_filepath
+    config['instance_rddl_filepaths'] = instance_rddl_filepaths
+    config['graph_index_filepaths'] = graph_index_filepaths
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Instance specification written to {instance_rddl_filepath}. Graph index written to {graph_index_filepath}.')
+    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
 
 if 'simulate' in args.modes:
     logging.info(f'Producing training data.')
     simulator = Simulator()
     training_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
-        instance_rddl_filepath=config['instance_rddl_filepath'],
-        graph_index_filepath=config['graph_index_filepath'],
+        instance_rddl_filepaths=config['instance_rddl_filepaths'],
+        graph_index_filepaths=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'], 
         tmp_path=config['tmp_dirpath'],
         snapshot_sequence_path=config['snapshot_sequence_dirpath'],
-        n_simulations=args.n_simulations, 
         log_window=args.log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
@@ -134,8 +134,8 @@ if 'eval_seq' in args.modes:
     simulator = Simulator()
     evaluation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
-        instance_rddl_filepath=config['instance_rddl_filepath'],
-        graph_index_filepath=config['graph_index_filepath'],
+        instance_rddl_filepath=config['instance_rddl_filepaths'],
+        graph_index_filepath=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'], 
         tmp_path=config['tmp_dirpath'],
         snapshot_sequence_path=config['snapshot_sequence_dirpath'],

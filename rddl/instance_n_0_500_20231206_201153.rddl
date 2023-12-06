@@ -1,0 +1,24 @@
+non-fluents simple_network {
+	domain = simple_compromise;
+
+	objects{
+		host: {};
+		credentials: {};
+	};
+
+	non-fluents {
+	};
+}
+
+instance simple_network_instance {
+	domain = simple_compromise;
+	non-fluents = simple_network;
+
+	init-state{
+		compromised(h1) = true;
+	};
+
+	max-nondef-actions = 1;
+	horizon = 500;
+	discount = 1.0;
+}

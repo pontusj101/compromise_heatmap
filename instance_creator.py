@@ -309,46 +309,34 @@ instance simple_network_instance {
 '''
     return instance_string
 
-def create_instance(instance_type='static', size='medium', horizon=150, rddl_path='rddl/'):
-    if instance_type == 'static':
-        instance_string = create_static_instance(size=size, horizon=horizon, rddl_path=rddl_path)
-        graph_index = GraphIndex(size=size)
-    elif instance_type == 'random':
-        if size == 'small':
-            num_hosts = 2
-            num_credentials = 2
-        elif size == 'medium':
-            num_hosts = 6
-            num_credentials = 6
-        elif size == 'large':
-            num_hosts = 32
-            num_credentials = 32
-        elif size == 'larger':
-            num_hosts = 128
-            num_credentials = 128
-        else:  
-            raise ValueError(f'Instance type {instance_type} not recognized.')
+def create_instance(
+        rddl_path='rddl/',
+        n_instances=1,
+        min_size=8, 
+        max_size=32,
+        horizon=150):
+    
+    rddl_file_paths = []
+    graph_index_file_paths = []
+
+    for i in range(n_instances):
+        num_hosts = random.randint(int(min_size/2), int(max_size/2))
+        num_credentials = num_hosts
         instance_string, graph_index = create_random_instance(
             num_hosts, 
             num_credentials, 
             horizon=horizon, 
             extra_host_host_connection_ratio=0.25, 
             rddl_path=rddl_path)
-    elif instance_type == 'mini':
-        instance_string, graph_index = create_mini_instance(rddl_path=rddl_path)
 
-    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}_{date_time_str}.rddl'
-    graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}_{date_time_str}.pkl'
-    if instance_type == 'static':
-        rddl_file_path = f'{rddl_path}instance_{instance_type}_{size}_{horizon}.rddl'
-        graph_index_file_path = f'{rddl_path}graph_index_{instance_type}_{size}_{horizon}.pkl'
-    elif instance_type == 'mini':
-        rddl_file_path = f'{rddl_path}instance_{instance_type}.rddl'
-        graph_index_file_path = f'{rddl_path}graph_index_{instance_type}.pkl'
-    with open(rddl_file_path, 'w') as f:
-        f.write(instance_string)
-    torch.save(graph_index, graph_index_file_path)
+        rddl_file_path = f'{rddl_path}instance_n_{2*num_hosts}_{horizon}_{date_time_str}.rddl'
+        graph_index_file_path = f'{rddl_path}graph_index_n_{2*num_hosts}_{horizon}_{date_time_str}.pkl'
+        with open(rddl_file_path, 'w') as f:
+            f.write(instance_string)
+        torch.save(graph_index, graph_index_file_path)
+        rddl_file_paths.append(rddl_file_path)
+        graph_index_file_paths.append(graph_index_file_path)
 
-    return rddl_file_path, graph_index_file_path
+    return rddl_file_paths, graph_index_file_paths
