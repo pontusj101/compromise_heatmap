@@ -7,11 +7,15 @@ import torch
 from predictor import Predictor
 
 class Animator:
-    def __init__(self, animation_sequence_filename):
+    def __init__(self, animation_sequence_filename, hide_prediction=False, hide_state=False):
         self.animation_sequence_filename = animation_sequence_filename
+        self.hide_prediction = hide_prediction
+        self.hide_state = hide_state
         indexed_snapshot_sequence = torch.load(animation_sequence_filename)
         self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
         self.graph_index = indexed_snapshot_sequence['graph_index']
+        self.normal_size = 2*600  # Define normal size
+        self.enlarged_size = 2 * self.normal_size  # Define enlarged size
             
         # Create a reverse mapping from node indices to names
         self.reverse_mapping = {v: k for k, v in self.graph_index.object_mapping.items()}
@@ -47,6 +51,36 @@ class Animator:
 
         return G
 
+    def process_nodes(self, nodes, snapshot, prediction):
+        color_map = []
+        size_map = []
+        edge_colors = []
+        edge_widths = []
+        
+        for node_name in nodes:
+            node_index = self.graph_index.object_mapping[node_name]
+            status = snapshot.y[node_index].item()
+            prob = prediction[node_index].item()
+
+            # Interpolate color based on probability
+            color = 'white'
+            if not self.hide_prediction:
+                color = self.interpolate_color('white', 'red', prob)
+
+            # Node size depends on latest monitored event
+            node_size = self.enlarged_size if snapshot.x[node_index, -1] == 1 else self.normal_size
+
+            # Determine node border color and width
+            edge_color = 'black' if (status == 1 and not self.hide_state) else 'green'
+            edge_width = 3 if (status == 1 and not self.hide_state) == 1 else 2
+
+            color_map.append(color)
+            size_map.append(node_size)
+            edge_colors.append(edge_color)
+            edge_widths.append(edge_width)
+        
+        return color_map, size_map, edge_colors, edge_widths
+    
     def update_graph(self, num, pos, ax, predictor):
         logging.debug(f'Animating step {num}.')
         ax.clear()
@@ -68,54 +102,8 @@ class Animator:
         enlarged_size = 2 * normal_size  # Define enlarged size
 
         # Update node colors and border styles based on their status and prediction
-        color_map_host = []
-        size_map_host = []
-        edge_colors_host = []
-        edge_widths_host = []
-        for node_name in host_nodes:
-            node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
-            status = G.nodes[node_name]['status']
-            prob = prediction[node_index].item()  # Access probability using index
-
-            # Interpolate color based on probability
-            color = self.interpolate_color('white', 'red', prob)
-
-            # Node size depends on latest monitored event
-            node_size = enlarged_size if snapshot.x[node_index,-1] == 1 else normal_size
-
-            # Determine node border color and width
-            edge_color = 'black' if status == 1 else 'green'
-            edge_width = 5 if status == 1 else 2
-
-
-            color_map_host.append(color)
-            size_map_host.append(node_size)
-            edge_colors_host.append(edge_color)
-            edge_widths_host.append(edge_width)
-
-        color_map_credential = []
-        size_map_credential = []
-        edge_colors_credential = []
-        edge_widths_credential = []
-        for node_name in credential_nodes:
-            node_index = self.graph_index.object_mapping[node_name]  # Convert name to index
-            status = G.nodes[node_name]['status']
-            prob = prediction[node_index].item()  # Access prediction using index
-
-            # Determine node color
-            color = self.interpolate_color('white', 'red', prob)
-
-            # Node size depends on latest monitored event
-            node_size = enlarged_size if snapshot.x[node_index,-1] == 1 else normal_size
-
-            # Determine node border color and width
-            edge_color = 'black' if status == 1 else 'green'
-            edge_width = 5 if status == 1 else 2
-
-            color_map_credential.append(color)
-            size_map_credential.append(node_size)
-            edge_colors_credential.append(edge_color)
-            edge_widths_credential.append(edge_width)
+        color_map_host, size_map_host, edge_colors_host, edge_widths_host = self.process_nodes(host_nodes, snapshot, prediction)
+        color_map_credential, size_map_credential, edge_colors_credential, edge_widths_credential = self.process_nodes(credential_nodes, snapshot, prediction)
 
         # Node drawing with specific border colors and widths
         nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, node_size=size_map_host,

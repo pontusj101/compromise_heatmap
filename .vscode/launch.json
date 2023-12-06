@@ -55,7 +55,7 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["animate"],
+            "args": ["animate", "--hide_state", "--hide_prediction"],
             "console": "integratedTerminal",
             "justMyCode": true
         }

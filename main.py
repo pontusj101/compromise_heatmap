@@ -49,6 +49,8 @@ parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular'
 
 # Animation
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
+parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')
+parser.add_argument('--hide_state', action='store_true', help='Hide the attacker\'s state in the animation.')
 # and --predictor_filename and --predictor_type
 
 # Parse arguments
@@ -170,7 +172,9 @@ if 'evaluate' in args.modes:
 
 if 'animate' in args.modes:
     logging.info(f'Creating animation.')
-    animator = Animator(config['animation_sequence_filepath'])
+    animator = Animator(config['animation_sequence_filepath'], 
+                        hide_prediction=args.hide_prediction, 
+                        hide_state=args.hide_state)
     animator.create_animation(predictor_type=config['predictor_type'], 
                              predictor_filename=config['predictor_filename'],
                              frames_per_second=args.frames_per_second)
