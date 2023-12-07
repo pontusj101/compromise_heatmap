@@ -12,8 +12,8 @@ class Animator:
         self.hide_prediction = hide_prediction
         self.hide_state = hide_state
         indexed_snapshot_sequence = torch.load(animation_sequence_filename)
-        self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
-        self.graph_index = indexed_snapshot_sequence['graph_index']
+        self.snapshot_sequence = indexed_snapshot_sequence[0]['snapshot_sequence']
+        self.graph_index = indexed_snapshot_sequence[0]['graph_index']
         self.normal_size = 2*600  # Define normal size
         self.enlarged_size = 2 * self.normal_size  # Define enlarged size
             

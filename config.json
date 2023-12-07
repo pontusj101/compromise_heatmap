@@ -3,19 +3,15 @@
     "snapshot_sequence_dirpath": "snapshot_sequences/",
     "tmp_dirpath": "tmp/",
     "domain_rddl_filepath": "rddl/domain.rddl",
-    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n3_l256_n_20_500_20231206_201533.pkl",
-    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l256_random_large_500_20231206_194236.pkl",
-    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l256_random_large_500_20231206_194236.pkl",
+    "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l16_n_8_200_20231207_131115.pkl",
+    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l16_n_8_200_20231207_131115.pkl",
+    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l16_n_8_200_20231207_131115.pkl",
     "predictor_type": "gnn",
-    "predictor_filename": "models/model_n3_l256_n_20_500_20231206_201533_hl_[128, 128]_n_640_lr_0.001_bs_256_20231207_071816.pt",
+    "predictor_filename": "models/model_n1_l16_n_8_200_20231207_131115_hl_[128, 128]_n_115_lr_0.001_bs_256_20231207_131117.pt",
     "instance_rddl_filepaths": [
-        "rddl/instance_n_20_500_20231206_201533.rddl",
-        "rddl/instance_n_10_500_20231206_201533.rddl",
-        "rddl/instance_n_18_500_20231206_201533.rddl"
+        "rddl/instance_n_8_200_20231207_131115.rddl"
     ],
     "graph_index_filepaths": [
-        "rddl/graph_index_n_20_500_20231206_201533.pkl",
-        "rddl/graph_index_n_10_500_20231206_201533.pkl",
-        "rddl/graph_index_n_18_500_20231206_201533.pkl"
+        "rddl/graph_index_n_8_200_20231207_131115.pkl"
     ]
 }

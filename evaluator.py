@@ -28,7 +28,7 @@ class Evaluator:
         logging.info(f'Evaluating {predictor_type} predictor {predictor_filename} on {test_snapshot_sequence_path}.')
         predictor = Predictor(predictor_type, predictor_filename)
         indexed_snapshot_sequence = torch.load(test_snapshot_sequence_path)
-        snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        snapshot_sequence = indexed_snapshot_sequence[0]['snapshot_sequence']
         return self.evaluate_sequence(predictor, snapshot_sequence)
 
     def evaluate_sequence(self, predictor, snapshot_sequence):
