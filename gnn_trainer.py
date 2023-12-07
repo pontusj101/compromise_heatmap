@@ -95,8 +95,8 @@ def train_gnn(number_of_epochs=10,
 
     logging.info(f'GNN training started.')
 
-    indexed_snapshot_sequence = torch.load(sequence_file_name)
-    snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+    data = torch.load(sequence_file_name)
+    snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
     num_relations = first_graph.num_edge_types
