@@ -155,15 +155,16 @@ class Simulator:
         torch.save(results, file_name)
         logging.info(f'Data saved to {file_name}')
 
-        # compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
+        snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
+        compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
         logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-        # logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
-        # random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
-        # random_snapshot = snapshot_sequence[random_snapshot_index]
-        # logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-        # logging.debug(f'\n{random_snapshot.x[:,:1]}')
-        # logging.debug(f'\n{random_snapshot.x[:,1:]}')
-        # logging.debug(random_snapshot.y)
+        logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
+        random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
+        random_snapshot = snapshot_sequence[random_snapshot_index]
+        logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+        logging.debug(f'\n{random_snapshot.x[:,:1]}')
+        logging.debug(f'\n{random_snapshot.x[:,1:]}')
+        logging.debug(random_snapshot.y)
 
 
         return file_name
