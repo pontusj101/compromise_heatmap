@@ -20,19 +20,19 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate', 'explore', 'all'], 
+    choices=['instance', 'simulate', 'eval_seq', 'anim_seq' 'train', 'evaluate', 'animate', 'explore', 'all'], 
     help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, evaluate, animate, explore and all.'
 )
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=512, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=64, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=96, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_instances', type=int, default=64, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=32, help='Maximum number of hosts in each instance')
 parser.add_argument('--game_time', type=int, default=1000, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=-1, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -87,13 +87,17 @@ logging.warning('\n\n')
 
 max_start_time_step = args.log_window + int((args.game_time - args.log_window) / 2)
 max_log_steps_after_total_compromise = int(args.log_window / 2)
+if args.log_window == -1:
+    log_window = int(2.5 * args.max_size)
+else:
+    log_window = args.log_window
 
 with open(CONFIG_FILE, 'r') as f:
     config = json.load(f)
 
 # Modes
 if 'all' in args.modes:
-    args.modes = ['instance', 'simulate', 'eval_seq', 'train', 'evaluate', 'animate']
+    args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate']
 
 if 'instance' in args.modes:
     logging.info(f'Creating new instance specification.')
@@ -119,7 +123,7 @@ if 'simulate' in args.modes:
         rddl_path=config['rddl_dirpath'], 
         tmp_path=config['tmp_dirpath'],
         snapshot_sequence_path=config['snapshot_sequence_dirpath'],
-        log_window=args.log_window, 
+        log_window=log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
@@ -130,11 +134,11 @@ if 'simulate' in args.modes:
 
 
 if 'eval_seq' in args.modes:
-    logging.info(f'Producing single evaluation snapshot sequence.')
-    logging.info(f'Creating new instance specification.')
+    logging.info(f'Producing eight evaluation snapshot sequences.')
+    logging.info(f'Creating eight new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        n_instances=1,
+        n_instances=8,
         min_size=args.min_size,
         max_size=args.max_size,
         horizon=args.game_time)
@@ -151,11 +155,41 @@ if 'eval_seq' in args.modes:
         rddl_path=config['rddl_dirpath'], 
         tmp_path=config['tmp_dirpath'],
         snapshot_sequence_path=config['snapshot_sequence_dirpath'],
-        log_window=args.log_window, 
+        log_window=log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
     config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
+
+if 'anim_seq' in args.modes:
+    logging.info(f'Producing single animantion snapshot sequence.')
+    logging.info(f'Creating new instance specification.')
+    instance_rddl_filepaths, graph_index_filepaths = create_instance( 
+        rddl_path=config['rddl_dirpath'],
+        n_instances=8,
+        min_size=args.min_size,
+        max_size=args.max_size,
+        horizon=args.game_time)
+    config['instance_rddl_filepaths'] = instance_rddl_filepaths
+    config['graph_index_filepaths'] = graph_index_filepaths
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
+    simulator = Simulator()
+    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+        domain_rddl_path=config['domain_rddl_filepath'],
+        instance_rddl_filepaths=config['instance_rddl_filepaths'],
+        graph_index_filepaths=config['graph_index_filepaths'],
+        rddl_path=config['rddl_dirpath'], 
+        tmp_path=config['tmp_dirpath'],
+        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
+        log_window=log_window, 
+        max_start_time_step=max_start_time_step, 
+        max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
+        random_cyber_agent_seed=args.random_cyber_agent_seed)
     config['animation_sequence_filepath'] = evaluation_sequence_filepath
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)

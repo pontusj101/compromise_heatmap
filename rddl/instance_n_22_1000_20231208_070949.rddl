@@ -1,0 +1,89 @@
+non-fluents simple_network {
+	domain = simple_compromise;
+
+	objects{
+		host: {h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11};
+		credentials: {c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11};
+	};
+
+	non-fluents {
+		CONNECTED(h3, h4);
+		CONNECTED(h8, h9);
+		CONNECTED(h6, h7);
+		CONNECTED(h10, h11);
+		CONNECTED(h5, h6);
+		CONNECTED(h1, h2);
+		CONNECTED(h2, h3);
+		CONNECTED(h9, h10);
+		CONNECTED(h7, h8);
+		CONNECTED(h4, h5);
+		ACCESSES(c1, h1);
+		ittc_crack_attempt(c1) = 0;
+		ACCESSES(c2, h2);
+		ittc_crack_attempt(c2) = 2;
+		ACCESSES(c3, h3);
+		ittc_crack_attempt(c3) = 2;
+		ACCESSES(c4, h4);
+		ittc_crack_attempt(c4) = 1;
+		ACCESSES(c5, h5);
+		ittc_crack_attempt(c5) = 2;
+		ACCESSES(c6, h6);
+		ittc_crack_attempt(c6) = 1;
+		ACCESSES(c7, h7);
+		ittc_crack_attempt(c7) = 1;
+		ACCESSES(c8, h8);
+		ittc_crack_attempt(c8) = 1;
+		ACCESSES(c9, h9);
+		ittc_crack_attempt(c9) = 1;
+		ACCESSES(c10, h10);
+		ittc_crack_attempt(c10) = 2;
+		ACCESSES(c11, h11);
+		ittc_crack_attempt(c11) = 1;
+		STORES(h1, c1);
+		STORES(h1, c2);
+		STORES(h2, c3);
+		STORES(h3, c4);
+		STORES(h2, c5);
+		STORES(h4, c6);
+		STORES(h3, c7);
+		STORES(h3, c8);
+		STORES(h8, c9);
+		STORES(h8, c10);
+		STORES(h6, c11);
+	};
+}
+
+instance simple_network_instance {
+	domain = simple_compromise;
+	non-fluents = simple_network;
+
+	init-state{
+		compromised(h1) = true;
+		rttc_crack_attempt(c1) = 2;
+		rttc_crack_attempt(c2) = 2;
+		rttc_crack_attempt(c3) = 0;
+		rttc_crack_attempt(c4) = 1;
+		rttc_crack_attempt(c5) = 0;
+		rttc_crack_attempt(c6) = 1;
+		rttc_crack_attempt(c7) = 0;
+		rttc_crack_attempt(c8) = 2;
+		rttc_crack_attempt(c9) = 2;
+		rttc_crack_attempt(c10) = 0;
+		rttc_crack_attempt(c11) = 0;
+		value(h1) = 11;
+		value(h2) = 0;
+		value(h3) = 3;
+		value(h4) = 8;
+		value(h5) = 6;
+		value(h6) = 10;
+		value(h7) = 5;
+		value(h8) = 0;
+		value(h9) = 5;
+		value(h10) = 11;
+		value(h11) = 10;
+	};
+
+	max-nondef-actions = 1;
+	horizon = 1000;
+	discount = 1.0;
+}

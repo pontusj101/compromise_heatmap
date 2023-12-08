@@ -1,0 +1,41 @@
+non-fluents simple_network {
+	domain = simple_compromise;
+
+	objects{
+		host: {h1, h2, h3};
+		credentials: {c1, c2, c3};
+	};
+
+	non-fluents {
+		CONNECTED(h2, h3);
+		CONNECTED(h1, h2);
+		ACCESSES(c1, h1);
+		ittc_crack_attempt(c1) = 0;
+		ACCESSES(c2, h2);
+		ittc_crack_attempt(c2) = 1;
+		ACCESSES(c3, h3);
+		ittc_crack_attempt(c3) = 1;
+		STORES(h1, c1);
+		STORES(h1, c2);
+		STORES(h2, c3);
+	};
+}
+
+instance simple_network_instance {
+	domain = simple_compromise;
+	non-fluents = simple_network;
+
+	init-state{
+		compromised(h1) = true;
+		rttc_crack_attempt(c1) = 0;
+		rttc_crack_attempt(c2) = 0;
+		rttc_crack_attempt(c3) = 1;
+		value(h1) = 10;
+		value(h2) = 11;
+		value(h3) = 7;
+	};
+
+	max-nondef-actions = 1;
+	horizon = 1000;
+	discount = 1.0;
+}

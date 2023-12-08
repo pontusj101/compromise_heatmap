@@ -30,7 +30,6 @@ class RandomCyberAgent(BaseAgent):
         return actionable_items
 
     def sample_action(self, state=None):
-        logging.debug(f"RandomCyberAgent: {state}")
         possible_actions = self.action_horizon(state)
         s = self.action_space.sample()
         action = {}
