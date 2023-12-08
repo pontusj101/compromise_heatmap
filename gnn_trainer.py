@@ -147,6 +147,15 @@ def train_gnn(number_of_epochs=10,
             if epoch % checkpoint_interval == 0:
                 save_checkpoint(model, optimizer, epoch, epoch_loss, model_path, 'latest_model_checkpoint')
                 plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+            
+            # Early stopping
+            training_stagnation_threshold = 3
+            if epoch > training_stagnation_threshold:
+                if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
+                    logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
+                    break   
+
+
 
         match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
         snapshot_name = match.group(1) if match else None
