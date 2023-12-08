@@ -97,8 +97,9 @@ def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
     torch.save(checkpoint, filename)
     logging.info(f'Checkpoint saved: {filename}')
 
-def train_gnn(number_of_epochs=10, 
-              sequence_file_name=None, 
+def train_gnn(sequence_file_name=None, 
+              number_of_epochs=10, 
+              max_instances=100,
               learning_rate=0.01, 
               batch_size=1, 
               hidden_layers_list=[[64, 64]],
@@ -108,6 +109,8 @@ def train_gnn(number_of_epochs=10,
     logging.info(f'GNN training started.')
 
     data = torch.load(sequence_file_name)
+    if max_instances < len(data):
+        data = data[:max_instances]
     snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features

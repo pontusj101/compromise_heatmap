@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'anim_seq' 'train', 'evaluate', 'animate', 'explore', 'all'], 
+    choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'explore', 'all'], 
     help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, evaluate, animate, explore and all.'
 )
 
@@ -28,7 +28,7 @@ parser.add_argument(
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=64, help='Number of instances to create')
 parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=32, help='Maximum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=8, help='Maximum number of hosts in each instance')
 parser.add_argument('--game_time', type=int, default=1000, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
@@ -37,6 +37,7 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 # and --rddl_path
 
 # Training
+parser.add_argument('--max_instances', type=int, default=64, help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
@@ -146,7 +147,7 @@ if 'eval_seq' in args.modes:
     config['graph_index_filepaths'] = graph_index_filepaths
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
+    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     evaluation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
@@ -177,7 +178,7 @@ if 'anim_seq' in args.modes:
     config['graph_index_filepaths'] = graph_index_filepaths
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
+    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     evaluation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
@@ -199,6 +200,7 @@ if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
                     sequence_file_name=config['training_sequence_filepath'], 
+                    max_instances=args.max_instances,
                     number_of_epochs=args.epochs, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
