@@ -129,7 +129,7 @@ class Simulator:
         n_simulations = len(instance_rddl_filepaths)
         n_processes = multiprocessing.cpu_count()
         result_filenames = []
-        logging.info(f'Starting simulation of {instance_rddl_filepaths} with {n_simulations} simulations per instance model and a log window of {log_window}.')
+        logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
         simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], domain_rddl_path, instance_rddl_filepaths[i], tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]

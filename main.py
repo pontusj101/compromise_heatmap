@@ -26,13 +26,13 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=1, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=8, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=12, help='Maximum number of hosts in each instance')
-parser.add_argument('--game_time', type=int, default=200, help='Time horizon for the simulation') # small: 70, large: 500
+parser.add_argument('--n_instances', type=int, default=512, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=64, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=96, help='Maximum number of hosts in each instance')
+parser.add_argument('--game_time', type=int, default=1000, help='Time horizon for the simulation') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--log_window', type=int, default=16, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -40,7 +40,7 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[256, 256]]", help='Hidden layers configuration for GNN')
 
 # Evaluation
 parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
@@ -107,7 +107,7 @@ if 'instance' in args.modes:
     config['graph_index_filepaths'] = graph_index_filepaths
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
+    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
 
 if 'simulate' in args.modes:
     logging.info(f'Producing training data.')
@@ -131,6 +131,18 @@ if 'simulate' in args.modes:
 
 if 'eval_seq' in args.modes:
     logging.info(f'Producing single evaluation snapshot sequence.')
+    logging.info(f'Creating new instance specification.')
+    instance_rddl_filepaths, graph_index_filepaths = create_instance( 
+        rddl_path=config['rddl_dirpath'],
+        n_instances=1,
+        min_size=args.min_size,
+        max_size=args.max_size,
+        horizon=args.game_time)
+    config['instance_rddl_filepaths'] = instance_rddl_filepaths
+    config['graph_index_filepaths'] = graph_index_filepaths
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'Instance specifications written to {instance_rddl_filepaths}. Graph indicies written to {graph_index_filepaths}.')
     simulator = Simulator()
     evaluation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],

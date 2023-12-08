@@ -1,5 +1,6 @@
 import time
 import re
+import os
 import random
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -85,12 +86,23 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
+def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+    }
+    filename = os.path.join(model_path, f'{filename_prefix}_checkpoint_{epoch}.pt')
+    torch.save(checkpoint, filename)
+    logging.info(f'Checkpoint saved: {filename}')
 
 def train_gnn(number_of_epochs=10, 
               sequence_file_name=None, 
               learning_rate=0.01, 
               batch_size=1, 
               hidden_layers_list=[[64, 64]],
+              checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               model_path='models/'):
 
     logging.info(f'GNN training started.')
@@ -132,6 +144,9 @@ def train_gnn(number_of_epochs=10,
             val_loss_values.append(val_loss)
             end_time = time.time()
             logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+            if epoch % checkpoint_interval == 0:
+                save_checkpoint(model, optimizer, epoch, epoch_loss, model_path, 'latest_model_checkpoint')
+                plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
 
         match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
         snapshot_name = match.group(1) if match else None
