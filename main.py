@@ -27,10 +27,10 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=16, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=1024, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=1024, help='Maximum number of hosts in each instance')
-parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
+parser.add_argument('--n_instances', type=int, default=512, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=512, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=512, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_init_compromised', type=int, default=16, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.5, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
 
@@ -40,7 +40,7 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 # and --rddl_path
 
 # Training
-parser.add_argument('--max_instances', type=int, default=[128], help='Maximum number of instances to use for training')
+parser.add_argument('--max_instances', type=int, default=[9999999], help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
@@ -54,6 +54,7 @@ parser.add_argument('--evaluation_sequences', type=int, default=64, help='Frames
 
 # Animation
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
+parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')
 parser.add_argument('--hide_state', action='store_true', help='Hide the attacker\'s state in the animation.')
 # and --predictor_filename and --predictor_type
@@ -162,6 +163,7 @@ if 'eval_seq' in args.modes:
         n_instances=args.evaluation_sequences,
         min_size=args.min_size,
         max_size=args.max_size,
+        n_init_compromised=args.n_init_compromised,
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
@@ -200,6 +202,7 @@ if 'anim_seq' in args.modes:
         n_instances=1,
         min_size=args.min_size,
         max_size=args.max_size,
+        n_init_compromised=args.n_init_compromised_animate,
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths

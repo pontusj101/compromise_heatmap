@@ -47,7 +47,7 @@ domain simple_compromise {
         observed_compromised'(?ht) =
             if (~compromised(?ht) ^ exists_{?hs : host, ?c : credentials} [CONNECTED(?hs, ?ht) ^ compromised(?hs) ^ ACCESSES(?c, ?ht) ^ cracked(?c) ^ compromise_attempt(?ht)])
                 then Bernoulli(0.9)
-            else Bernoulli(0.1);
+            else Bernoulli(0.01);
 
         cracked'(?c) =
             if (~cracked(?c) ^ crack_attempt(?c) ^ rttc_crack_attempt(?c) < 1 ^ exists_{?h : host} [STORES(?h, ?c) ^ compromised(?h)])

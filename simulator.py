@@ -87,6 +87,7 @@ class Simulator:
                     logging.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised after {step-start_step} steps. The graph contains {len(graph_index.attackstep_mapping)} attack steps. Continuing to log for {max_log_steps_after_total_compromise} steps.')
                 log_steps_after_total_compromise += 1
                 if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
+                    logging.debug(f'Simulation {sim_id} terminated due to complete compromise.')
                     break
             combined_features = torch.cat((graph_index.node_features, log_feature_vectors), dim=1)
             snapshot = Data(x=combined_features, edge_index=graph_index.edge_index, edge_type=graph_index.edge_type, y=labels)
@@ -96,8 +97,9 @@ class Simulator:
                 snapshot_sequence.append(snapshot)
 
             if done:
+                logging.debug(f'Simulation {sim_id} terminated by PyRDDLGym.')
                 break
-        logging.debug(f'Simulation {sim_id} ended after {step} steps.')
+        logging.debug(f'Simulation {sim_id} ended after {step} steps. Game time was set to {myEnv.horizon}.')
         myEnv.close()
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
