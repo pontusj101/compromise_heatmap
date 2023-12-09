@@ -3,7 +3,7 @@ import torch
 from datetime import datetime
 from graph_index import GraphIndex
 
-def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_connection_ratio=0.25, rddl_path='rddl/'):
+def create_random_instance(num_hosts, num_credentials, n_init_compromised, horizon, extra_host_host_connection_ratio=0.25, rddl_path='rddl/'):
 
     graph_index = GraphIndex(size=None)
     # Generate hosts and credentials
@@ -102,8 +102,12 @@ def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_
 
     # Define instance
     instance = 'instance simple_network_instance {\n\tdomain = simple_compromise;\n\tnon-fluents = simple_network;\n\n\tinit-state{\n'
-    initial_host = 'h1'
-    instance += f'\t\tcompromised({initial_host}) = true;\n'
+    
+    initial_hosts = ['h1']
+    for i in range(n_init_compromised - 1):
+        initial_hosts.append(hosts[random.randint(1, num_hosts - 1)])
+    for initial_host in initial_hosts:
+        instance += f'\t\tcompromised({initial_host}) = true;\n'
     for credential in credentials:
         instance += f'\t\trttc_crack_attempt({credential}) = {random.randint(0, 2)};\n'
     for host in hosts:
@@ -163,6 +167,7 @@ def create_instance(
         n_instances=1,
         min_size=8, 
         max_size=32,
+        n_init_compromised=1,
         extra_host_host_connection_ratio=0.25,
         horizon=150):
     
@@ -175,6 +180,7 @@ def create_instance(
         instance_string, graph_index = create_random_instance(
             num_hosts, 
             num_credentials, 
+            n_init_compromised,
             horizon=horizon, 
             extra_host_host_connection_ratio=extra_host_host_connection_ratio, 
             rddl_path=rddl_path)
