@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.colors as mcolors
 import torch
+import math
 from predictor import Predictor
 
 class Animator:
@@ -14,8 +15,12 @@ class Animator:
         indexed_snapshot_sequence = torch.load(animation_sequence_filename)
         self.snapshot_sequence = indexed_snapshot_sequence[0]['snapshot_sequence']
         self.graph_index = indexed_snapshot_sequence[0]['graph_index']
-        self.normal_size = 2*600  # Define normal size
-        self.enlarged_size = 2 * self.normal_size  # Define enlarged size
+        num_nodes = len(self.graph_index.object_mapping)
+        self.figsize = (30, 30)  # Define figure size
+        area_per_node = self.figsize[0] * self.figsize[1] / num_nodes
+        node_width = math.sqrt(area_per_node)
+        self.normal_node_size = 500 * node_width  # Define normal size
+        self.enlarged_node_size = 2 * self.normal_node_size  # Define enlarged size
             
         # Create a reverse mapping from node indices to names
         self.reverse_mapping = {v: k for k, v in self.graph_index.object_mapping.items()}
@@ -68,7 +73,7 @@ class Animator:
                 color = self.interpolate_color('white', 'red', prob)
 
             # Node size depends on latest monitored event
-            node_size = self.enlarged_size if snapshot.x[node_index, -1] == 1 else self.normal_size
+            node_size = self.enlarged_node_size if snapshot.x[node_index, -1] == 1 else self.normal_node_size
 
             # Determine node border color and width
             edge_color = 'black' if (status == 1 and not self.hide_state) else 'green'
@@ -98,8 +103,6 @@ class Animator:
         color_light_grey = '#D3D3D3'
         color_red = '#FF9999'
         color_yellow = '#FFFF99'
-        normal_size = 2*600  # Define normal size
-        enlarged_size = 2 * normal_size  # Define enlarged size
 
         # Update node colors and border styles based on their status and prediction
         color_map_host, size_map_host, edge_colors_host, edge_widths_host = self.process_nodes(host_nodes, snapshot, prediction)
@@ -124,7 +127,7 @@ class Animator:
 
         predictor = Predictor(predictor_type, predictor_filename)
 
-        fig, ax = plt.subplots(figsize=(30, 30))
+        fig, ax = plt.subplots(figsize=self.figsize)
         
         # Calculate layout once
         G_initial = self.create_graph(num=0)
