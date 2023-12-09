@@ -21,17 +21,17 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'explore', 'clean', 'all'], 
-    help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, evaluate, animate, explore and all.'
+    choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'eval', 'anim', 'explore', 'clean', 'all'], 
+    help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, eval, anim, explore, clean and all.'
 )
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=128, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_instances', type=int, default=16, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=1024, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=1024, help='Maximum number of hosts in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.5, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=2000, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
 parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
@@ -48,6 +48,7 @@ parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
+parser.add_argument('--evaluation_sequences', type=int, default=64, help='Frames per second in the animation.')
 # and --predictor_filename and --predictor_type
 
 # Animation
@@ -100,7 +101,7 @@ with open(CONFIG_FILE, 'r') as f:
 
 # Modes
 if 'all' in args.modes:
-    args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'clean']
+    args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'eval', 'anim']
 
 if 'instance' in args.modes:
     logging.info(f'Creating new instance specification.')
@@ -136,13 +137,27 @@ if 'simulate' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'Training data produced and written to {training_sequence_filepath}.')
 
+if 'train' in args.modes:
+    logging.info(f'Training GNN on a specific graph.')
+    predictor_filename = train_gnn(
+                    sequence_file_name=config['training_sequence_filepath'], 
+                    max_instances_list=args.max_instances,
+                    number_of_epochs=args.epochs, 
+                    learning_rate=args.learning_rate, 
+                    batch_size=args.batch_size, 
+                    hidden_layers_list=hidden_layers)
+    config['predictor_filename'] = predictor_filename
+    config['predictor_type'] = 'gnn'
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+    logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
-    logging.info(f'Producing eight evaluation snapshot sequences.')
-    logging.info(f'Creating eight new instance specification.')
+    logging.info(f'Producing {args.evaluation_sequences} evaluation snapshot sequences.')
+    logging.info(f'Creating {args.evaluation_sequences} new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        n_instances=32,
+        n_instances=args.evaluation_sequences,
         min_size=args.min_size,
         max_size=args.max_size,
         horizon=args.game_time)
@@ -152,7 +167,7 @@ if 'eval_seq' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
-    animation_sequence_filepath = simulator.produce_training_data_parallel(
+    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -163,10 +178,17 @@ if 'eval_seq' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['evaluation_sequence_filepath'] = animation_sequence_filepath
+    config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Evaulation data produced and written to {animation_sequence_filepath}.')
+    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
+
+if 'eval' in args.modes:
+    evaluator = Evaluator(trigger_threshold=args.trigger_threshold)
+    evaluator.evaluate_test_set(
+        predictor_type=config['predictor_type'], 
+        predictor_filename=config['predictor_filename'], 
+        test_snapshot_sequence_path=config['evaluation_sequence_filepath'])
 
 if 'anim_seq' in args.modes:
     logging.info(f'Producing single animantion snapshot sequence.')
@@ -199,30 +221,7 @@ if 'anim_seq' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'Animation data produced and written to {animation_sequence_filepath}.')
 
-if 'train' in args.modes:
-    logging.info(f'Training GNN on a specific graph.')
-    predictor_filename = train_gnn(
-                    sequence_file_name=config['training_sequence_filepath'], 
-                    max_instances_list=args.max_instances,
-                    number_of_epochs=args.epochs, 
-                    learning_rate=args.learning_rate, 
-                    batch_size=args.batch_size, 
-                    hidden_layers_list=hidden_layers)
-    config['predictor_filename'] = predictor_filename
-    config['predictor_type'] = 'gnn'
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
-    logging.info(f'GNN trained. Model written to {predictor_filename}.')
-
-
-if 'evaluate' in args.modes:
-    evaluator = Evaluator(trigger_threshold=args.trigger_threshold)
-    evaluator.evaluate_test_set(
-        predictor_type=config['predictor_type'], 
-        predictor_filename=config['predictor_filename'], 
-        test_snapshot_sequence_path=config['evaluation_sequence_filepath'])
-
-if 'animate' in args.modes:
+if 'anim' in args.modes:
     logging.info(f'Creating animation.')
     animator = Animator(config['animation_sequence_filepath'], 
                         hide_prediction=args.hide_prediction, 

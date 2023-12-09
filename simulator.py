@@ -97,7 +97,7 @@ class Simulator:
 
             if done:
                 break
-
+        logging.debug(f'Simulation {sim_id} ended after {step} steps.')
         myEnv.close()
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
