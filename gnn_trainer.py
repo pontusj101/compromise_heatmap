@@ -69,7 +69,6 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.legend()
     plt.savefig('loss_curves/' + filename)
     plt.close()
-    logging.info(f'Loss curves written to loss_curves/{filename}.')
 
 
 def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels, start_time):
@@ -95,11 +94,10 @@ def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
     }
     filename = os.path.join(model_path, f'{filename_prefix}_checkpoint_{epoch}.pt')
     torch.save(checkpoint, filename)
-    logging.info(f'Checkpoint saved: {filename}')
 
 def train_gnn(sequence_file_name=None, 
               number_of_epochs=10, 
-              max_instances=100,
+              max_instances_list=100,
               learning_rate=0.01, 
               batch_size=1, 
               hidden_layers_list=[[64, 64]],
@@ -109,65 +107,71 @@ def train_gnn(sequence_file_name=None,
     logging.info(f'GNN training started.')
 
     data = torch.load(sequence_file_name)
-    if max_instances < len(data):
-        data = data[:max_instances]
-    snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
-    first_graph = snapshot_sequence[0]
-    actual_num_features = first_graph.num_node_features
-    num_relations = first_graph.num_edge_types
-    train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+    hyperparam_results = []
+    for max_instances in max_instances_list:
+        if max_instances < len(data):
+            data = data[:max_instances]
+        snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
+        first_graph = snapshot_sequence[0]
+        actual_num_features = first_graph.num_node_features
+        num_relations = first_graph.num_edge_types
+        train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
 
-    for hidden_layers in hidden_layers_list:
-        # model = GCN([actual_num_features] + hidden_layers + [2])
-        model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
-        n_snapshots = len(snapshot_sequence)
+        for hidden_layers in hidden_layers_list:
+            # model = GCN([actual_num_features] + hidden_layers + [2])
+            model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
+            val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
+            n_snapshots = len(snapshot_sequence)
 
-        loss_values, val_loss_values = [], []
-        logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
-        for epoch in range(number_of_epochs):
-            start_time = time.time()
-            model.train()
-            epoch_loss = 0.0
-            for batch in train_loader:
-                optimizer.zero_grad()
-                out = model(batch)
-                out = F.log_softmax(out, dim=1)
-                loss = F.nll_loss(out, batch.y)
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()
+            loss_values, val_loss_values = [], []
+            logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
+            for epoch in range(number_of_epochs):
+                start_time = time.time()
+                model.train()
+                epoch_loss = 0.0
+                for batch in train_loader:
+                    optimizer.zero_grad()
+                    out = model(batch)
+                    out = F.log_softmax(out, dim=1)
+                    loss = F.nll_loss(out, batch.y)
+                    loss.backward()
+                    optimizer.step()
+                    epoch_loss += loss.item()
 
-            epoch_loss /= len(train_loader)
-            loss_values.append(epoch_loss)
+                epoch_loss /= len(train_loader)
+                loss_values.append(epoch_loss)
 
-            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-            val_loss_values.append(val_loss)
-            end_time = time.time()
-            logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-            if epoch % checkpoint_interval == 0:
-                save_checkpoint(model, optimizer, epoch, epoch_loss, model_path, 'latest_model_checkpoint')
-                plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
-            
-            # Early stopping
-            training_stagnation_threshold = 3
-            if epoch > training_stagnation_threshold:
-                if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
-                    logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
-                    break   
+                val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+                val_loss_values.append(val_loss)
+                end_time = time.time()
+                logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+                if epoch % checkpoint_interval == 0:
+                    save_checkpoint(model, optimizer, epoch, epoch_loss, model_path, 'latest_model_checkpoint')
+                    plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+                
+                # Early stopping
+                training_stagnation_threshold = 3
+                if epoch > training_stagnation_threshold:
+                    if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
+                        logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
+                        break   
 
+            match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+            snapshot_name = match.group(1) if match else None
+            date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+            plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
+            model_file_name = f'{model_path}model_{filename_root}.pt'
+            torch.save(model, model_file_name)
+            hr = {'model_file_name': model_file_name, 'max_instances': max_instances, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
+            hyperparam_results.append(hr)
+            logging.info(hr)
 
-        match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-        snapshot_name = match.group(1) if match else None
-        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
-        plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
-
-        model_file_name = f'{model_path}model_{filename_root}.pt'
-        torch.save(model, model_file_name)
-
+    with open('hyperparam_results.txt', 'a') as f:
+        f.write(f'{hyperparam_results}')
+        f.write('\n')
     return model_file_name
 

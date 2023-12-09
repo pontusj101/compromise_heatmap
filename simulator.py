@@ -104,7 +104,8 @@ class Simulator:
 
         output_file = os.path.join(tmp_path, f"simulation_{sim_id}.pkl")
         torch.save(indexed_snapshot_sequence, output_file)
-        
+        os.remove(instance_rddl_filepath)
+        os.remove(graph_index_filepath)
         return output_file
 
 

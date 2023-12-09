@@ -72,7 +72,7 @@ class Animator:
 
             # Determine node border color and width
             edge_color = 'black' if (status == 1 and not self.hide_state) else 'green'
-            edge_width = 3 if (status == 1 and not self.hide_state) == 1 else 2
+            edge_width = 5 if (status == 1 and not self.hide_state) == 1 else 2
 
             color_map.append(color)
             size_map.append(node_size)

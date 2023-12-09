@@ -1,0 +1,35 @@
+[{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[4]_n_69098_lr_0.001_bs_256_20231208_115557.pt', 
+    'max_instances': 128, 'hidden_layers': [4], 'epoch_loss': 0.27955033436969473, 'val_loss': 0.2671684454436655}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[32]_n_69098_lr_0.001_bs_256_20231208_115654.pt', 
+    'max_instances': 128, 'hidden_layers': [32], 'epoch_loss': 0.23423124077143492, 'val_loss': 0.22094257120732907}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256]_n_69098_lr_0.001_bs_256_20231208_120021.pt', 
+    'max_instances': 128, 'hidden_layers': [256], 'epoch_loss': 0.14137846924778488, 'val_loss': 0.14606695332460934}]
+
+[{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[4]_n_69098_lr_0.001_bs_256_20231208_121234.pt', 
+'max_instances': 128, 'hidden_layers': [4], 'epoch_loss': 0.285212479048857, 'val_loss': 0.26250497720859667}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[32]_n_69098_lr_0.001_bs_256_20231208_121332.pt', 
+'max_instances': 128, 'hidden_layers': [32], 'epoch_loss': 0.23512228019535542, 'val_loss': 0.2106600100243533}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256]_n_69098_lr_0.001_bs_256_20231208_121656.pt', 
+'max_instances': 128, 'hidden_layers': [256], 'epoch_loss': 0.14219987547645965, 'val_loss': 0.13176736180429105}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[4, 4]_n_69098_lr_0.001_bs_256_20231208_121807.pt', 
+'max_instances': 128, 'hidden_layers': [4, 4], 'epoch_loss': 0.3003822646483227, 'val_loss': 0.28244859559668434}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[32, 32]_n_69098_lr_0.001_bs_256_20231208_121921.pt', 
+'max_instances': 128, 'hidden_layers': [32, 32], 'epoch_loss': 0.20501433533650856, 'val_loss': 0.1811215027614876}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256, 256]_n_69098_lr_0.001_bs_256_20231208_122610.pt', 
+'max_instances': 128, 'hidden_layers': [256, 256], 'epoch_loss': 0.07571096523423437, 'val_loss': 0.09310779720544815}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[4, 4, 4]_n_69098_lr_0.001_bs_256_20231208_122731.pt', 
+'max_instances': 128, 'hidden_layers': [4, 4, 4], 'epoch_loss': 0.3135803522611106, 'val_loss': 0.29456142198156426}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[32, 32, 32]_n_69098_lr_0.001_bs_256_20231208_122900.pt', 
+'max_instances': 128, 'hidden_layers': [32, 32, 32], 'epoch_loss': 0.21800014645689064, 'val_loss': 0.21948187080798326}]
+
+[{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256]_n_69098_lr_0.001_bs_256_20231208_141005.pt', 
+'max_instances': 128, 'hidden_layers': [256], 'epoch_loss': 0.1406911850941402, 'val_loss': 0.1290459817758313}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256, 256]_n_69098_lr_0.001_bs_256_20231208_141704.pt', 
+'max_instances': 128, 'hidden_layers': [256, 256], 'epoch_loss': 0.07512000016868114, 'val_loss': 0.07901508333506407}, 
+{'model_file_name': 'models/model_n1024_l85_n_34_2000_20231208_090129_8213_hl_[256, 256, 256]_n_69098_lr_0.001_bs_256_20231208_142731.pt', 
+'max_instances': 128, 'hidden_layers': [256, 256, 256], 'epoch_loss': 0.06263116867867885, 'val_loss': 0.10832961510728907}]
+[{'model_file_name': 'models/model_n128_l256_n_32_2000_20231208_145045_5667_hl_[256, 256]_n_83496_lr_0.001_bs_256_20231208_150301.pt', 'max_instances': 128, 'hidden_layers': [256, 256], 'epoch_loss': 0.12602420028484645, 'val_loss': 0.21543372332146674}]
+[{'model_file_name': 'models/model_n128_l256_n_32_2000_20231208_145045_5667_hl_[512, 512]_n_83496_lr_0.001_bs_256_20231208_154613.pt', 'max_instances': 128, 'hidden_layers': [512, 512], 'epoch_loss': 0.07246684646983256, 'val_loss': 0.14884815432808615}]
+[{'model_file_name': 'models/model_n128_l128_n_16_2000_20231208_200724_7621_hl_[128, 128]_n_72335_lr_0.001_bs_256_20231208_201051.pt', 'max_instances': 128, 'hidden_layers': [128, 128], 'epoch_loss': 0.09410106938841059, 'val_loss': 0.07873350656346272}]
+[{'model_file_name': 'models/model_n128_l128_n_12_2000_20231208_203239_3631_hl_[128, 128]_n_70752_lr_0.001_bs_256_20231208_203608.pt', 'max_instances': 128, 'hidden_layers': [128, 128], 'epoch_loss': 0.22432134196430714, 'val_loss': 0.27807703534407274}]
+[{'model_file_name': 'models/model_n128_l128_n_16_2000_20231209_064647_2256_hl_[128, 128]_n_71496_lr_0.001_bs_256_20231209_065026.pt', 'max_instances': 128, 'hidden_layers': [128, 128], 'epoch_loss': 0.10073084046598524, 'val_loss': 0.08541176275217108}]

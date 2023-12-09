@@ -5,7 +5,7 @@ import ast
 import json
 from animator import Animator
 from gnn_explorer import Explorer
-from instance_creator import create_instance, create_mini_instance
+from instance_creator import create_instance
 from simulator import Simulator
 from evaluator import Evaluator
 from gnn_trainer import train_gnn
@@ -26,25 +26,26 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=64, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=8, help='Maximum number of hosts in each instance')
-parser.add_argument('--game_time', type=int, default=1000, help='Time horizon for the simulation') # small: 70, large: 500
+parser.add_argument('--n_instances', type=int, default=128, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
+parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
+parser.add_argument('--game_time', type=int, default=2000, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--log_window', type=int, default=-1, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
-parser.add_argument('--max_instances', type=int, default=64, help='Maximum number of instances to use for training')
+parser.add_argument('--max_instances', type=int, default=[128], help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[256, 256]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
 
 # Evaluation
-parser.add_argument('--trigger_threashold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
+parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
 # and --predictor_filename and --predictor_type
 
@@ -68,7 +69,7 @@ for handler in logger.handlers[:]:
     logger.removeHandler(handler)
 # Create a file handler and set level to debug
 file_handler = logging.FileHandler('log.log')
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(logging.DEBUG)
 # Create a console (stream) handler and set level to debug
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
@@ -84,7 +85,7 @@ logger.addHandler(console_handler)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.", module="pyRDDLGym.Visualizer.ChartViz")
-logging.warning('\n\n')
+warnings.filterwarnings("ignore", message="Attempting to set identical low and high ylims makes transformation singular; automatically expanding.", module="pyRDDLGym.Visualizer.ChartViz")
 
 max_start_time_step = args.log_window + int((args.game_time - args.log_window) / 2)
 max_log_steps_after_total_compromise = int(args.log_window / 2)
@@ -107,6 +108,7 @@ if 'instance' in args.modes:
         n_instances=args.n_instances,
         min_size=args.min_size,
         max_size=args.max_size,
+        extra_host_host_connection_ratio=args.extra_host_host_connection_ratio,
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
@@ -139,7 +141,7 @@ if 'eval_seq' in args.modes:
     logging.info(f'Creating eight new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        n_instances=8,
+        n_instances=32,
         min_size=args.min_size,
         max_size=args.max_size,
         horizon=args.game_time)
@@ -149,7 +151,7 @@ if 'eval_seq' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
-    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+    animation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -160,17 +162,17 @@ if 'eval_seq' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
+    config['evaluation_sequence_filepath'] = animation_sequence_filepath
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
+    logging.info(f'Evaulation data produced and written to {animation_sequence_filepath}.')
 
 if 'anim_seq' in args.modes:
     logging.info(f'Producing single animantion snapshot sequence.')
     logging.info(f'Creating new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        n_instances=8,
+        n_instances=1,
         min_size=args.min_size,
         max_size=args.max_size,
         horizon=args.game_time)
@@ -180,7 +182,7 @@ if 'anim_seq' in args.modes:
         json.dump(config, f, indent=4)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
-    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+    animation_sequence_filepath = simulator.produce_training_data_parallel(
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -191,16 +193,16 @@ if 'anim_seq' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['animation_sequence_filepath'] = evaluation_sequence_filepath
+    config['animation_sequence_filepath'] = animation_sequence_filepath
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
-    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
+    logging.info(f'Animation data produced and written to {animation_sequence_filepath}.')
 
 if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
                     sequence_file_name=config['training_sequence_filepath'], 
-                    max_instances=args.max_instances,
+                    max_instances_list=args.max_instances,
                     number_of_epochs=args.epochs, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
@@ -213,7 +215,7 @@ if 'train' in args.modes:
 
 
 if 'evaluate' in args.modes:
-    evaluator = Evaluator(trigger_threshold=0.5)
+    evaluator = Evaluator(trigger_threshold=args.trigger_threshold)
     evaluator.evaluate_test_set(
         predictor_type=config['predictor_type'], 
         predictor_filename=config['predictor_filename'], 
