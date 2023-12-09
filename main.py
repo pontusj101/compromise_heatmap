@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='Run different modes of the securit
 parser.add_argument(
     'modes', 
     nargs='+',  # '+' means one or more arguments
-    choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'explore', 'all'], 
+    choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'explore', 'clean', 'all'], 
     help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, evaluate, animate, explore and all.'
 )
 
@@ -252,7 +252,8 @@ if 'clean' in args.modes:
                     os.remove(file_path)  # Remove the file
             except Exception as e:
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
-    for filename in os.listdir("/workspaces/rddl_training_data_producer/models"):
+    directory = "/workspaces/rddl_training_data_producer/models"
+    for filename in os.listdir(directory):
         if filename.startswith("model_n"):
             file_path = os.path.join(directory, filename)
             try:
