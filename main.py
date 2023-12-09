@@ -1,4 +1,5 @@
 import argparse
+import os
 import logging
 import warnings
 import ast
@@ -99,7 +100,7 @@ with open(CONFIG_FILE, 'r') as f:
 
 # Modes
 if 'all' in args.modes:
-    args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate']
+    args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'evaluate', 'animate', 'clean']
 
 if 'instance' in args.modes:
     logging.info(f'Creating new instance specification.')
@@ -238,3 +239,16 @@ if 'explore' in args.modes:
     explorer = Explorer(config['predictor_type'], config['predictor_filename'])
     explorer.explore(config['evaluation_sequence_filepath'])
 
+if 'clean' in args.modes:
+    directories = ["/workspaces/rddl_training_data_producer/snapshot_sequences",
+                   "/workspaces/rddl_training_data_producer/loss_curves",
+                   "/workspaces/rddl_training_data_producer/tmp",
+                   "/workspaces/rddl_training_data_producer/rddl"]
+    for directory in directories:
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.remove(file_path)  # Remove the file
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
