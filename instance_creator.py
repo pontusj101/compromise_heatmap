@@ -34,7 +34,7 @@ def create_random_instance(num_hosts, num_credentials, horizon, extra_host_host_
         connected_pairs.add((hosts[i], hosts[i + 1]))
 
     # Additional random connections (optional, for more complexity)
-    while len(connected_pairs) < int(1 + extra_host_host_connection_ratio*num_hosts):
+    while len(connected_pairs) < int((1 + extra_host_host_connection_ratio)*num_hosts):
         a, b = random.sample(hosts, 2)
         if a != b:
             connected_pairs.add((a, b))

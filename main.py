@@ -30,7 +30,7 @@ parser.add_argument(
 parser.add_argument('--n_instances', type=int, default=128, help='Number of instances to create')
 parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
 parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
-parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
+parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.5, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 parser.add_argument('--game_time', type=int, default=2000, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
@@ -252,3 +252,12 @@ if 'clean' in args.modes:
                     os.remove(file_path)  # Remove the file
             except Exception as e:
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
+    for filename in os.listdir("/workspaces/rddl_training_data_producer/models"):
+        if filename.startswith("model_n"):
+            file_path = os.path.join(directory, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.remove(file_path)  # Remove the file
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
+    logging.info(f'Cleaned up.')

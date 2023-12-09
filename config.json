@@ -5,13 +5,13 @@
     "domain_rddl_filepath": "domain.rddl",
     "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n128_l128_n_16_2000_20231209_070502_1753.pkl",
     "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n32_l128_n_16_2000_20231209_070615_4971.pkl",
-    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_n_16_2000_20231209_071941_8246.pkl",
+    "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_n_16_2000_20231209_073334_3083.pkl",
     "predictor_type": "gnn",
     "predictor_filename": "models/model_n128_l128_n_16_2000_20231209_070502_1753_hl_[128, 128]_n_70252_lr_0.001_bs_256_20231209_070836.pt",
     "instance_rddl_filepaths": [
-        "rddl/instance_n_16_2000_20231209_071941_8246.rddl"
+        "rddl/instance_n_16_2000_20231209_073334_3083.rddl"
     ],
     "graph_index_filepaths": [
-        "rddl/graph_index_n_16_2000_20231209_071941_8246.pkl"
+        "rddl/graph_index_n_16_2000_20231209_073334_3083.pkl"
     ]
 }

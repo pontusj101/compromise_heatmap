@@ -68,5 +68,14 @@
             "console": "integratedTerminal",
             "justMyCode": true
         }
+        {
+            "name": "Clean",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["clean"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
     ]
 }
