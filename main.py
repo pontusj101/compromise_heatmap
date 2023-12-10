@@ -28,9 +28,9 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=1024, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=256, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=256, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_instances', type=int, default=16, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=4, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 parser.add_argument('--game_time', type=int, default=256, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
@@ -103,8 +103,14 @@ if args.log_window == -1:
 else:
     log_window = args.log_window
 
-with open(CONFIG_FILE, 'r') as f:
-    config = json.load(f)
+storage_client = storage.Client()
+bucket = storage_client.get_bucket('gnn_rddl')
+blob = bucket.blob('config.json')
+json_data = blob.download_as_string()
+config = json.loads(json_data.decode('utf-8'))
+
+# with open(CONFIG_FILE, 'r') as f:
+#     config = json.load(f)
 
 # Modes
 if 'all' in args.modes:

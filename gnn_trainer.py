@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
+from google.cloud import storage
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
@@ -96,6 +97,7 @@ def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
     torch.save(checkpoint, filename)
 
 def train_gnn(gnn_type='GAT',
+              bucket_name='gnn_rddl',
               sequence_file_name=None, 
               number_of_epochs=8, 
               max_instances_list=100,
@@ -111,7 +113,13 @@ def train_gnn(gnn_type='GAT',
     logging.info(f'GNN training started.')
 
     logging.info(f'Loading the snapshot sequence file...')
-    data = torch.load(sequence_file_name)
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(sequence_file_name)
+
+    blob.download_to_filename('/tmp/snapshot_sequence.pkl')
+
+    data = torch.load('/tmp/snapshot_sequence.pkl')
     logging.info(f'Loaded.')
     hyperparam_results = []
     for max_instances in max_instances_list:
@@ -192,8 +200,8 @@ def train_gnn(gnn_type='GAT',
             hyperparam_results.append(hr)
             logging.info(hr)
 
-    with open('hyperparam_results.txt', 'a') as f:
-        f.write(f'{hyperparam_results}')
-        f.write('\n')
+    # with open('hyperparam_results.txt', 'a') as f:
+    #     f.write(f'{hyperparam_results}')
+    #     f.write('\n')
     return model_file_name
 
