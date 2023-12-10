@@ -27,12 +27,12 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=128, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=64, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=64, help='Maximum number of hosts in each instance')
-parser.add_argument('--n_init_compromised', type=int, default=4, help='Number of hosts initially compromised in each instance')
+parser.add_argument('--n_instances', type=int, default=512, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=32, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=256, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_init_compromised', type=int, default=8, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=512, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
 parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
@@ -45,6 +45,7 @@ parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for 
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
 parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
 
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
@@ -148,7 +149,9 @@ if 'train' in args.modes:
                     number_of_epochs=args.epochs, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
-                    hidden_layers_list=hidden_layers)
+                    hidden_layers_list=hidden_layers,
+                    checkpoint_file=args.checkpoint_file)  # Add checkpoint file parameter
+
     config['predictor_filename'] = predictor_filename
     config['predictor_type'] = 'gnn'
     with open(CONFIG_FILE, 'w') as f:

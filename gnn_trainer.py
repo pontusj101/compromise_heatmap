@@ -102,11 +102,14 @@ def train_gnn(sequence_file_name=None,
               batch_size=1, 
               hidden_layers_list=[[64, 64]],
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
+              checkpoint_file=None,  # Add checkpoint file parameter
               model_path='models/'):
 
     logging.info(f'GNN training started.')
 
+    logging.info(f'Loading the snapshot sequence file...')
     data = torch.load(sequence_file_name)
+    logging.info(f'Loaded.')
     hyperparam_results = []
     for max_instances in max_instances_list:
         if max_instances < len(data):
@@ -121,13 +124,21 @@ def train_gnn(sequence_file_name=None,
             # model = GCN([actual_num_features] + hidden_layers + [2])
             model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            if checkpoint_file and os.path.isfile(checkpoint_file):
+                logging.info(f'Attempting to load model from {checkpoint_file}.')
+                checkpoint = torch.load(checkpoint_file)
+                model.load_state_dict(checkpoint['model_state_dict'])
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                start_epoch = checkpoint['epoch'] + 1
+                logging.info(f'Resuming training from epoch {start_epoch}')
+
             train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
             val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
             n_snapshots = len(snapshot_sequence)
 
             loss_values, val_loss_values = [], []
             logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
-            for epoch in range(number_of_epochs):
+            for epoch in range(start_epoch, number_of_epochs):
                 start_time = time.time()
                 model.train()
                 epoch_loss = 0.0
