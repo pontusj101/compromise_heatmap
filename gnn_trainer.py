@@ -86,16 +86,6 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
-    checkpoint = {
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': loss,
-    }
-    filename = os.path.join(model_path, f'{filename_prefix}_checkpoint_{epoch}.pt')
-    torch.save(checkpoint, filename)
-
 def train_gnn(gnn_type='GAT',
               bucket_name='gnn_rddl',
               sequence_file_name=None, 
@@ -108,7 +98,8 @@ def train_gnn(gnn_type='GAT',
               heads_per_layer=2, # Add a parameter to set number of attention heads per layer in case of GAT
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               checkpoint_file=None,  # Add checkpoint file parameter
-              model_path='models/'):
+              model_path='models/',
+              checkpoint_path='checkpoints/'):
 
     logging.info(f'GNN training started.')
 
@@ -116,11 +107,10 @@ def train_gnn(gnn_type='GAT',
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
     blob = bucket.blob(sequence_file_name)
-
     blob.download_to_filename('/tmp/snapshot_sequence.pkl')
-
     data = torch.load('/tmp/snapshot_sequence.pkl')
     logging.info(f'Loaded.')
+
     hyperparam_results = []
     for max_instances in max_instances_list:
         if max_instances < len(data):
@@ -145,7 +135,9 @@ def train_gnn(gnn_type='GAT',
             start_epoch = 0
             if checkpoint_file and os.path.isfile(checkpoint_file):
                 logging.info(f'Attempting to load model from {checkpoint_file}.')
-                checkpoint = torch.load(checkpoint_file)
+                blob = bucket.blob(checkpoint_file)
+                blob.download_to_filename('/tmp/checkpoint.pkl')
+                checkpoint = torch.load('/tmp/checkpoint.pkl')
                 model.load_state_dict(checkpoint['model_state_dict'])
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 start_epoch = checkpoint['epoch'] + 1
@@ -178,8 +170,18 @@ def train_gnn(gnn_type='GAT',
                 end_time = time.time()
                 logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
                 if epoch % checkpoint_interval == 0:
-                    save_checkpoint(model, optimizer, epoch, epoch_loss, model_path, 'latest_model_checkpoint')
-                    plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+                    checkpoint = {
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': loss,
+                    }
+                    filename = os.path.join(checkpoint_path, f'latest_checkpoint_{epoch}.pt')
+                    torch.save(checkpoint, 'local_checkpoint.pt')
+                    blob = bucket.blob(filename)
+                    blob.upload_from_filename('local_checkpoint.pt')
+
+                    # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
                 
                 # Early stopping
                 training_stagnation_threshold = 3
@@ -192,10 +194,13 @@ def train_gnn(gnn_type='GAT',
             snapshot_name = match.group(1) if match else None
             date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
-            plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
+            # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
+            torch.save(model, 'local_model.pt')
             model_file_name = f'{model_path}model_{filename_root}.pt'
-            torch.save(model, model_file_name)
+            blob = bucket.blob(model_file_name)
+            blob.upload_from_filename('local_model.pt')
+
             hr = {'model_file_name': model_file_name, 'max_instances': max_instances, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
             hyperparam_results.append(hr)
             logging.info(hr)

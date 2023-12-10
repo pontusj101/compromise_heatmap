@@ -42,11 +42,11 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
-parser.add_argument('--max_instances', type=int, default=[9999999], help='Maximum number of instances to use for training')
+parser.add_argument('--max_instances', type=int, default=[16], help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[1024, 1024], [128, 128, 128], [1024, 1024, 1024], [128, 128, 128, 128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128]]", help='Hidden layers configuration for GNN')
 parser.add_argument('--edge_embedding_dim', type=int, default=16, help='Edge embedding dimension for GAT')
 parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
