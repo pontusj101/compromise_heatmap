@@ -32,7 +32,7 @@ parser.add_argument('--min_size', type=int, default=128, help='Minimum number of
 parser.add_argument('--max_size', type=int, default=128, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=8, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
 parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
@@ -40,6 +40,7 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 # and --rddl_path
 
 # Training
+parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
 parser.add_argument('--max_instances', type=int, default=[9999999], help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
@@ -146,6 +147,7 @@ if 'simulate' in args.modes:
 if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
+                    gnn_type=args.gnn_type,
                     sequence_file_name=config['training_sequence_filepath'], 
                     max_instances_list=args.max_instances,
                     number_of_epochs=args.epochs, 
