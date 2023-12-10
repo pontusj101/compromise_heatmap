@@ -4,6 +4,7 @@ import logging
 import warnings
 import ast
 import json
+from google.cloud import storage
 from animator import Animator
 from gnn_explorer import Explorer
 from instance_creator import create_instance
