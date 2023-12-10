@@ -27,12 +27,12 @@ parser.add_argument(
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=128, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=128, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=128, help='Maximum number of hosts in each instance')
-parser.add_argument('--n_init_compromised', type=int, default=8, help='Number of hosts initially compromised in each instance')
+parser.add_argument('--n_instances', type=int, default=1024, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=256, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=256, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_init_compromised', type=int, default=4, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=500, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=256, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
 parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
@@ -45,7 +45,7 @@ parser.add_argument('--max_instances', type=int, default=[9999999], help='Maximu
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128, 128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[1024, 1024], [128, 128, 128], [1024, 1024, 1024], [128, 128, 128, 128]]", help='Hidden layers configuration for GNN')
 parser.add_argument('--edge_embedding_dim', type=int, default=16, help='Edge embedding dimension for GAT')
 parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')

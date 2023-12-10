@@ -97,7 +97,7 @@ def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
 
 def train_gnn(gnn_type='GAT',
               sequence_file_name=None, 
-              number_of_epochs=10, 
+              number_of_epochs=8, 
               max_instances_list=100,
               learning_rate=0.01, 
               batch_size=1, 
