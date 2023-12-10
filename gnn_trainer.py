@@ -11,7 +11,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
 from torch_geometric.loader import DataLoader
-from gnn import GCN, RGCN, GIN
+from gnn import GCN, RGCN, GIN, GAT
 
 
 def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
@@ -122,7 +122,8 @@ def train_gnn(sequence_file_name=None,
 
         for hidden_layers in hidden_layers_list:
             # model = GCN([actual_num_features] + hidden_layers + [2])
-            model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+            # model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+            model = GAT([actual_num_features] + hidden_layers + [2], 2, num_relations, 16)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             if checkpoint_file and os.path.isfile(checkpoint_file):
                 logging.info(f'Attempting to load model from {checkpoint_file}.')

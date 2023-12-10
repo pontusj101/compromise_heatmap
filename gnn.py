@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
+from torch_geometric.nn import GCNConv, GINConv, RGCNConv, GATConv, Sequential
 
 
 class GCN(torch.nn.Module):
@@ -41,6 +41,35 @@ class RGCN(torch.nn.Module):
                 x = F.relu(x)
                 x = F.dropout(x, training=self.training)
         return x
+
+
+class GAT(torch.nn.Module):
+    def __init__(self, layer_sizes, heads, num_edge_types, edge_embedding_dim):
+        super(GAT, self).__init__()
+        self.edge_type_embedding = torch.nn.Embedding(num_edge_types, edge_embedding_dim)
+        self.layers = torch.nn.ModuleList()
+
+        # Adjust the first layer's input size to account for edge type embeddings
+        in_channels = layer_sizes[0] + edge_embedding_dim
+
+        for i in range(len(layer_sizes) - 1):
+            out_channels = layer_sizes[i + 1] // heads[i]
+            self.layers.append(GATConv(in_channels, out_channels, heads=heads[i]))
+            in_channels = out_channels * heads[i]  # Update in_channels for the next layer
+
+    def forward(self, data):
+        x, edge_index, edge_type = data.x, data.edge_index, data.edge_type
+
+        # Embed edge types
+        edge_attr = self.edge_type_embedding(edge_type)
+
+        for i, layer in enumerate(self.layers):
+            x = layer(x, edge_index, edge_attr=edge_attr)
+            if i < len(self.layers) - 1:  # Apply ReLU and Dropout to all but the last layer
+                x = F.relu(x)
+                x = F.dropout(x, training=self.training)
+        return x
+    
 
 
 class GIN(torch.nn.Module):

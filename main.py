@@ -28,8 +28,8 @@ parser.add_argument(
 
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=512, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=32, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=256, help='Maximum number of hosts in each instance')
+parser.add_argument('--min_size', type=int, default=512, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=512, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=8, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 parser.add_argument('--game_time', type=int, default=512, help='Max time horizon for the simulation. Will stop when whole graph is compromised.') # small: 70, large: 500
