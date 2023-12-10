@@ -95,12 +95,15 @@ def save_checkpoint(model, optimizer, epoch, loss, model_path, filename_prefix):
     filename = os.path.join(model_path, f'{filename_prefix}_checkpoint_{epoch}.pt')
     torch.save(checkpoint, filename)
 
-def train_gnn(sequence_file_name=None, 
+def train_gnn(gnn_type='GAT',
+              sequence_file_name=None, 
               number_of_epochs=10, 
               max_instances_list=100,
               learning_rate=0.01, 
               batch_size=1, 
               hidden_layers_list=[[64, 64]],
+              edge_embedding_dim=16, # Add a parameter to set edge embedding dimension in case of GAT
+              heads_per_layer=2, # Add a parameter to set number of attention heads per layer in case of GAT
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               checkpoint_file=None,  # Add checkpoint file parameter
               model_path='models/'):
@@ -121,10 +124,17 @@ def train_gnn(sequence_file_name=None,
         train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
 
         for hidden_layers in hidden_layers_list:
-            # model = GCN([actual_num_features] + hidden_layers + [2])
-            # model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
-            model = GAT([actual_num_features] + hidden_layers + [2], 2, num_relations, 16)
+            if gnn_type == 'GCN':
+                model = GCN([actual_num_features] + hidden_layers + [2])
+            elif gnn_type == 'GIN':
+                model = GIN([actual_num_features] + hidden_layers + [2])
+            elif gnn_type == 'RGCN':
+                model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+            elif gnn_type == 'GAT':
+                heads = [heads_per_layer] * (len(hidden_layers) + 2)  # Number of attention heads in each layer
+                model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            start_epoch = 0
             if checkpoint_file and os.path.isfile(checkpoint_file):
                 logging.info(f'Attempting to load model from {checkpoint_file}.')
                 checkpoint = torch.load(checkpoint_file)

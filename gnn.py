@@ -50,7 +50,7 @@ class GAT(torch.nn.Module):
         self.layers = torch.nn.ModuleList()
 
         # Adjust the first layer's input size to account for edge type embeddings
-        in_channels = layer_sizes[0] + edge_embedding_dim
+        in_channels = layer_sizes[0] # + edge_embedding_dim
 
         for i in range(len(layer_sizes) - 1):
             out_channels = layer_sizes[i + 1] // heads[i]

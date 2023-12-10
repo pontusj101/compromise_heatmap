@@ -4,14 +4,14 @@
     "tmp_dirpath": "tmp/",
     "domain_rddl_filepath": "domain.rddl",
     "training_sequence_filepath": "snapshot_sequences/snapshot_sequence_n512_l128_n_242_512_20231209_204906_2593.pkl",
-    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n64_l128_n_256_512_20231210_051645_1173.pkl",
+    "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n64_l128_n_242_512_20231210_044733_3455.pkl",
     "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_n_512_512_20231210_053247_3927.pkl",
     "predictor_type": "gnn",
-    "predictor_filename": "models/model_n512_l128_n_242_512_20231209_204906_2593_hl_[128, 128]_n_186895_lr_0.001_bs_256_20231210_044412.pt",
+    "predictor_filename": "models/model_n512_l128_n_242_512_20231209_204906_2593_hl_[128, 128]_n_186895_lr_0.001_bs_256_20231210_074013.pt",
     "instance_rddl_filepaths": [
-        "rddl/instance_n_512_512_20231210_053247_3927.rddl"
+        "rddl/instance_n_128_500_20231210_070912_6236.rddl"
     ],
     "graph_index_filepaths": [
-        "rddl/graph_index_n_512_512_20231210_053247_3927.pkl"
+        "rddl/graph_index_n_128_500_20231210_070912_6236.pkl"
     ]
 }
