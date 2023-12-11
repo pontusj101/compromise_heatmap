@@ -109,11 +109,11 @@ if args.log_window == -1:
     log_window = int(2.5 * args.max_size)
 else:
     log_window = args.log_window
-
+bucket_name = 'gnn_rddl'
 storage_client = storage.Client()
-bucket = storage_client.get_bucket('gnn_rddl')
-blob = bucket.blob('config.json')
-json_data = blob.download_as_string()
+bucket = storage_client.get_bucket(bucket_name)
+config_blob = bucket.blob('config.json')
+json_data = config_blob.download_as_string()
 config = json.loads(json_data.decode('utf-8'))
 
 # with open(CONFIG_FILE, 'r') as f:
@@ -135,14 +135,15 @@ if 'instance' in args.modes:
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
 
 if 'simulate' in args.modes:
     logging.info(f'Producing training data.')
     simulator = Simulator()
     training_sequence_filepath = simulator.produce_training_data_parallel(
+        bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -154,8 +155,8 @@ if 'simulate' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
     config['training_sequence_filepath'] = training_sequence_filepath
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'Training data produced and written to {training_sequence_filepath}.')
 
 if 'train' in args.modes:
@@ -178,8 +179,8 @@ if 'train' in args.modes:
 
     config['predictor_filename'] = predictor_filename
     config['predictor_type'] = 'gnn'
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
@@ -194,11 +195,12 @@ if 'eval_seq' in args.modes:
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+        bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -210,8 +212,8 @@ if 'eval_seq' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
     config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
 
 if 'eval' in args.modes:
@@ -233,11 +235,12 @@ if 'anim_seq' in args.modes:
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     animation_sequence_filepath = simulator.produce_training_data_parallel(
+        bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
@@ -249,8 +252,8 @@ if 'anim_seq' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
     config['animation_sequence_filepath'] = animation_sequence_filepath
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'Animation data produced and written to {animation_sequence_filepath}.')
 
 if 'anim' in args.modes:

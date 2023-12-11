@@ -7,7 +7,7 @@
     "evaluation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n64_l128_n_22_256_20231210_100754_8192.pkl",
     "animation_sequence_filepath": "snapshot_sequences/snapshot_sequence_n1_l128_n_256_256_20231210_101114_6310.pkl",
     "predictor_type": "gnn",
-    "predictor_filename": "models/model_n1024_l128_n_46_256_20231210_080641_3768_hl_[128, 128]_n_129819_lr_0.001_bs_256_20231211_125508.pt",
+    "predictor_filename": "models/model_n1024_l128_n_46_256_20231210_080641_3768_hl_[128, 128]_n_129819_lr_0.001_bs_256_20231211_132754.pt",
     "instance_rddl_filepaths": [
         "rddl/instance_n_256_256_20231210_101114_6310.rddl"
     ],

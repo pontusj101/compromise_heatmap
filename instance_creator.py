@@ -1,5 +1,6 @@
 import random
 import torch
+from google.cloud import storage
 from datetime import datetime
 from graph_index import GraphIndex
 
@@ -163,6 +164,7 @@ def get_edges(connected_pairs, credential_to_host, credentials_stored_on_host, h
     return source_nodes, target_nodes, edge_type
 
 def create_instance(
+        bucket_name='gnn_rddl',
         rddl_path='rddl/',
         n_instances=1,
         min_size=8, 
@@ -189,9 +191,18 @@ def create_instance(
 
         rddl_file_path = f'{rddl_path}instance_n_{2*num_hosts}_{horizon}_{date_time_str}.rddl'
         graph_index_file_path = f'{rddl_path}graph_index_n_{2*num_hosts}_{horizon}_{date_time_str}.pkl'
-        with open(rddl_file_path, 'w') as f:
+        with open('local_instance.rddl', 'w') as f:
             f.write(instance_string)
-        torch.save(graph_index, graph_index_file_path)
+        torch.save(graph_index, 'local_graph_index.pkl')
+
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        rddl_blob = bucket.blob(rddl_file_path)
+        rddl_blob.upload_from_filename('local_instance.rddl')
+        gi_blob = bucket.blob(graph_index_file_path)
+        gi_blob.upload_from_filename('local_graph_index.pkl')
+
+
         rddl_file_paths.append(rddl_file_path)
         graph_index_file_paths.append(graph_index_file_path)
 

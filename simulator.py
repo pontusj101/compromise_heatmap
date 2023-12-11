@@ -8,6 +8,7 @@ import numpy
 import torch
 import logging
 import numpy as np
+from google.cloud import storage
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
 from agents import PassiveCyberAgent, RandomCyberAgent
@@ -47,6 +48,7 @@ class Simulator:
 
     def simulation_worker(self, 
                           sim_id, 
+                          bucket_name,
                           log_window, 
                           max_start_time_step, 
                           max_log_steps_after_total_compromise, 
@@ -55,9 +57,20 @@ class Simulator:
                           instance_rddl_filepath, 
                           tmp_path, 
                           random_cyber_agent_seed):
-        
-        myEnv = RDDLEnv.RDDLEnv(domain=domain_rddl_path, instance=instance_rddl_filepath)
-        graph_index = torch.load(graph_index_filepath)
+
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+        instance_blob = bucket.blob(instance_rddl_filepath)
+        local_instance_filepath = f'/tmp/instance_{sim_id}.rddl'
+        local_graph_index_filepath = f'/tmp/graph_index_{sim_id}.pkl'
+        instance_blob.download_to_filename(local_instance_filepath)
+        instance_blob.delete()
+        gi_blob = bucket.blob(graph_index_filepath)
+        gi_blob.download_to_filename(local_graph_index_filepath)
+        gi_blob.delete()
+
+        myEnv = RDDLEnv.RDDLEnv(domain=domain_rddl_path, instance=local_instance_filepath)
+        graph_index = torch.load(local_graph_index_filepath)
 
         start_time = time.time()
         n_nodes = len(graph_index.node_features)
@@ -104,16 +117,15 @@ class Simulator:
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
-        output_file = os.path.join(tmp_path, f"simulation_{sim_id}.pkl")
+        output_file = os.path.join("/tmp/", f"simulation_{sim_id}.pkl")
         torch.save(indexed_snapshot_sequence, output_file)
-        os.remove(instance_rddl_filepath)
-        os.remove(graph_index_filepath)
         return output_file
 
 
 
     def produce_training_data_parallel(
         self, 
+        bucket_name,
         domain_rddl_path,
         instance_rddl_filepaths,
         graph_index_filepaths,
@@ -127,6 +139,13 @@ class Simulator:
         
         start_time = time.time()
 
+        local_domain_filepath = f'/tmp/domain.rddl'
+        local_tmp_path = '/tmp/'
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+        domain_blob = bucket.blob(domain_rddl_path)
+        domain_blob.download_to_filename(local_domain_filepath)
+
 
         n_simulations = len(instance_rddl_filepaths)
         n_processes = multiprocessing.cpu_count()
@@ -134,7 +153,7 @@ class Simulator:
         logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], domain_rddl_path, instance_rddl_filepaths[i], tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], local_tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(self.simulation_worker, simulation_args)
         pool.close()
@@ -154,8 +173,12 @@ class Simulator:
 
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f'{snapshot_sequence_path}snapshot_sequence_n{n_simulations}_l{log_window}_{instance_name}.pkl'
-        torch.save(results, file_name)
+        torch.save(results, '/tmp/snapshot_sequence.pkl')
+        blob = bucket.blob(file_name)
+        blob.upload_from_filename('/tmp/snapshot_sequence.pkl')
+
         logging.info(f'Data saved to {file_name}')
+
 
         snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
         compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
