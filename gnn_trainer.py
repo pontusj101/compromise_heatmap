@@ -170,7 +170,7 @@ def train_gnn(gnn_type='GAT',
         model.train()
         epoch_loss = 0.0
         for batch in train_loader:
-            global_step += 1
+            global_step += len(batch.y)
             optimizer.zero_grad()
             out = model(batch)
             out = F.log_softmax(out, dim=1)
