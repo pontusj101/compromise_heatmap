@@ -5,6 +5,8 @@ import warnings
 import ast
 import json
 from google.cloud import storage
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
 from animator import Animator
 from gnn_explorer import Explorer
 from instance_creator import create_instance
@@ -42,11 +44,14 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
-parser.add_argument('--max_instances', type=int, default=[16], help='Maximum number of instances to use for training')
+parser.add_argument('--max_instances', type=int, default=16, help='Maximum number of instances to use for training')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--hidden_layers', nargs='+', type=str, default="[[128]]", help='Hidden layers configuration for GNN')
+parser.add_argument('--n_hidden_layer_1', type=int, default=128, help='Number of neurons in hidden layer 1 for GNN')
+parser.add_argument('--n_hidden_layer_2', type=int, default=128, help='Number of neurons in hidden layer 2 for GNN')
+parser.add_argument('--n_hidden_layer_3', type=int, default=0, help='Number of neurons in hidden layer 3 for GNN')
+parser.add_argument('--n_hidden_layer_4', type=int, default=0, help='Number of neurons in hidden layer 4 for GNN')
 parser.add_argument('--edge_embedding_dim', type=int, default=16, help='Edge embedding dimension for GAT')
 parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
@@ -66,10 +71,11 @@ parser.add_argument('--hide_state', action='store_true', help='Hide the attacker
 
 # Parse arguments
 args = parser.parse_args()
-hidden_layers_str = args.hidden_layers
-# hidden_layers_str = hidden_layers_str.strip("[]'\"")
-hidden_layers = ast.literal_eval(hidden_layers_str)
 
+client = google.cloud.logging.Client()
+handler = CloudLoggingHandler(client)
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().addHandler(handler)
 # Get the root logger
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)  # Set the log level
@@ -156,11 +162,14 @@ if 'train' in args.modes:
     predictor_filename = train_gnn(
                     gnn_type=args.gnn_type,
                     sequence_file_name=config['training_sequence_filepath'], 
-                    max_instances_list=args.max_instances,
+                    max_instances=args.max_instances,
                     number_of_epochs=args.epochs, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
-                    hidden_layers_list=hidden_layers,
+                    n_hidden_layer_1=args.n_hidden_layer_1,
+                    n_hidden_layer_2=args.n_hidden_layer_2,
+                    n_hidden_layer_3=args.n_hidden_layer_3,
+                    n_hidden_layer_4=args.n_hidden_layer_4,
                     edge_embedding_dim=args.edge_embedding_dim,
                     heads_per_layer=args.heads_per_layer, 
                     checkpoint_file=args.checkpoint_file)  # Add checkpoint file parameter
