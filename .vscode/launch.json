@@ -33,6 +33,15 @@
             "justMyCode": true
         },
         {
+            "name": "Train Special",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["train", "--batch_size=45", "--heads_per_layer=17", "--learning_rate=0.0010000000000000002", "--max_instances=128", "--epochs=33", "--edge_embedding_dim=64", "--n_hidden_layer_2=128", "--n_hidden_layer_1=128", "--n_hidden_layer_3=128"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Evaluation sequence",
             "type": "python",
             "request": "launch",

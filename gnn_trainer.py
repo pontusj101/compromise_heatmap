@@ -139,7 +139,7 @@ def train_gnn(gnn_type='GAT',
     elif gnn_type == 'RGCN':
         model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
     elif gnn_type == 'GAT':
-        heads = [heads_per_layer] * (len(hidden_layers) + 2)  # Number of attention heads in each layer
+        heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
         model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     start_epoch = 0
