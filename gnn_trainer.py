@@ -91,7 +91,8 @@ def train_gnn(gnn_type='GAT',
               bucket_name='gnn_rddl',
               sequence_file_name=None, 
               number_of_epochs=8, 
-              max_instances=100,
+              max_instances=9999,
+              max_log_window=9999,
               learning_rate=0.01, 
               batch_size=1, 
               n_hidden_layer_1=128,
@@ -119,9 +120,14 @@ def train_gnn(gnn_type='GAT',
     if max_instances < len(data):
         data = data[:max_instances]
     snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
+    for snapshot in snapshot_sequence:
+        snapshot.x = snapshot.x[:,:max_log_window]
     first_graph = snapshot_sequence[0]
     actual_num_features = first_graph.num_node_features
     num_relations = first_graph.num_edge_types
+    total_number_of_nodes = sum([len(snapshot.y) for snapshot in snapshot_sequence])
+    total_number_of_compromised_nodes = int(sum([sum(snapshot.y) for snapshot in snapshot_sequence]))
+
     train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
 
     hidden_layers = [n_hidden_layer_1]
@@ -155,11 +161,10 @@ def train_gnn(gnn_type='GAT',
 
     train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
-    n_snapshots = len(snapshot_sequence)
 
     loss_values, val_loss_values = [], []
     global_step = 0
-    logging.info(f'Training started. Number of snapshots: {n_snapshots}. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}.')
+    logging.info(f'Training started. Total number of nodes: {total_number_of_nodes} of which {total_number_of_compromised_nodes} were compromised. Number of snapshots: {len(snapshot_sequence)}. Log window: {first_graph.x.shape[1]} Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}, Edge embedding dimension: {edge_embedding_dim}.')
     for epoch in range(start_epoch, number_of_epochs):
         start_time = time.time()
         model.train()
@@ -210,7 +215,7 @@ def train_gnn(gnn_type='GAT',
     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
     snapshot_name = match.group(1) if match else None
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{n_snapshots}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+    filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
     torch.save(model, 'local_model.pt')

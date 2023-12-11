@@ -44,7 +44,8 @@ parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for ra
 
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
-parser.add_argument('--max_instances', type=int, default=16, help='Maximum number of instances to use for training')
+parser.add_argument('--max_instances', type=int, default=9999, help='Maximum number of instances to use for training')
+parser.add_argument('--max_log_window', type=int, default=9999, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
@@ -163,6 +164,7 @@ if 'train' in args.modes:
                     gnn_type=args.gnn_type,
                     sequence_file_name=config['training_sequence_filepath'], 
                     max_instances=args.max_instances,
+                    max_log_window=args.max_log_window,
                     number_of_epochs=args.epochs, 
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
