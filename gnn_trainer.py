@@ -191,17 +191,17 @@ def train_gnn(gnn_type='GAT',
             metric_value=val_loss,
             global_step=global_step)
         logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-        if epoch % checkpoint_interval == 0:
-            checkpoint = {
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss,
-            }
-            filename = os.path.join(checkpoint_path, f'latest_checkpoint_{epoch}.pt')
-            torch.save(checkpoint, 'local_checkpoint.pt')
-            blob = bucket.blob(filename)
-            blob.upload_from_filename('local_checkpoint.pt')
+        # if epoch % checkpoint_interval == 0:
+        #     checkpoint = {
+        #         'epoch': epoch,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'loss': loss,
+        #     }
+        #     filename = os.path.join(checkpoint_path, f'latest_checkpoint_{epoch}.pt')
+        #     torch.save(checkpoint, 'local_checkpoint.pt')
+        #     blob = bucket.blob(filename)
+        #     blob.upload_from_filename('local_checkpoint.pt')
 
             # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
         

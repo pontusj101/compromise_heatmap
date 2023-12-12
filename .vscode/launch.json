@@ -37,7 +37,7 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["train", "--batch_size=8", "--heads_per_layer=13", "--learning_rate=0.00014773473800489608", "--max_instances=154", "--epochs=4", "--edge_embedding_dim=50", "--n_hidden_layer_2=695", "--n_hidden_layer_1=449", "--n_hidden_layer_3=4"],
+            "args": ["train", "--batch_size=212", "--heads_per_layer=8", "--learning_rate=0.00035902666004404565", "--max_instances=97", "--epochs=18", "--edge_embedding_dim=155", "--n_hidden_layer_2=257", "--n_hidden_layer_1=33", "--n_hidden_layer_3=78"],
             "console": "integratedTerminal",
             "justMyCode": true
         },
