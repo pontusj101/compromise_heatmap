@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import io
 import re
 import time
 from datetime import datetime
@@ -117,8 +118,12 @@ class Simulator:
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
-        output_file = os.path.join("/tmp/", f"simulation_{sim_id}.pkl")
-        torch.save(indexed_snapshot_sequence, output_file)
+        output_file = f"{tmp_path}simulation_{sim_id}.pkl"
+        buffer = io.BytesIO()
+        torch.save(indexed_snapshot_sequence, buffer)
+        buffer.seek(0)
+        blob = bucket.blob(output_file)
+        blob.upload_from_file(buffer)
         return output_file
 
 
@@ -140,7 +145,6 @@ class Simulator:
         start_time = time.time()
 
         local_domain_filepath = f'/tmp/domain.rddl'
-        local_tmp_path = '/tmp/'
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(bucket_name)
         domain_blob = bucket.blob(domain_rddl_path)
@@ -153,7 +157,7 @@ class Simulator:
         logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], local_tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(self.simulation_worker, simulation_args)
         pool.close()
@@ -161,8 +165,12 @@ class Simulator:
 
         results = []
         for output_file in result_filenames:
-            results.append(torch.load(output_file))
-            os.remove(output_file) 
+            blob = bucket.blob(output_file)
+            buffer = io.BytesIO()
+            blob.download_to_file(buffer)
+            buffer.seek(0)
+            results.append(torch.load(buffer))
+            blob.delete()
 
         n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
 

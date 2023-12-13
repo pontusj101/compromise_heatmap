@@ -24,6 +24,15 @@
             "justMyCode": true
         },
         {
+            "name": "Instance Simulate",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["instance", "simulate"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Train",
             "type": "python",
             "request": "launch",
