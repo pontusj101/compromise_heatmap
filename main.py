@@ -14,7 +14,8 @@ from simulator import Simulator
 from evaluator import Evaluator
 from gnn_trainer import train_gnn
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'gnn-rddl-b602eb3e4b45.json'
+if os.environ.get('CODESPACES') == 'true':
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'gnn-rddl-b602eb3e4b45.json'
 
 # Constants
 CONFIG_FILE = 'config.json'
