@@ -113,13 +113,12 @@ def train_gnn(gnn_type='GAT',
     logging.info(f'Loading the snapshot sequence file...')
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
-    
+
     blob = bucket.blob(sequence_file_name)
     blob.download_to_filename('/tmp/snapshot_sequence.pkl')
     data = torch.load('/tmp/snapshot_sequence.pkl')
     logging.info(f'Loaded.')
 
-    hyperparam_results = []
     if max_instances < len(data):
         data = data[:max_instances]
     snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
@@ -236,11 +235,7 @@ def train_gnn(gnn_type='GAT',
     blob.upload_from_filename('local_model.pt')
 
     hr = {'model_file_name': model_file_name, 'max_instances': max_instances, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
-    hyperparam_results.append(hr)
     logging.info(hr)
 
-    # with open('hyperparam_results.txt', 'a') as f:
-    #     f.write(f'{hyperparam_results}')
-    #     f.write('\n')
     return model_file_name
 
