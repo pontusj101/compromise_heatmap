@@ -189,8 +189,8 @@ def create_instance(
 
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
 
-        rddl_file_path = f'{rddl_path}instance_nnodes_{2*num_hosts}_{horizon}_{date_time_str}.rddl'
-        graph_index_file_path = f'{rddl_path}graph_index_nnodes_{2*num_hosts}_{horizon}_{date_time_str}.pkl'
+        rddl_file_path = f'{rddl_path}instance_nnodes_{2*num_hosts}_gt_{horizon}_{date_time_str}.rddl'
+        graph_index_file_path = f'{rddl_path}graph_index_nnodes_{2*num_hosts}_gt_{horizon}_{date_time_str}.pkl'
         with open('local_instance.rddl', 'w') as f:
             f.write(instance_string)
         torch.save(graph_index, 'local_graph_index.pkl')

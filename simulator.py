@@ -181,7 +181,7 @@ class Simulator:
         instance_name = match.group(1) if match else None
 
 
-        file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_l{log_window}_{instance_name}.pkl'
+        file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_lw_{log_window}_{instance_name}.pkl'
         buffer = io.BytesIO()
         torch.save(results, buffer)
         buffer.seek(0)
