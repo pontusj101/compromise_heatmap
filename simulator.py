@@ -186,7 +186,7 @@ class Simulator:
         torch.save(results, buffer)
         buffer.seek(0)
         blob = bucket.blob(file_name)
-        blob.upload_from_filename(buffer)
+        blob.upload_from_file(buffer)
         buffer.close()
 
         logging.info(f'Data saved to {file_name}')
