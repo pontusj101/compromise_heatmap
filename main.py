@@ -38,10 +38,10 @@ parser.add_argument('--min_size', type=int, default=16, help='Minimum number of 
 parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=4, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=256, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=128, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--log_window', type=int, default=128, help='Size of the logging window')
+parser.add_argument('-l', '--log_window', type=int, default=64, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -145,22 +145,20 @@ if 'instance' in args.modes:
 if 'simulate' in args.modes:
     logging.info(f'Producing training data.')
     simulator = Simulator()
-    training_sequence_filepath = simulator.produce_training_data_parallel(
+    simulator.produce_training_data_parallel(
         bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'], 
-        tmp_path=config['tmp_dirpath'],
-        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
+        snapshot_sequence_path=config['training_sequence_dirpath'],
         log_window=log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['training_sequence_filepath'] = training_sequence_filepath
     json_str = json.dumps(config, indent=4)
     config_blob.upload_from_string(json_str)
-    logging.info(f'Training data produced and written to {training_sequence_filepath}.')
+    logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
 if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
@@ -202,22 +200,20 @@ if 'eval_seq' in args.modes:
     config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
-    evaluation_sequence_filepath = simulator.produce_training_data_parallel(
+    simulator.produce_training_data_parallel(
         bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'], 
-        tmp_path=config['tmp_dirpath'],
-        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
+        snapshot_sequence_path=config['evaluation_sequence_dirpath'],
         log_window=log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['evaluation_sequence_filepath'] = evaluation_sequence_filepath
     json_str = json.dumps(config, indent=4)
     config_blob.upload_from_string(json_str)
-    logging.info(f'Evaulation data produced and written to {evaluation_sequence_filepath}.')
+    logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
 
 if 'eval' in args.modes:
     evaluator = Evaluator(trigger_threshold=args.trigger_threshold)
@@ -242,22 +238,20 @@ if 'anim_seq' in args.modes:
     config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
-    animation_sequence_filepath = simulator.produce_training_data_parallel(
+    simulator.produce_training_data_parallel(
         bucket_name=bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
         graph_index_filepaths=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'], 
-        tmp_path=config['tmp_dirpath'],
-        snapshot_sequence_path=config['snapshot_sequence_dirpath'],
+        snapshot_sequence_path=config['animation_sequence_dirpath'],
         log_window=log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    config['animation_sequence_filepath'] = animation_sequence_filepath
     json_str = json.dumps(config, indent=4)
     config_blob.upload_from_string(json_str)
-    logging.info(f'Animation data produced and written to {animation_sequence_filepath}.')
+    logging.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
 
 if 'anim' in args.modes:
     logging.info(f'Creating animation.')

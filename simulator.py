@@ -11,6 +11,7 @@ import logging
 import numpy as np
 # from memory_profiler import profile
 from google.cloud import storage
+from google.cloud.storage.retry import DEFAULT_RETRY
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
 from agents import PassiveCyberAgent, RandomCyberAgent
@@ -57,7 +58,7 @@ class Simulator:
                           graph_index_filepath, 
                           domain_rddl_path, 
                           instance_rddl_filepath, 
-                          tmp_path, 
+                          storage_path, 
                           random_cyber_agent_seed):
 
         storage_client = storage.Client()
@@ -119,13 +120,17 @@ class Simulator:
         del myEnv
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
+        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
 
-        output_file = f"{tmp_path}simulation_{sim_id}.pkl"
+        output_file = f"{storage_path}log_window_{log_window}/{n_nodes}_nodes/{len(snapshot_sequence)}_snapshots/{date_time_str}.pkl"
         buffer = io.BytesIO()
         torch.save(indexed_snapshot_sequence, buffer)
         buffer.seek(0)
         blob = bucket.blob(output_file)
-        blob.upload_from_file(buffer)
+        modified_retry = DEFAULT_RETRY.with_deadline(60)
+        modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
+
+        blob.upload_from_file(buffer, retry=modified_retry)
         buffer.close()
         return output_file
 
@@ -139,7 +144,6 @@ class Simulator:
         max_start_time_step=100, 
         max_log_steps_after_total_compromise=50,
         rddl_path='rddl/', 
-        tmp_path='tmp/',
         snapshot_sequence_path = 'snapshot_sequences/',
         random_cyber_agent_seed=None):
         
@@ -158,50 +162,50 @@ class Simulator:
         logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], tmp_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], snapshot_sequence_path, random_cyber_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(self.simulation_worker, simulation_args)
         pool.close()
         pool.join()
 
-        results = []
-        for output_file in result_filenames:
-            blob = bucket.blob(output_file)
-            buffer = io.BytesIO()
-            blob.download_to_file(buffer)
-            buffer.seek(0)
-            results.append(torch.load(buffer))
-            buffer.close()
-            blob.delete()
+        # results = []
+        # for output_file in result_filenames:
+        #     blob = bucket.blob(output_file)
+        #     buffer = io.BytesIO()
+        #     blob.download_to_file(buffer)
+        #     buffer.seek(0)
+        #     results.append(torch.load(buffer))
+        #     buffer.close()
+        #     blob.delete()
 
-        n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
-
-
-        match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepaths[0])
-        instance_name = match.group(1) if match else None
+        # n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
 
 
-        file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_lw_{log_window}_{instance_name}.pkl'
-        buffer = io.BytesIO()
-        torch.save(results, buffer)
-        buffer.seek(0)
-        blob = bucket.blob(file_name)
-        blob.upload_from_file(buffer)
-        buffer.close()
-
-        logging.info(f'Data saved to {file_name}')
+        # match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepaths[0])
+        # instance_name = match.group(1) if match else None
 
 
-        snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
-        compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
+        # file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_lw_{log_window}_{instance_name}.pkl'
+        # buffer = io.BytesIO()
+        # torch.save(results, buffer)
+        # buffer.seek(0)
+        # blob = bucket.blob(file_name)
+        # blob.upload_from_file(buffer)
+        # buffer.close()
+
+        # logging.info(f'Data saved to {file_name}')
+
+
+        # snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
+        # compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
         logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
-        logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
-        random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
-        random_snapshot = snapshot_sequence[random_snapshot_index]
-        logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-        logging.debug(f'\n{random_snapshot.x[:,:1]}')
-        logging.debug(f'\n{random_snapshot.x[:,1:]}')
-        logging.debug(random_snapshot.y)
+        # logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
+        # random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
+        # random_snapshot = snapshot_sequence[random_snapshot_index]
+        # logging.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
+        # logging.debug(f'\n{random_snapshot.x[:,:1]}')
+        # logging.debug(f'\n{random_snapshot.x[:,1:]}')
+        # logging.debug(random_snapshot.y)
 
 
-        return file_name
+        # return file_name
