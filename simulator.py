@@ -9,7 +9,7 @@ import numpy
 import torch
 import logging
 import numpy as np
-from memory_profiler import profile
+# from memory_profiler import profile
 from google.cloud import storage
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
