@@ -9,6 +9,7 @@ import numpy
 import torch
 import logging
 import numpy as np
+from memory_profiler import profile
 from google.cloud import storage
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
@@ -115,6 +116,7 @@ class Simulator:
                 break
         logging.debug(f'Simulation {sim_id} ended after {step} steps. Game time was set to {myEnv.horizon}.')
         myEnv.close()
+        del myEnv
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
 
@@ -125,8 +127,6 @@ class Simulator:
         blob = bucket.blob(output_file)
         blob.upload_from_file(buffer)
         return output_file
-
-
 
     def produce_training_data_parallel(
         self, 
