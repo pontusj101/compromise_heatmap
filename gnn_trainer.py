@@ -215,7 +215,7 @@ def train_gnn(gnn_type='GAT',
     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
     snapshot_name = match.group(1) if match else None
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_root = f'{snapshot_name}_hl_{hidden_layers}_n_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+    filename_root = f'{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
     torch.save(model, 'local_model.pt')

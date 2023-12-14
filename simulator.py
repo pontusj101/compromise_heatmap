@@ -126,6 +126,7 @@ class Simulator:
         buffer.seek(0)
         blob = bucket.blob(output_file)
         blob.upload_from_file(buffer)
+        buffer.close()
         return output_file
 
     def produce_training_data_parallel(
@@ -170,6 +171,7 @@ class Simulator:
             blob.download_to_file(buffer)
             buffer.seek(0)
             results.append(torch.load(buffer))
+            buffer.close()
             blob.delete()
 
         n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
@@ -179,11 +181,13 @@ class Simulator:
         instance_name = match.group(1) if match else None
 
 
-        date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f'{snapshot_sequence_path}snapshot_sequence_n{n_simulations}_l{log_window}_{instance_name}.pkl'
-        torch.save(results, '/tmp/snapshot_sequence.pkl')
+        file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_l{log_window}_{instance_name}.pkl'
+        buffer = io.BytesIO()
+        torch.save(results, buffer)
+        buffer.seek(0)
         blob = bucket.blob(file_name)
-        blob.upload_from_filename('/tmp/snapshot_sequence.pkl')
+        blob.upload_from_filename(buffer)
+        buffer.close()
 
         logging.info(f'Data saved to {file_name}')
 
