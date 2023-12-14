@@ -1,6 +1,7 @@
 import time
 import re
 import os
+import io
 import random
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ import torch
 import logging
 import hypertune
 from google.cloud import storage
+from google.cloud.storage.retry import DEFAULT_RETRY
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
@@ -111,6 +113,7 @@ def train_gnn(gnn_type='GAT',
     logging.info(f'Loading the snapshot sequence file...')
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
+    
     blob = bucket.blob(sequence_file_name)
     blob.download_to_filename('/tmp/snapshot_sequence.pkl')
     data = torch.load('/tmp/snapshot_sequence.pkl')
@@ -198,10 +201,19 @@ def train_gnn(gnn_type='GAT',
         #         'optimizer_state_dict': optimizer.state_dict(),
         #         'loss': loss,
         #     }
-        #     filename = os.path.join(checkpoint_path, f'latest_checkpoint_{epoch}.pt')
-        #     torch.save(checkpoint, 'local_checkpoint.pt')
+        #     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+        #     snapshot_name = match.group(1) if match else None
+        #     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #     filename = f'{checkpoint_path}checkpoint_{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+
+        #     buffer = io.BytesIO()
+        #     torch.save(checkpoint, buffer)
+        #     buffer.seek(0)
         #     blob = bucket.blob(filename)
-        #     blob.upload_from_filename('local_checkpoint.pt')
+        #     modified_retry = DEFAULT_RETRY.with_deadline(60)
+        #     modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
+        #     blob.upload_from_file(buffer, retry=modified_retry)
+        #     buffer.close()
 
             # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
         
