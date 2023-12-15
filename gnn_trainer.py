@@ -91,10 +91,13 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
 
 def train_gnn(gnn_type='GAT',
               bucket_name='gnn_rddl',
+              sequence_dir_path='training_sequences/',
               sequence_file_name=None, 
               number_of_epochs=8, 
-              max_instances=9999,
-              max_log_window=9999,
+              max_sequences=99999999,
+              min_nodes=0,
+              max_nodes=99999999,
+              log_window=99999999,
               learning_rate=0.01, 
               batch_size=1, 
               n_hidden_layer_1=128,
@@ -114,18 +117,32 @@ def train_gnn(gnn_type='GAT',
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
 
+    prefix = f'{sequence_dir_path}log_window_{log_window}/'
+    log_window_filtered_filenames = [blob.name for blob in bucket.list_blobs(prefix=prefix)]
+    node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
+    random.shuffle(node_num_filtered_filenames)
+    filenames = node_num_filtered_filenames[:max_sequences]
+
+    first_filename = filenames[0]
+    blob = bucket.blob(first_filename)
+    blob.download_to_filename(f'/tmp/{first_filename}')
+    first_data = torch.load(f'/tmp/{first_filename}')
+    first_snapshot = first_data[0]['snapshot_sequence'][0]
+    actual_num_features = first_snapshot.num_node_features
+
+
     blob = bucket.blob(sequence_file_name)
     blob.download_to_filename('/tmp/snapshot_sequence.pkl')
     data = torch.load('/tmp/snapshot_sequence.pkl')
     logging.info(f'Loaded.')
 
-    if max_instances < len(data):
-        data = data[:max_instances]
+    if max_sequences < len(data):
+        data = data[:max_sequences]
     snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
     for snapshot in snapshot_sequence:
-        snapshot.x = snapshot.x[:,:max_log_window]
+        snapshot.x = snapshot.x[:,:log_window]
     first_graph = snapshot_sequence[0]
-    actual_num_features = first_graph.num_node_features
+    actual_num_features = first_graph.num_node_features + 1
     num_relations = first_graph.num_edge_types
     total_number_of_nodes = sum([len(snapshot.y) for snapshot in snapshot_sequence])
     total_number_of_compromised_nodes = int(sum([sum(snapshot.y) for snapshot in snapshot_sequence]))
@@ -151,15 +168,15 @@ def train_gnn(gnn_type='GAT',
         model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     start_epoch = 0
-    if checkpoint_file and os.path.isfile(checkpoint_file):
-        logging.info(f'Attempting to load model from {checkpoint_file}.')
-        blob = bucket.blob(checkpoint_file)
-        blob.download_to_filename('/tmp/checkpoint.pkl')
-        checkpoint = torch.load('/tmp/checkpoint.pkl')
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
-        logging.info(f'Resuming training from epoch {start_epoch}')
+    # if checkpoint_file and os.path.isfile(checkpoint_file):
+    #     logging.info(f'Attempting to load model from {checkpoint_file}.')
+    #     blob = bucket.blob(checkpoint_file)
+    #     blob.download_to_filename('/tmp/checkpoint.pkl')
+    #     checkpoint = torch.load('/tmp/checkpoint.pkl')
+    #     model.load_state_dict(checkpoint['model_state_dict'])
+    #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    #     start_epoch = checkpoint['epoch'] + 1
+    #     logging.info(f'Resuming training from epoch {start_epoch}')
 
     train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
@@ -234,7 +251,7 @@ def train_gnn(gnn_type='GAT',
     blob = bucket.blob(model_file_name)
     blob.upload_from_filename('local_model.pt')
 
-    hr = {'model_file_name': model_file_name, 'max_instances': max_instances, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
+    hr = {'model_file_name': model_file_name, 'max_instances': max_sequences, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
     logging.info(hr)
 
     return model_file_name

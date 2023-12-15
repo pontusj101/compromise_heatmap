@@ -64,36 +64,28 @@
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["evaluate"],
+            "args": ["eval"],
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
         {
             "name": "Animate",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["animate", "--hide_state", "--hide_prediction"],
+            "args": ["anim"],
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
         {
-            "name": "Explore",
+            "name": "Animation sequence and animate",
             "type": "python",
             "request": "launch",
             "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["explore"],
+            "args": ["anim_seq", "anim"],
             "console": "integratedTerminal",
             "justMyCode": true
         }
-        {
-            "name": "Clean",
-            "type": "python",
-            "request": "launch",
-            "program": "/workspaces/rddl_training_data_producer/main.py",
-            "args": ["clean"],
-            "console": "integratedTerminal",
-            "justMyCode": true
-        }
+
     ]
 }

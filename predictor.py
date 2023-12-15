@@ -1,14 +1,25 @@
+import io
 import torch
 from torch.nn.functional import softmax
+from google.cloud import storage
+
 
 class Predictor:
-    def __init__(self, predictor_type, file_name):
+    def __init__(self, predictor_type, filename, bucket_name='gnn_rddl'):
         self.predictor_type = predictor_type
         if predictor_type == 'gnn':
-            self.model = torch.load(file_name)
+            client = storage.Client()
+            bucket = client.get_bucket(bucket_name)
+            blob = bucket.blob(filename)
+            buffer = io.BytesIO()
+            blob.download_to_file(buffer)
+            buffer.seek(0)
+            self.model = torch.load(buffer)
+            buffer.close()
+
             self.model.eval()
         elif predictor_type == 'tabular':
-            indexed_snapshot_sequence = torch.load(file_name)
+            indexed_snapshot_sequence = torch.load(filename)
             self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
 
         elif predictor_type == 'none':

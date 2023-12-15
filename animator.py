@@ -1,3 +1,4 @@
+import io
 import networkx as nx
 import logging
 import matplotlib.pyplot as plt
@@ -5,16 +6,25 @@ import matplotlib.animation as animation
 import matplotlib.colors as mcolors
 import torch
 import math
+from google.cloud import storage
 from predictor import Predictor
 
 class Animator:
-    def __init__(self, animation_sequence_filename, hide_prediction=False, hide_state=False):
+    def __init__(self, animation_sequence_filename, bucket_name='gnn_rddl', hide_prediction=False, hide_state=False):
         self.animation_sequence_filename = animation_sequence_filename
         self.hide_prediction = hide_prediction
         self.hide_state = hide_state
-        indexed_snapshot_sequence = torch.load(animation_sequence_filename)
-        self.snapshot_sequence = indexed_snapshot_sequence[0]['snapshot_sequence']
-        self.graph_index = indexed_snapshot_sequence[0]['graph_index']
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        blob = bucket.blob(animation_sequence_filename)
+        buffer = io.BytesIO()
+        blob.download_to_file(buffer)
+        buffer.seek(0)
+        indexed_snapshot_sequence = torch.load(buffer)
+        buffer.close()
+
+        self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        self.graph_index = indexed_snapshot_sequence['graph_index']
         num_nodes = len(self.graph_index.object_mapping)
         self.figsize = (30, 30)  # Define figure size
         area_per_node = self.figsize[0] * self.figsize[1] / num_nodes
@@ -122,10 +132,10 @@ class Animator:
 
         ax.set_title(f"Step {num}")
 
-    def create_animation(self, predictor_type, predictor_filename, frames_per_second=25):
+    def create_animation(self, predictor_type, predictor_filename, bucket_name='gnn_rddl' frames_per_second=25):
         logging.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
-        predictor = Predictor(predictor_type, predictor_filename)
+        predictor = Predictor(predictor_type, bucket_name=bucket_name, predictor_filename)
 
         fig, ax = plt.subplots(figsize=self.figsize)
         
