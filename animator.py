@@ -132,10 +132,10 @@ class Animator:
 
         ax.set_title(f"Step {num}")
 
-    def create_animation(self, predictor_type, predictor_filename, bucket_name='gnn_rddl' frames_per_second=25):
+    def create_animation(self, predictor_type, predictor_filename, bucket_name='gnn_rddl', frames_per_second=25):
         logging.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
-        predictor = Predictor(predictor_type, bucket_name=bucket_name, predictor_filename)
+        predictor = Predictor(predictor_type, predictor_filename, bucket_name=bucket_name)
 
         fig, ax = plt.subplots(figsize=self.figsize)
         

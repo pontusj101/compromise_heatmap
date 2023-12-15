@@ -34,23 +34,23 @@ parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of
 
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=16, help='Number of instances to create')
-parser.add_argument('--min_size', type=int, default=128, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=256, help='Maximum number of hosts in each instance')
+parser.add_argument('--n_instances', type=int, default=4, help='Number of instances to create')
+parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=16, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=512, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--game_time', type=int, default=32, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--sim_log_window', type=int, default=256, help='Size of the logging window')
+parser.add_argument('-l', '--sim_log_window', type=int, default=4, help='Size of the logging window')
 parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
 parser.add_argument('--max_instances', type=int, default=9999, help='Maximum number of instances to use for training')
-parser.add_argument('--train_log_window', type=int, default=256, help='Size of the logging window')
-parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
+parser.add_argument('--train_log_window', type=int, default=4, help='Size of the logging window')
+parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
 parser.add_argument('--n_hidden_layer_1', type=int, default=128, help='Number of neurons in hidden layer 1 for GNN')
@@ -182,10 +182,10 @@ if 'train' in args.modes:
                     heads_per_layer=args.heads_per_layer, 
                     checkpoint_file=args.checkpoint_file)  # Add checkpoint file parameter
 
-    config['predictor_filename'] = predictor_filename
-    config['predictor_type'] = 'gnn'
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    # config['predictor_filename'] = predictor_filename
+    # config['predictor_type'] = 'gnn'
+    # json_str = json.dumps(config, indent=4)
+    # config_blob.upload_from_string(json_str)
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
@@ -198,25 +198,25 @@ if 'eval_seq' in args.modes:
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
         horizon=args.game_time)
-    config['instance_rddl_filepaths'] = instance_rddl_filepaths
-    config['graph_index_filepaths'] = graph_index_filepaths
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    # config['instance_rddl_filepaths'] = instance_rddl_filepaths
+    # config['graph_index_filepaths'] = graph_index_filepaths
+    # json_str = json.dumps(config, indent=4)
+    # config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
         bucket_name=args.bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
-        instance_rddl_filepaths=config['instance_rddl_filepaths'],
-        graph_index_filepaths=config['graph_index_filepaths'],
+        instance_rddl_filepaths=instance_rddl_filepaths,
+        graph_index_filepaths=graph_index_filepaths,
         rddl_path=config['rddl_dirpath'], 
         snapshot_sequence_path=config['evaluation_sequence_dirpath'],
         log_window=sim_log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    # json_str = json.dumps(config, indent=4)
+    # config_blob.upload_from_string(json_str)
     logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
 
 if 'eval' in args.modes:
@@ -237,17 +237,17 @@ if 'anim_seq' in args.modes:
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised_animate,
         horizon=args.game_time)
-    config['instance_rddl_filepaths'] = instance_rddl_filepaths
-    config['graph_index_filepaths'] = graph_index_filepaths
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    # config['instance_rddl_filepaths'] = instance_rddl_filepaths
+    # config['graph_index_filepaths'] = graph_index_filepaths
+    # json_str = json.dumps(config, indent=4)
+    # config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
         bucket_name=args.bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
-        instance_rddl_filepaths=config['instance_rddl_filepaths'],
-        graph_index_filepaths=config['graph_index_filepaths'],
+        instance_rddl_filepaths=instance_rddl_filepaths,
+        graph_index_filepaths=graph_index_filepaths,
         rddl_path=config['rddl_dirpath'], 
         snapshot_sequence_path=config['animation_sequence_dirpath'],
         log_window=sim_log_window, 
@@ -273,31 +273,4 @@ if 'anim' in args.modes:
     logging.info(s)
     print(s)
 
-if 'explore' in args.modes:
-    logging.info(f'Exploring.')
-    explorer = Explorer(config['predictor_type'], config['predictor_filename'])
-    explorer.explore(config['evaluation_sequence_filepath'])
 
-if 'clean' in args.modes:
-    directories = ["/workspaces/rddl_training_data_producer/snapshot_sequences",
-                   "/workspaces/rddl_training_data_producer/loss_curves",
-                   "/workspaces/rddl_training_data_producer/tmp",
-                   "/workspaces/rddl_training_data_producer/rddl"]
-    for directory in directories:
-        for filename in os.listdir(directory):
-            file_path = os.path.join(directory, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.remove(file_path)  # Remove the file
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
-    directory = "/workspaces/rddl_training_data_producer/models"
-    for filename in os.listdir(directory):
-        if filename.startswith("model_n"):
-            file_path = os.path.join(directory, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.remove(file_path)  # Remove the file
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
-    logging.info(f'Cleaned up.')

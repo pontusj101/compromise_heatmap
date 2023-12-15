@@ -125,29 +125,14 @@ def train_gnn(gnn_type='GAT',
 
     first_filename = filenames[0]
     blob = bucket.blob(first_filename)
-    blob.download_to_filename(f'/tmp/{first_filename}')
-    first_data = torch.load(f'/tmp/{first_filename}')
-    first_snapshot = first_data[0]['snapshot_sequence'][0]
-    actual_num_features = first_snapshot.num_node_features
-
-
-    blob = bucket.blob(sequence_file_name)
-    blob.download_to_filename('/tmp/snapshot_sequence.pkl')
-    data = torch.load('/tmp/snapshot_sequence.pkl')
-    logging.info(f'Loaded.')
-
-    if max_sequences < len(data):
-        data = data[:max_sequences]
-    snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in data] for item in sublist]
-    for snapshot in snapshot_sequence:
-        snapshot.x = snapshot.x[:,:log_window]
-    first_graph = snapshot_sequence[0]
-    actual_num_features = first_graph.num_node_features + 1
-    num_relations = first_graph.num_edge_types
-    total_number_of_nodes = sum([len(snapshot.y) for snapshot in snapshot_sequence])
-    total_number_of_compromised_nodes = int(sum([sum(snapshot.y) for snapshot in snapshot_sequence]))
-
-    train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+    buffer = io.BytesIO()
+    blob.download_to_file(buffer)
+    buffer.seek(0)
+    first_data = torch.load(buffer)
+    buffer.close()
+    first_snapshot = first_data['snapshot_sequence'][0]
+    actual_num_features = log_window + 1
+    num_relations = first_snapshot.num_edge_types
 
     hidden_layers = [n_hidden_layer_1]
     if n_hidden_layer_4 > 0:
@@ -178,81 +163,107 @@ def train_gnn(gnn_type='GAT',
     #     start_epoch = checkpoint['epoch'] + 1
     #     logging.info(f'Resuming training from epoch {start_epoch}')
 
-    train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
-
     loss_values, val_loss_values = [], []
     global_step = 0
-    logging.info(f'Training started. Total number of nodes: {total_number_of_nodes} of which {total_number_of_compromised_nodes} were compromised. Number of snapshots: {len(snapshot_sequence)}. Log window: {first_graph.x.shape[1]} Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Batch size: {batch_size}. Number of epochs: {number_of_epochs}, Edge embedding dimension: {edge_embedding_dim}.')
+
+    total_instances_processed = 0  # Counter for total instances processed
+
     for epoch in range(start_epoch, number_of_epochs):
-        start_time = time.time()
-        model.train()
-        epoch_loss = 0.0
-        for batch in train_loader:
-            global_step += len(batch.y)
-            optimizer.zero_grad()
-            out = model(batch)
-            out = F.log_softmax(out, dim=1)
-            loss = F.nll_loss(out, batch.y)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
+        for file_name in filenames:
 
-        epoch_loss /= len(train_loader)
-        loss_values.append(epoch_loss)
+            blob = bucket.blob(file_name)
+            buffer = io.BytesIO()
+            blob.download_to_file(buffer)
+            buffer.seek(0)
+            data = torch.load(buffer)
+            buffer.close()
+            logging.info(f'Snapshot sequence file oaded.')
+            snapshot_sequence = data['snapshot_sequence']
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-        val_loss_values.append(val_loss)
-        end_time = time.time()
-        hpt = hypertune.HyperTune()
-        hpt.report_hyperparameter_tuning_metric(
-            hyperparameter_metric_tag='validation_loss',
-            metric_value=val_loss,
-            global_step=global_step)
-        logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-        # if epoch % checkpoint_interval == 0:
-        #     checkpoint = {
-        #         'epoch': epoch,
-        #         'model_state_dict': model.state_dict(),
-        #         'optimizer_state_dict': optimizer.state_dict(),
-        #         'loss': loss,
-        #     }
-        #     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-        #     snapshot_name = match.group(1) if match else None
-        #     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        #     filename = f'{checkpoint_path}checkpoint_{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+            for snapshot in snapshot_sequence:
+                if total_instances_processed >= max_sequences:
+                    break  # Stop if max_instances limit is reached
+                snapshot.x = snapshot.x[:, :log_window + 1]
+                total_instances_processed += 1
 
-        #     buffer = io.BytesIO()
-        #     torch.save(checkpoint, buffer)
-        #     buffer.seek(0)
-        #     blob = bucket.blob(filename)
-        #     modified_retry = DEFAULT_RETRY.with_deadline(60)
-        #     modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
-        #     blob.upload_from_file(buffer, retry=modified_retry)
-        #     buffer.close()
+            if total_instances_processed >= max_sequences:
+                break
 
-            # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
-        
-        # Early stopping
-        training_stagnation_threshold = 3
-        if epoch > training_stagnation_threshold:
-            if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
-                logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
-                break   
+            # Splitting the data into training and validation sets for this file
+            train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+            train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
+            val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
+
+            start_time = time.time()
+            model.train()
+            epoch_loss = 0.0
+            for batch in train_loader:
+                global_step += len(batch.y)
+                optimizer.zero_grad()
+                out = model(batch)
+                out = F.log_softmax(out, dim=1)
+                loss = F.nll_loss(out, batch.y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+
+            epoch_loss /= len(train_loader)
+            loss_values.append(epoch_loss)
+
+            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+            val_loss_values.append(val_loss)
+            end_time = time.time()
+            hpt = hypertune.HyperTune()
+            hpt.report_hyperparameter_tuning_metric(
+                hyperparameter_metric_tag='validation_loss',
+                metric_value=val_loss,
+                global_step=global_step)
+            logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+            # if epoch % checkpoint_interval == 0:
+            #     checkpoint = {
+            #         'epoch': epoch,
+            #         'model_state_dict': model.state_dict(),
+            #         'optimizer_state_dict': optimizer.state_dict(),
+            #         'loss': loss,
+            #     }
+            #     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+            #     snapshot_name = match.group(1) if match else None
+            #     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     filename = f'{checkpoint_path}checkpoint_{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+
+            #     buffer = io.BytesIO()
+            #     torch.save(checkpoint, buffer)
+            #     buffer.seek(0)
+            #     blob = bucket.blob(filename)
+            #     modified_retry = DEFAULT_RETRY.with_deadline(60)
+            #     modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
+            #     blob.upload_from_file(buffer, retry=modified_retry)
+            #     buffer.close()
+
+                # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+            
+            # Early stopping
+            training_stagnation_threshold = 3
+            if epoch > training_stagnation_threshold:
+                if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
+                    logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
+                    break   
 
     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-    snapshot_name = match.group(1) if match else None
+    snapshot_name = os.path.commonprefix(filenames).replace('training_sequences/', '')
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_root = f'{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
+    filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
+
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
-    torch.save(model, 'local_model.pt')
+    buffer = io.BytesIO()
+    torch.save(model, buffer)
+    buffer.seek(0)
     model_file_name = f'{model_path}model_{filename_root}.pt'
     blob = bucket.blob(model_file_name)
-    blob.upload_from_filename('local_model.pt')
-
-    hr = {'model_file_name': model_file_name, 'max_instances': max_sequences, 'hidden_layers': hidden_layers, 'epoch_loss': epoch_loss, 'val_loss': val_loss}
-    logging.info(hr)
+    blob.upload_from_file(buffer)
+    buffer.close()
 
     return model_file_name
 
