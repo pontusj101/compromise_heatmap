@@ -164,7 +164,7 @@ if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
                     gnn_type=args.gnn_type,
-                    sequence_file_name=config['training_sequence_filepath'], 
+                    sequence_file_name=config['training_sequence_dirpath'], 
                     max_instances=args.max_instances,
                     max_log_window=args.max_log_window,
                     number_of_epochs=args.epochs, 
