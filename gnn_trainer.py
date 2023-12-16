@@ -189,6 +189,7 @@ def train_gnn(gnn_type='GAT',
         total_batches = 0
         all_val_snapshots = []
         for i, file_name in enumerate(training_sequence_filenames):
+            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}.')
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
 
@@ -228,7 +229,7 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Training on file {i}/{len(training_sequence_filenames)}. Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         # if epoch % checkpoint_interval == 0:
         #     checkpoint = {
         #         'epoch': epoch,
