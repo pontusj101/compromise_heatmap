@@ -2,20 +2,14 @@ import io
 import torch
 from torch.nn.functional import softmax
 from google.cloud import storage
+from bucket_manager import BucketManager
 
 
 class Predictor:
-    def __init__(self, predictor_type, filename, bucket_name='gnn_rddl'):
+    def __init__(self, predictor_type, filename, bucket_manager):
         self.predictor_type = predictor_type
         if predictor_type == 'gnn':
-            client = storage.Client()
-            bucket = client.get_bucket(bucket_name)
-            blob = bucket.blob(filename)
-            buffer = io.BytesIO()
-            blob.download_to_file(buffer)
-            buffer.seek(0)
-            self.model = torch.load(buffer)
-            buffer.close()
+            self.model = bucket_manager.torch_load_from_bucket(filename)
 
             self.model.eval()
         elif predictor_type == 'tabular':

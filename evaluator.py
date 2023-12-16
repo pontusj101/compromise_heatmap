@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from sklearn.metrics import precision_score, recall_score, f1_score
 from predictor import Predictor
+from util import get_sequence_filenames
 
 class Evaluator:
     def __init__(self, trigger_threshold=0.5):
@@ -49,9 +50,11 @@ class Evaluator:
         self.print_results(predictor.predictor_type, snapshot_sequence, all_true_labels, all_predicted_labels, start_time)
         return all_predicted_labels, all_true_labels
 
-    def evaluate_test_set(self, predictor_type, predictor_filename, test_snapshot_sequence_path, bucket_name='gnn_rddl'):
-        logging.info(f'Evaluating {predictor_type} predictor {predictor_filename} on {test_snapshot_sequence_path}.')
-        predictor = Predictor(predictor_type, predictor_filename, bucket_name=bucket_name)
+    def evaluate_test_set(self, predictor_type, predictor_filename, test_snapshot_sequence_path, bucket_manager):
+        sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
+
+        logging.info(f'Evaluating {predictor_type} predictor {predictor_filename} on .')
+        predictor = Predictor(predictor_type, predictor_filename, bucket_manager=bucket_manager)
         indexed_snapshot_sequence = torch.load(test_snapshot_sequence_path)
         snapshot_sequence = indexed_snapshot_sequence[0]['snapshot_sequence']
         return self.evaluate_sequence(predictor, snapshot_sequence)

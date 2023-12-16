@@ -14,6 +14,8 @@ from google.cloud.storage.retry import DEFAULT_RETRY
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
+from util import get_sequence_filenames
+from bucket_manager import BucketManager
 from torch_geometric.loader import DataLoader
 from gnn import GCN, RGCN, GIN, GAT
 
@@ -89,46 +91,22 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def download_from_bucket(bucket, blob_name):
-    blob = bucket.blob(blob_name)
-    buffer = io.BytesIO()
-    blob.download_to_file(buffer)
-    buffer.seek(0)
-    data = torch.load(buffer)
-    buffer.close()
-    return data
-
-def upload_to_bucket(bucket, data, blob_name):
-    buffer = io.BytesIO()
-    torch.save(data, buffer)
-    buffer.seek(0)
-    blob = bucket.blob(blob_name)
-    blob.upload_from_file(buffer)
-    buffer.close()
-
-def save_model_to_bucket(bucket, model_path, model, sequence_file_name, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
+def save_model_to_bucket(bucket_manager, model_path, model, sequence_file_name, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
     snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
     filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
     model_file_name = f'{model_path}model_{filename_root}.pt'
-    upload_to_bucket(bucket, model, model_file_name)
+    bucket_manager.torch_save_to_bucket(model, model_file_name)
     return model_file_name
 
-def get_num_relations(bucket, training_sequence_filenames):
+def get_num_relations(bucket_manager, training_sequence_filenames):
     first_filename = training_sequence_filenames[0]
-    first_data = download_from_bucket(bucket, first_filename)
+    first_data = bucket_manager.torch_load_from_bucket(first_filename)
     first_snapshot = first_data['snapshot_sequence'][0]
     num_relations = first_snapshot.num_edge_types
     return num_relations
-
-def get_training_sequence_filenames(bucket, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences):
-    prefix = f'{sequence_dir_path}log_window_{log_window}/'
-    log_window_filtered_filenames = [blob.name for blob in bucket.list_blobs(prefix=prefix)]
-    node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
-    random.shuffle(node_num_filtered_filenames)
-    return node_num_filtered_filenames[:max_sequences] # Limit the number of sequences to max_sequences
 
 def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4):
     hidden_layers = [n_hidden_layer_1]
@@ -153,7 +131,7 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
     return model
 
 def train_gnn(gnn_type='GAT',
-              bucket_name='gnn_rddl',
+              bucket_manager=None,
               sequence_dir_path='training_sequences/',
               sequence_file_name=None, 
               number_of_epochs=8, 
@@ -175,12 +153,10 @@ def train_gnn(gnn_type='GAT',
               checkpoint_path='checkpoints/'):
 
     logging.info(f'GNN training started.')
-    client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
 
-    training_sequence_filenames = get_training_sequence_filenames(bucket, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
+    training_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
 
-    num_relations = get_num_relations(bucket, training_sequence_filenames)
+    num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
 
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
 
@@ -210,7 +186,7 @@ def train_gnn(gnn_type='GAT',
     for epoch in range(start_epoch, number_of_epochs):
         for file_name in training_sequence_filenames:
 
-            data = download_from_bucket(bucket, file_name)
+            data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
             logging.info(f'Snapshot sequence file loaded.')
 
@@ -280,7 +256,7 @@ def train_gnn(gnn_type='GAT',
 
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
-    model_file_name = save_model_to_bucket(bucket=bucket, 
+    model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_path, 
                                            model=model, 
                                            sequence_file_name=sequence_file_name, 

@@ -13,6 +13,7 @@ from instance_creator import create_instance
 from simulator import Simulator
 from evaluator import Evaluator
 from gnn_trainer import train_gnn
+from bucket_manager import BucketManager
 
 if os.environ.get('CODESPACES') == 'true':
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'gnn-rddl-b602eb3e4b45.json'
@@ -70,7 +71,7 @@ parser.add_argument('--n_evaluation_sequences', type=int, default=4, help='Numbe
 # and --predictor_filename and --predictor_type
 
 # Animation
-parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_569,1532,5172_nsnpsht_16945_lr_0.0010334153904374018_bs_45_20231216_001205.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_1448,2896,2896_nsnpsht_32526_lr_0.0010000000000000002_bs_91_20231216_070612.pt', help='Path the model filename, relative to the bucket root.')
 parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_255/252_nodes/257_snapshots/20231215_134213_9153.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
@@ -117,11 +118,9 @@ if args.sim_log_window == -1:
     sim_log_window = int(2.5 * args.max_size)
 else:
     sim_log_window = args.sim_log_window
-storage_client = storage.Client()
-bucket = storage_client.get_bucket(args.bucket_name)
-config_blob = bucket.blob('config.json')
-json_data = config_blob.download_as_string()
-config = json.loads(json_data.decode('utf-8'))
+
+bucket_manager = BucketManager(args.bucket_name)
+config = bucket_manager.json_load_from_bucket(CONFIG_FILE)
 
 # with open(CONFIG_FILE, 'r') as f:
 #     config = json.load(f)
@@ -143,8 +142,7 @@ if 'instance' in args.modes:
         horizon=args.game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
 
 if 'simulate' in args.modes:
@@ -162,8 +160,6 @@ if 'simulate' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
         random_agent_seed=args.random_agent_seed)
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
     logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
 if 'train' in args.modes:
@@ -185,10 +181,6 @@ if 'train' in args.modes:
                     heads_per_layer=args.heads_per_layer, 
                     checkpoint_file=args.checkpoint_file)  # Add checkpoint file parameter
 
-    # config['predictor_filename'] = predictor_filename
-    # config['predictor_type'] = 'gnn'
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
@@ -202,8 +194,7 @@ if 'eval_seq' in args.modes:
         horizon=args.game_time)
     config['eval_instance_rddl_filepaths'] = instance_rddl_filepaths
     config['eval_graph_index_filepaths'] = graph_index_filepaths
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
@@ -238,10 +229,6 @@ if 'anim_seq' in args.modes:
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised_animate,
         horizon=args.game_time)
-    # config['instance_rddl_filepaths'] = instance_rddl_filepaths
-    # config['graph_index_filepaths'] = graph_index_filepaths
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
@@ -256,20 +243,17 @@ if 'anim_seq' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
         random_agent_seed=args.random_agent_seed)
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
     logging.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
 
 if 'anim' in args.modes:
     logging.info(f'Creating animation.')
 
     animator = Animator(args.animation_sequence_filepath,
-                        bucket_name=args.bucket_name,
+                        bucket_manager=bucket_manager,
                         hide_prediction=args.hide_prediction, 
                         hide_state=args.hide_state)
     animator.create_animation(predictor_type=config['predictor_type'], 
                              predictor_filename=args.model_filepath,
-                             bucket_name=args.bucket_name,
                              frames_per_second=args.frames_per_second)
     s = f'Animation written to file network_animation.mp4.'
     logging.info(s)
