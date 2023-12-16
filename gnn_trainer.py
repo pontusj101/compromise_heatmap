@@ -216,9 +216,6 @@ def train_gnn(gnn_type='GAT',
             epoch_loss /= total_batches
         loss_values.append(epoch_loss)
 
-        epoch_loss /= len(train_loader)
-        loss_values.append(epoch_loss)
-
         val_loader = DataLoader(all_val_snapshots, batch_size=batch_size, shuffle=False)
         val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
         val_loss_values.append(val_loss)
