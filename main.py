@@ -43,7 +43,7 @@ parser.add_argument('--game_time', type=int, default=32, help='Max time horizon 
 
 # Simulation
 parser.add_argument('-l', '--sim_log_window', type=int, default=4, help='Size of the logging window')
-parser.add_argument('--agent_type', default='GAT', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('--agent_type', default='random', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
@@ -65,7 +65,8 @@ parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of t
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
-parser.add_argument('--evaluation_sequences', type=int, default=64, help='Frames per second in the animation.')
+parser.add_argument('--n_evaluation_sequences', type=int, default=4, help='Number of evaluation sequences to create')
+
 # and --predictor_filename and --predictor_type
 
 # Animation
@@ -191,19 +192,18 @@ if 'train' in args.modes:
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
-    logging.info(f'Producing {args.evaluation_sequences} evaluation snapshot sequences.')
-    logging.info(f'Creating {args.evaluation_sequences} new instance specification.')
+    logging.info(f'Producing {args.n_evaluation_sequences} evaluation snapshot sequences.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance( 
         rddl_path=config['rddl_dirpath'],
-        n_instances=args.evaluation_sequences,
+        n_instances=args.n_evaluation_sequences,
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
         horizon=args.game_time)
-    # config['instance_rddl_filepaths'] = instance_rddl_filepaths
-    # config['graph_index_filepaths'] = graph_index_filepaths
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
+    config['eval_instance_rddl_filepaths'] = instance_rddl_filepaths
+    config['eval_graph_index_filepaths'] = graph_index_filepaths
+    json_str = json.dumps(config, indent=4)
+    config_blob.upload_from_string(json_str)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
@@ -218,8 +218,6 @@ if 'eval_seq' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
         random_agent_seed=args.random_agent_seed)
-    # json_str = json.dumps(config, indent=4)
-    # config_blob.upload_from_string(json_str)
     logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
 
 if 'eval' in args.modes:
