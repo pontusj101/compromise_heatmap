@@ -154,6 +154,7 @@ def train_gnn(gnn_type='GAT',
 
     training_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
 
+    logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_sequences}')
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
 
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
@@ -185,8 +186,8 @@ def train_gnn(gnn_type='GAT',
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
-        for file_name in training_sequence_filenames:
-
+        for i, file_name in enumerate(training_sequence_filenames):
+            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}')
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
 
