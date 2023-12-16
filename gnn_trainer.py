@@ -89,6 +89,70 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
+def download_from_bucket(bucket, blob_name):
+    blob = bucket.blob(blob_name)
+    buffer = io.BytesIO()
+    blob.download_to_file(buffer)
+    buffer.seek(0)
+    data = torch.load(buffer)
+    buffer.close()
+    return data
+
+def upload_to_bucket(bucket, data, blob_name):
+    buffer = io.BytesIO()
+    torch.save(data, buffer)
+    buffer.seek(0)
+    blob = bucket.blob(blob_name)
+    blob.upload_from_file(buffer)
+    buffer.close()
+
+def save_model_to_bucket(bucket, model_path, model, sequence_file_name, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
+    match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+    snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
+    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
+    filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
+    model_file_name = f'{model_path}model_{filename_root}.pt'
+    upload_to_bucket(bucket, model, model_file_name)
+    return model_file_name
+
+def get_num_relations(bucket, training_sequence_filenames):
+    first_filename = training_sequence_filenames[0]
+    first_data = download_from_bucket(bucket, first_filename)
+    first_snapshot = first_data['snapshot_sequence'][0]
+    num_relations = first_snapshot.num_edge_types
+    return num_relations
+
+def get_training_sequence_filenames(bucket, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences):
+    prefix = f'{sequence_dir_path}log_window_{log_window}/'
+    log_window_filtered_filenames = [blob.name for blob in bucket.list_blobs(prefix=prefix)]
+    node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
+    random.shuffle(node_num_filtered_filenames)
+    return node_num_filtered_filenames[:max_sequences] # Limit the number of sequences to max_sequences
+
+
+def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4):
+    hidden_layers = [n_hidden_layer_1]
+    if n_hidden_layer_4 > 0:
+        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4]
+    elif n_hidden_layer_3 > 0:
+        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3]
+    elif n_hidden_layer_2 > 0:
+        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2]
+    return hidden_layers
+
+def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features, num_relations, hidden_layers):
+    if gnn_type == 'GCN':
+        model = GCN([actual_num_features] + hidden_layers + [2])
+    elif gnn_type == 'GIN':
+        model = GIN([actual_num_features] + hidden_layers + [2])
+    elif gnn_type == 'RGCN':
+        model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
+    elif gnn_type == 'GAT':
+        heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
+        model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
+    return model
+
 def train_gnn(gnn_type='GAT',
               bucket_name='gnn_rddl',
               sequence_dir_path='training_sequences/',
@@ -112,47 +176,24 @@ def train_gnn(gnn_type='GAT',
               checkpoint_path='checkpoints/'):
 
     logging.info(f'GNN training started.')
-
-    logging.info(f'Loading the snapshot sequence file...')
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
 
-    prefix = f'{sequence_dir_path}log_window_{log_window}/'
-    log_window_filtered_filenames = [blob.name for blob in bucket.list_blobs(prefix=prefix)]
-    node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
-    random.shuffle(node_num_filtered_filenames)
-    filenames = node_num_filtered_filenames[:max_sequences]
+    training_sequence_filenames = get_training_sequence_filenames(bucket, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
 
-    first_filename = filenames[0]
-    blob = bucket.blob(first_filename)
-    buffer = io.BytesIO()
-    blob.download_to_file(buffer)
-    buffer.seek(0)
-    first_data = torch.load(buffer)
-    buffer.close()
-    first_snapshot = first_data['snapshot_sequence'][0]
-    actual_num_features = log_window + 1
-    num_relations = first_snapshot.num_edge_types
+    num_relations = get_num_relations(bucket, training_sequence_filenames)
 
-    hidden_layers = [n_hidden_layer_1]
-    if n_hidden_layer_4 > 0:
-        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4]
-    elif n_hidden_layer_3 > 0:
-        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3]
-    elif n_hidden_layer_2 > 0:
-        hidden_layers = [n_hidden_layer_1, n_hidden_layer_2]
+    hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
 
-    if gnn_type == 'GCN':
-        model = GCN([actual_num_features] + hidden_layers + [2])
-    elif gnn_type == 'GIN':
-        model = GIN([actual_num_features] + hidden_layers + [2])
-    elif gnn_type == 'RGCN':
-        model = RGCN([actual_num_features] + hidden_layers + [2], num_relations)
-    elif gnn_type == 'GAT':
-        heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
-        model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
+    model = get_model(gnn_type=gnn_type, 
+                      edge_embedding_dim=edge_embedding_dim, 
+                      heads_per_layer=heads_per_layer, 
+                      actual_num_features=log_window + 1, 
+                      num_relations=num_relations, 
+                      hidden_layers=hidden_layers)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     start_epoch = 0
+
     # if checkpoint_file and os.path.isfile(checkpoint_file):
     #     logging.info(f'Attempting to load model from {checkpoint_file}.')
     #     blob = bucket.blob(checkpoint_file)
@@ -166,28 +207,16 @@ def train_gnn(gnn_type='GAT',
     loss_values, val_loss_values = [], []
     global_step = 0
 
-    total_instances_processed = 0  # Counter for total instances processed
 
     for epoch in range(start_epoch, number_of_epochs):
-        for file_name in filenames:
+        for file_name in training_sequence_filenames:
 
-            blob = bucket.blob(file_name)
-            buffer = io.BytesIO()
-            blob.download_to_file(buffer)
-            buffer.seek(0)
-            data = torch.load(buffer)
-            buffer.close()
-            logging.info(f'Snapshot sequence file oaded.')
+            data = download_from_bucket(bucket, file_name)
             snapshot_sequence = data['snapshot_sequence']
+            logging.info(f'Snapshot sequence file loaded.')
 
             for snapshot in snapshot_sequence:
-                if total_instances_processed >= max_sequences:
-                    break  # Stop if max_instances limit is reached
                 snapshot.x = snapshot.x[:, :log_window + 1]
-                total_instances_processed += 1
-
-            if total_instances_processed >= max_sequences:
-                break
 
             # Splitting the data into training and validation sets for this file
             train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
@@ -249,21 +278,18 @@ def train_gnn(gnn_type='GAT',
                     logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
                     break   
 
-    match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-    snapshot_name = os.path.commonprefix(filenames).replace('training_sequences/', '')
-    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
-    filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
 
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
-    buffer = io.BytesIO()
-    torch.save(model, buffer)
-    buffer.seek(0)
-    model_file_name = f'{model_path}model_{filename_root}.pt'
-    blob = bucket.blob(model_file_name)
-    blob.upload_from_file(buffer)
-    buffer.close()
+    model_file_name = save_model_to_bucket(bucket=bucket, 
+                                           model_path=model_path, 
+                                           model=model, 
+                                           sequence_file_name=sequence_file_name, 
+                                           training_sequence_filenames=training_sequence_filenames, 
+                                           hidden_layers=hidden_layers, 
+                                           learning_rate=learning_rate, 
+                                           batch_size=batch_size, 
+                                           snapshot_sequence=snapshot_sequence)
 
     return model_file_name
 

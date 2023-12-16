@@ -68,7 +68,7 @@ parser.add_argument('--evaluation_sequences', type=int, default=64, help='Frames
 # and --predictor_filename and --predictor_type
 
 # Animation
-parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_2534_1545_2904_nsnpsht_15409_lr_0.00042_bs_147_20231215_051317.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_569,1532,5172_nsnpsht_16945_lr_0.0010334153904374018_bs_45_20231216_001205.pt', help='Path the model filename, relative to the bucket root.')
 parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_255/252_nodes/257_snapshots/20231215_134213_9153.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
@@ -159,8 +159,8 @@ if 'simulate' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         random_cyber_agent_seed=args.random_cyber_agent_seed)
-    json_str = json.dumps(config, indent=4)
-    config_blob.upload_from_string(json_str)
+    # json_str = json.dumps(config, indent=4)
+    # config_blob.upload_from_string(json_str)
     logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
 if 'train' in args.modes:
