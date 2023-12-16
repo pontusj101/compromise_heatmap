@@ -186,9 +186,7 @@ def train_gnn(gnn_type='GAT',
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
-        train_loader_len = 0
         for i, file_name in enumerate(training_sequence_filenames):
-            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}')
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
 
@@ -209,21 +207,20 @@ def train_gnn(gnn_type='GAT',
                 loss.backward()
                 optimizer.step()
                 epoch_loss += loss.item()
-                train_loader_len += len(train_loader)
 
-        epoch_loss /= train_loader_len
-        loss_values.append(epoch_loss)
+            epoch_loss /= len(train_loader)
+            loss_values.append(epoch_loss)
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-        val_loss_values.append(val_loss)
-        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
-        end_time = time.time()
-        hpt = hypertune.HyperTune()
-        hpt.report_hyperparameter_tuning_metric(
-            hyperparameter_metric_tag='F1',
-            metric_value=f1,
-            global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+            val_loss_values.append(val_loss)
+            f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+            end_time = time.time()
+            hpt = hypertune.HyperTune()
+            hpt.report_hyperparameter_tuning_metric(
+                hyperparameter_metric_tag='F1',
+                metric_value=f1,
+                global_step=global_step)
+            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}. Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         # if epoch % checkpoint_interval == 0:
         #     checkpoint = {
         #         'epoch': epoch,
