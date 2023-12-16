@@ -186,6 +186,7 @@ def train_gnn(gnn_type='GAT',
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
+        train_loader_len = 0
         for i, file_name in enumerate(training_sequence_filenames):
             logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}')
             data = bucket_manager.torch_load_from_bucket(file_name)
@@ -208,8 +209,9 @@ def train_gnn(gnn_type='GAT',
                 loss.backward()
                 optimizer.step()
                 epoch_loss += loss.item()
+                train_loader_len += len(train_loader)
 
-        epoch_loss /= len(train_loader)
+        epoch_loss /= train_loader_len
         loss_values.append(epoch_loss)
 
         val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
