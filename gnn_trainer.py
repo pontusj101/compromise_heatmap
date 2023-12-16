@@ -182,6 +182,9 @@ def train_gnn(gnn_type='GAT',
 
 
     for epoch in range(start_epoch, number_of_epochs):
+        start_time = time.time()
+        model.train()
+        epoch_loss = 0.0
         for file_name in training_sequence_filenames:
 
             data = bucket_manager.torch_load_from_bucket(file_name)
@@ -196,9 +199,6 @@ def train_gnn(gnn_type='GAT',
             train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
             val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
 
-            start_time = time.time()
-            model.train()
-            epoch_loss = 0.0
             for batch in train_loader:
                 global_step += len(batch.y)
                 optimizer.zero_grad()
@@ -209,48 +209,35 @@ def train_gnn(gnn_type='GAT',
                 optimizer.step()
                 epoch_loss += loss.item()
 
-            epoch_loss /= len(train_loader)
-            loss_values.append(epoch_loss)
+        epoch_loss /= len(train_loader)
+        loss_values.append(epoch_loss)
 
-            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-            val_loss_values.append(val_loss)
-            f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
-            end_time = time.time()
-            hpt = hypertune.HyperTune()
-            hpt.report_hyperparameter_tuning_metric(
-                hyperparameter_metric_tag='F1',
-                metric_value=f1,
-                global_step=global_step)
-            logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-            # if epoch % checkpoint_interval == 0:
-            #     checkpoint = {
-            #         'epoch': epoch,
-            #         'model_state_dict': model.state_dict(),
-            #         'optimizer_state_dict': optimizer.state_dict(),
-            #         'loss': loss,
-            #     }
-            #     match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
-            #     snapshot_name = match.group(1) if match else None
-            #     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            #     filename = f'{checkpoint_path}checkpoint_{snapshot_name}_hl_{hidden_layers}_nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate}_bs_{batch_size}_{date_time_str}'
+        val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+        val_loss_values.append(val_loss)
+        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        end_time = time.time()
+        hpt = hypertune.HyperTune()
+        hpt.report_hyperparameter_tuning_metric(
+            hyperparameter_metric_tag='F1',
+            metric_value=f1,
+            global_step=global_step)
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        # if epoch % checkpoint_interval == 0:
+        #     checkpoint = {
+        #         'epoch': epoch,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'loss': loss,
+        #     }
 
-            #     buffer = io.BytesIO()
-            #     torch.save(checkpoint, buffer)
-            #     buffer.seek(0)
-            #     blob = bucket.blob(filename)
-            #     modified_retry = DEFAULT_RETRY.with_deadline(60)
-            #     modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
-            #     blob.upload_from_file(buffer, retry=modified_retry)
-            #     buffer.close()
-
-                # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
-            
-            # Early stopping
-            training_stagnation_threshold = 3
-            if epoch > training_stagnation_threshold:
-                if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
-                    logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
-                    break   
+            # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+        
+        # Early stopping
+        training_stagnation_threshold = 3
+        if epoch > training_stagnation_threshold:
+            if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
+                logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
+                break   
 
 
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
