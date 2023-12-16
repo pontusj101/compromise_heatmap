@@ -139,11 +139,34 @@ class Animator:
         G_initial = self.create_graph(num=0)
         pos = nx.spring_layout(G_initial)  # You can use other layouts as well
 
-        ani = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+        logging.info(f'Showing both prediction and state.')
+        self.hide_state = False
+        self.hide_prediction = False
+        ani_all = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
                                     fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+        ani_all.save('network_animation_state_and_pred.mp4', writer='ffmpeg', fps=frames_per_second)
 
-        # Save as MP4
-        ani.save('network_animation.mp4', writer='ffmpeg', fps=frames_per_second)
+        logging.info(f'Showing only prediction.')
+        self.hide_state = True
+        self.hide_prediction = False
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_pred.mp4', writer='ffmpeg', fps=frames_per_second)
+
+        logging.info(f'Showing only state.')
+        self.hide_state = False
+        self.hide_prediction = True
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_state.mp4', writer='ffmpeg', fps=frames_per_second)
+
+        logging.info(f'Showing neither prediction nor state.')
+        self.hide_state = True
+        self.hide_prediction = True
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_none.mp4', writer='ffmpeg', fps=frames_per_second)
+
 
         # Optional: Close the plot to prevent display issues in some environments
         plt.close(fig)

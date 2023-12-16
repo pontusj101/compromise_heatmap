@@ -90,12 +90,16 @@ class Simulator:
             if step == start_step:
                 if cyber_agent_type == 'random':
                     agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                    logging.info(f'Deploying random attacker.')
                 elif cyber_agent_type == 'host_targeted':
                     agent = HostTargetedCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                    logging.info(f'Deploying host-targeted attacker.')
                 elif cyber_agent_type == 'keyboard':
                     agent = KeyboardCyberAgent(action_space=myEnv.action_space)
+                    logging.info(f'Deploying keyboard attacker.')
                 elif cyber_agent_type == 'passive':
                     pass
+                    logging.info(f'Deploying passive attacker.')
                 else:
                     raise ValueError(f'Unknown attacker agent type: {cyber_agent_type}')
                 logging.debug(f'Simulation {sim_id}. Step {step}: Now initiating attack.')
