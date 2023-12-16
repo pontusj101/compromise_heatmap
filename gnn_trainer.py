@@ -186,6 +186,8 @@ def train_gnn(gnn_type='GAT',
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
+        total_batches = 0
+        all_val_snapshots = []
         for i, file_name in enumerate(training_sequence_filenames):
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
@@ -195,8 +197,8 @@ def train_gnn(gnn_type='GAT',
 
             # Splitting the data into training and validation sets for this file
             train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+            all_val_snapshots.extend(val_snapshots)
             train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
-            val_loader = DataLoader(val_snapshots, batch_size=batch_size, shuffle=False)
 
             for batch in train_loader:
                 global_step += len(batch.y)
@@ -207,20 +209,26 @@ def train_gnn(gnn_type='GAT',
                 loss.backward()
                 optimizer.step()
                 epoch_loss += loss.item()
+                total_batches += 1
 
-            epoch_loss /= len(train_loader)
-            loss_values.append(epoch_loss)
+        if total_batches > 0:
+            epoch_loss /= total_batches
+        loss_values.append(epoch_loss)
 
-            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-            val_loss_values.append(val_loss)
-            f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
-            end_time = time.time()
-            hpt = hypertune.HyperTune()
-            hpt.report_hyperparameter_tuning_metric(
-                hyperparameter_metric_tag='F1',
-                metric_value=f1,
-                global_step=global_step)
-            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}. Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        epoch_loss /= len(train_loader)
+        loss_values.append(epoch_loss)
+
+        val_loader = DataLoader(all_val_snapshots, batch_size=batch_size, shuffle=False)
+        val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+        val_loss_values.append(val_loss)
+        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        end_time = time.time()
+        hpt = hypertune.HyperTune()
+        hpt.report_hyperparameter_tuning_metric(
+            hyperparameter_metric_tag='F1',
+            metric_value=f1,
+            global_step=global_step)
+        logging.info(f'Training on file {i}/{len(training_sequence_filenames)}. Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         # if epoch % checkpoint_interval == 0:
         #     checkpoint = {
         #         'epoch': epoch,
