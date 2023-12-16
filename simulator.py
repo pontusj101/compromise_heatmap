@@ -14,7 +14,7 @@ from google.cloud import storage
 from google.cloud.storage.retry import DEFAULT_RETRY
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
-from agents import PassiveCyberAgent, RandomCyberAgent
+from agents import PassiveCyberAgent, RandomCyberAgent, HostTargetedCyberAgent, KeyboardCyberAgent
 from graph_index import GraphIndex
 
 class Simulator:
@@ -59,7 +59,8 @@ class Simulator:
                           domain_rddl_path, 
                           instance_rddl_filepath, 
                           storage_path, 
-                          random_cyber_agent_seed):
+                          cyber_agent_type='random',
+                          random_cyber_agent_seed=None):
 
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(bucket_name)
@@ -87,7 +88,16 @@ class Simulator:
         log_steps_after_total_compromise = 0
         for step in range(myEnv.horizon):
             if step == start_step:
-                agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                if cyber_agent_type == 'random':
+                    agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                elif cyber_agent_type == 'host_targeted':
+                    agent = HostTargetedCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                elif cyber_agent_type == 'keyboard':
+                    agent = KeyboardCyberAgent(action_space=myEnv.action_space)
+                elif cyber_agent_type == 'passive':
+                    pass
+                else:
+                    raise ValueError(f'Unknown attacker agent type: {cyber_agent_type}')
                 logging.debug(f'Simulation {sim_id}. Step {step}: Now initiating attack.')
 
             action = agent.sample_action(state=state)
@@ -145,7 +155,8 @@ class Simulator:
         max_log_steps_after_total_compromise=50,
         rddl_path='rddl/', 
         snapshot_sequence_path = 'snapshot_sequences/',
-        random_cyber_agent_seed=None):
+        agent_type='random',
+        random_agent_seed=None):
         
         start_time = time.time()
 
@@ -162,7 +173,7 @@ class Simulator:
         logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], snapshot_sequence_path, random_cyber_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], snapshot_sequence_path, agent_type, random_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(self.simulation_worker, simulation_args)
         pool.close()

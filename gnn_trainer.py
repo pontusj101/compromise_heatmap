@@ -130,7 +130,6 @@ def get_training_sequence_filenames(bucket, sequence_dir_path, min_nodes, max_no
     random.shuffle(node_num_filtered_filenames)
     return node_num_filtered_filenames[:max_sequences] # Limit the number of sequences to max_sequences
 
-
 def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4):
     hidden_layers = [n_hidden_layer_1]
     if n_hidden_layer_4 > 0:

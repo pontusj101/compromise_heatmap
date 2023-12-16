@@ -43,7 +43,8 @@ parser.add_argument('--game_time', type=int, default=32, help='Max time horizon 
 
 # Simulation
 parser.add_argument('-l', '--sim_log_window', type=int, default=4, help='Size of the logging window')
-parser.add_argument('--random_cyber_agent_seed', default=None, help='Seed for random cyber agent')
+parser.add_argument('--agent_type', default='GAT', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
 
 # Training
@@ -158,7 +159,8 @@ if 'simulate' in args.modes:
         log_window=sim_log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-        random_cyber_agent_seed=args.random_cyber_agent_seed)
+        agent_type=args.agent_type,
+        random_agent_seed=args.random_agent_seed)
     # json_str = json.dumps(config, indent=4)
     # config_blob.upload_from_string(json_str)
     logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
@@ -214,7 +216,8 @@ if 'eval_seq' in args.modes:
         log_window=sim_log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-        random_cyber_agent_seed=args.random_cyber_agent_seed)
+        agent_type=args.agent_type,
+        random_agent_seed=args.random_agent_seed)
     # json_str = json.dumps(config, indent=4)
     # config_blob.upload_from_string(json_str)
     logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
@@ -253,7 +256,8 @@ if 'anim_seq' in args.modes:
         log_window=sim_log_window, 
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
-        random_cyber_agent_seed=args.random_cyber_agent_seed)
+        agent_type=args.agent_type,
+        random_agent_seed=args.random_agent_seed)
     # json_str = json.dumps(config, indent=4)
     # config_blob.upload_from_string(json_str)
     logging.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
