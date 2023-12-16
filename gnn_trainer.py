@@ -91,8 +91,7 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def save_model_to_bucket(bucket_manager, model_path, model, sequence_file_name, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
-    match = re.search(r'sequence_(.*?)\.pkl', sequence_file_name)
+def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
     snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
@@ -133,7 +132,7 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
 def train_gnn(gnn_type='GAT',
               bucket_manager=None,
               sequence_dir_path='training_sequences/',
-              sequence_file_name=None, 
+              model_dirpath='models/',
               number_of_epochs=8, 
               max_sequences=99999999,
               min_nodes=0,
@@ -149,7 +148,6 @@ def train_gnn(gnn_type='GAT',
               heads_per_layer=2, # Add a parameter to set number of attention heads per layer in case of GAT
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               checkpoint_file=None,  # Add checkpoint file parameter
-              model_path='models/',
               checkpoint_path='checkpoints/'):
 
     logging.info(f'GNN training started.')
@@ -216,11 +214,12 @@ def train_gnn(gnn_type='GAT',
 
             val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
             val_loss_values.append(val_loss)
+            f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
             end_time = time.time()
             hpt = hypertune.HyperTune()
             hpt.report_hyperparameter_tuning_metric(
-                hyperparameter_metric_tag='validation_loss',
-                metric_value=val_loss,
+                hyperparameter_metric_tag='F1',
+                metric_value=f1,
                 global_step=global_step)
             logging.info(f'Epoch {epoch}: Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
             # if epoch % checkpoint_interval == 0:
@@ -257,9 +256,8 @@ def train_gnn(gnn_type='GAT',
     # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
-                                           model_path=model_path, 
+                                           model_path=model_dirpath, 
                                            model=model, 
-                                           sequence_file_name=sequence_file_name, 
                                            training_sequence_filenames=training_sequence_filenames, 
                                            hidden_layers=hidden_layers, 
                                            learning_rate=learning_rate, 

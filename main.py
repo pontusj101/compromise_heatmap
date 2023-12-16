@@ -50,8 +50,8 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
-parser.add_argument('--max_instances', type=int, default=9999, help='Maximum number of instances to use for training')
-parser.add_argument('--train_log_window', type=int, default=255, help='Size of the logging window')
+parser.add_argument('--max_sequences', type=int, default=2, help='Maximum number of instances to use for training')
+parser.add_argument('--train_log_window', type=int, default=256, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
@@ -167,12 +167,15 @@ if 'simulate' in args.modes:
 if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
-                    bucket_name=args.bucket_name,
-                    gnn_type=args.gnn_type,
-                    sequence_file_name=config['training_sequence_dirpath'], 
-                    max_sequences=args.max_instances,
-                    log_window=args.train_log_window,
+                    gnn_type='GAT',
+                    bucket_manager=bucket_manager,
+                    sequence_dir_path=config['training_sequence_dirpath'],
+                    model_dirpath='models/',
                     number_of_epochs=args.epochs, 
+                    max_sequences=args.max_sequences,
+                    min_nodes=args.min_size,
+                    max_nodes=args.max_size,
+                    log_window=args.train_log_window,
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
                     n_hidden_layer_1=args.n_hidden_layer_1,
@@ -181,7 +184,10 @@ if 'train' in args.modes:
                     n_hidden_layer_4=args.n_hidden_layer_4,
                     edge_embedding_dim=args.edge_embedding_dim,
                     heads_per_layer=args.heads_per_layer, 
-                    checkpoint_file=args.checkpoint_file)  # Add checkpoint file parameter
+                    checkpoint_interval=1,  # Add a parameter to set checkpoint interval
+                    checkpoint_file=args.checkpoint_file,  # Add checkpoint file parameter
+                    checkpoint_path='checkpoints/')
+
 
     logging.info(f'GNN trained. Model written to {predictor_filename}.')
 
