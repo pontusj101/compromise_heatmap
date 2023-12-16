@@ -189,7 +189,6 @@ def train_gnn(gnn_type='GAT',
 
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
-            logging.info(f'Snapshot sequence file loaded.')
 
             for snapshot in snapshot_sequence:
                 snapshot.x = snapshot.x[:, :log_window + 1]
