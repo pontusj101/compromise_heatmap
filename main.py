@@ -51,7 +51,7 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 # Training
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
 parser.add_argument('--max_sequences', type=int, default=2, help='Maximum number of instances to use for training')
-parser.add_argument('--train_log_window', type=int, default=, help='Size of the logging window')
+parser.add_argument('--train_log_window', type=int, default=4, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
