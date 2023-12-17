@@ -1,6 +1,7 @@
 import io
 import networkx as nx
 import logging
+import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.colors as mcolors
@@ -16,6 +17,7 @@ class Animator:
         self.bucket_manager = bucket_manager
         self.hide_prediction = hide_prediction
         self.hide_state = hide_state
+        self.start_time = time.time()
 
         indexed_snapshot_sequence = bucket_manager.torch_load_from_bucket(animation_sequence_filename)
 
@@ -93,7 +95,7 @@ class Animator:
         return color_map, size_map, edge_colors, edge_widths
     
     def update_graph(self, num, pos, ax, predictor):
-        logging.debug(f'Animating step {num}.')
+        logging.debug(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
         ax.clear()
         snapshot = self.snapshot_sequence[num]
 

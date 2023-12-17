@@ -76,7 +76,6 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.savefig('loss_curves/' + filename)
     plt.close()
 
-
 def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels, start_time):
     true_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 1))
     false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
@@ -150,13 +149,10 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
-    logging.info(f'GNN training started.')
-
     training_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
 
     logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_sequences}')
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
-
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
 
     model = get_model(gnn_type=gnn_type, 
@@ -166,33 +162,23 @@ def train_gnn(gnn_type='GAT',
                       num_relations=num_relations, 
                       hidden_layers=hidden_layers)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    start_epoch = 0
 
-    # if checkpoint_file and os.path.isfile(checkpoint_file):
-    #     logging.info(f'Attempting to load model from {checkpoint_file}.')
-    #     blob = bucket.blob(checkpoint_file)
-    #     blob.download_to_filename('/tmp/checkpoint.pkl')
-    #     checkpoint = torch.load('/tmp/checkpoint.pkl')
-    #     model.load_state_dict(checkpoint['model_state_dict'])
-    #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    #     start_epoch = checkpoint['epoch'] + 1
-    #     logging.info(f'Resuming training from epoch {start_epoch}')
-
-    loss_values, val_loss_values = [], []
+    train_loss_values, val_loss_values = [], []
     global_step = 0
 
-
-    for epoch in range(start_epoch, number_of_epochs):
+    for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
         total_batches = 0
         all_val_snapshots = []
+        number_of_compromised_nodes = 0
+        number_of_uncompromised_nodes = 0
         for i, file_name in enumerate(training_sequence_filenames):
             logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}.')
             data = bucket_manager.torch_load_from_bucket(file_name)
             snapshot_sequence = data['snapshot_sequence']
-
+            # Truncate the log window to the specified length
             for snapshot in snapshot_sequence:
                 snapshot.x = snapshot.x[:, :log_window + 1]
 
@@ -202,6 +188,8 @@ def train_gnn(gnn_type='GAT',
             train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
 
             for batch in train_loader:
+                number_of_compromised_nodes += torch.sum(batch.y == 1).item()
+                number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
                 global_step += len(batch.y)
                 optimizer.zero_grad()
                 out = model(batch)
@@ -214,7 +202,7 @@ def train_gnn(gnn_type='GAT',
 
         if total_batches > 0:
             epoch_loss /= total_batches
-        loss_values.append(epoch_loss)
+        train_loss_values.append(epoch_loss)
 
         val_loader = DataLoader(all_val_snapshots, batch_size=batch_size, shuffle=False)
         val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
@@ -226,16 +214,7 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-        # if epoch % checkpoint_interval == 0:
-        #     checkpoint = {
-        #         'epoch': epoch,
-        #         'model_state_dict': model.state_dict(),
-        #         'optimizer_state_dict': optimizer.state_dict(),
-        #         'loss': loss,
-        #     }
-
-            # plot_training_results(f'latest_loss.png', loss_values, val_loss_values)
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
         # Early stopping
         training_stagnation_threshold = 3
@@ -243,9 +222,6 @@ def train_gnn(gnn_type='GAT',
             if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
                 logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
                 break   
-
-
-    # plot_training_results(f'loss_{filename_root}.png', loss_values, val_loss_values)
 
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_dirpath, 

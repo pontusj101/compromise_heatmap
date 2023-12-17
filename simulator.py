@@ -62,6 +62,8 @@ class Simulator:
                           cyber_agent_type='random',
                           random_cyber_agent_seed=None):
 
+        logging.info(f'Simulation {sim_id} started.')
+
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(bucket_name)
         instance_blob = bucket.blob(instance_rddl_filepath)
@@ -87,6 +89,8 @@ class Simulator:
         log_feature_vectors = torch.zeros((n_nodes, log_window))
         log_steps_after_total_compromise = 0
         for step in range(myEnv.horizon):
+            if step % 10 == 0:
+                logging.info(f'Simulation {sim_id}. Step {step}/{myEnv.horizon}. Time: {time.time() - start_time:.2f}s.')
             if step == start_step:
                 if cyber_agent_type == 'random':
                     agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
@@ -146,6 +150,7 @@ class Simulator:
 
         blob.upload_from_file(buffer, retry=modified_retry)
         buffer.close()
+        logging.info(f'Simulation {sim_id} completed. Time: {end_time - start_time:.2f}s. Written to {output_file}.')
         return output_file
 
     def produce_training_data_parallel(
@@ -183,37 +188,11 @@ class Simulator:
         pool.close()
         pool.join()
 
-        # results = []
-        # for output_file in result_filenames:
-        #     blob = bucket.blob(output_file)
-        #     buffer = io.BytesIO()
-        #     blob.download_to_file(buffer)
-        #     buffer.seek(0)
-        #     results.append(torch.load(buffer))
-        #     buffer.close()
-        #     blob.delete()
-
         # n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
-
-
-        # match = re.search(r'instance_(.*?)\.rddl', instance_rddl_filepaths[0])
-        # instance_name = match.group(1) if match else None
-
-
-        # file_name = f'{snapshot_sequence_path}snapshot_sequence_ninst_{n_simulations}_lw_{log_window}_{instance_name}.pkl'
-        # buffer = io.BytesIO()
-        # torch.save(results, buffer)
-        # buffer.seek(0)
-        # blob = bucket.blob(file_name)
-        # blob.upload_from_file(buffer)
-        # buffer.close()
-
-        # logging.info(f'Data saved to {file_name}')
-
 
         # snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
         # compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
-        logging.info(f'Training data generation completed. Time: {time.time() - start_time:.2f}s.')
+        logging.info(f'Sapshot sequence data generation completed. Time: {time.time() - start_time:.2f}s.')
         # logging.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
         # random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
         # random_snapshot = snapshot_sequence[random_snapshot_index]
