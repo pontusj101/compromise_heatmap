@@ -133,7 +133,8 @@ def train_gnn(gnn_type='GAT',
               sequence_dir_path='training_sequences/',
               model_dirpath='models/',
               number_of_epochs=8, 
-              max_sequences=99999999,
+              max_training_sequences=99999999,
+              n_validation_sequences=64,
               min_nodes=0,
               max_nodes=99999999,
               log_window=99999999,
@@ -149,9 +150,9 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
-    training_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
-
-    logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_sequences}')
+    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_training_sequences, n_validation_sequences)
+    # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
+    logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_training_sequences}')
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
 
@@ -163,7 +164,7 @@ def train_gnn(gnn_type='GAT',
                       hidden_layers=hidden_layers)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    train_loss_values, val_loss_values = [], []
+    train_loss_values = []
     global_step = 0
 
     for epoch in range(number_of_epochs):
@@ -171,7 +172,7 @@ def train_gnn(gnn_type='GAT',
         model.train()
         epoch_loss = 0.0
         total_batches = 0
-        all_val_snapshots = []
+        # all_val_snapshots = []
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
         for i, file_name in enumerate(training_sequence_filenames):
@@ -183,9 +184,9 @@ def train_gnn(gnn_type='GAT',
                 snapshot.x = snapshot.x[:, :log_window + 1]
 
             # Splitting the data into training and validation sets for this file
-            train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
-            all_val_snapshots.extend(val_snapshots)
-            train_loader = DataLoader(train_snapshots, batch_size=batch_size, shuffle=True)
+            # train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
+            # all_val_snapshots.extend(val_snapshots)
+            train_loader = DataLoader(snapshot_sequence, batch_size=batch_size, shuffle=True)
 
             for batch in train_loader:
                 number_of_compromised_nodes += torch.sum(batch.y == 1).item()
@@ -204,24 +205,31 @@ def train_gnn(gnn_type='GAT',
             epoch_loss /= total_batches
         train_loss_values.append(epoch_loss)
 
-        val_loader = DataLoader(all_val_snapshots, batch_size=batch_size, shuffle=False)
-        val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-        val_loss_values.append(val_loss)
-        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        all_predicted_labels = []
+        all_true_labels = []
+        val_loss_values = []
+
+        for i, file_name in enumerate(validation_sequence_filenames):
+            logging.info(f'Validating on file {i}/{len(training_sequence_filenames)}: {file_name}.')
+            data = bucket_manager.torch_load_from_bucket(file_name)
+            snapshot_sequence = data['snapshot_sequence']
+            val_loader = DataLoader(snapshot_sequence, batch_size=batch_size, shuffle=False)
+            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
+            val_loss_values.append(val_loss)
+            all_predicted_labels.extend(predicted_labels)
+            all_true_labels.extend(true_labels)
+
+        overall_val_loss = np.mean(val_loss_values)
+        f1 = f1_score(all_true_labels, all_predicted_labels, average='binary', zero_division=0)
+
         end_time = time.time()
         hpt = hypertune.HyperTune()
         hpt.report_hyperparameter_tuning_metric(
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {overall_val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
-        # Early stopping
-        training_stagnation_threshold = 3
-        if epoch > training_stagnation_threshold:
-            if val_loss > max(val_loss_values[-training_stagnation_threshold:]):
-                logging.info(f'Validation loss has not improved for {training_stagnation_threshold} epochs. Training stopped.')
-                break   
 
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_dirpath, 
