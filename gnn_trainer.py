@@ -14,10 +14,10 @@ from google.cloud.storage.retry import DEFAULT_RETRY
 from sklearn.metrics import precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, Sequential
-from util import get_sequence_filenames
+from util import TimeSeriesDataset, get_sequence_filenames
 from bucket_manager import BucketManager
 from torch_geometric.loader import DataLoader
-from gnn import GCN, RGCN, GIN, GAT
+from gnn import GCN, RGCN, GIN, GAT, GNN_LSTM
 
 
 def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
@@ -90,10 +90,10 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence):
+def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length):
     snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{len(snapshot_sequence)}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
+    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{snapshot_sequence_length}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
     filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
     model_file_name = f'{model_path}model_{filename_root}.pt'
     bucket_manager.torch_save_to_bucket(model, model_file_name)
@@ -116,7 +116,7 @@ def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_h
         hidden_layers = [n_hidden_layer_1, n_hidden_layer_2]
     return hidden_layers
 
-def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features, num_relations, hidden_layers):
+def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features, num_relations, hidden_layers, lstm_hidden_dim):
     if gnn_type == 'GCN':
         model = GCN([actual_num_features] + hidden_layers + [2])
     elif gnn_type == 'GIN':
@@ -126,6 +126,13 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
     elif gnn_type == 'GAT':
         heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
         model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
+    elif gnn_type == 'GAT_LSTM':
+        heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
+        gnn_model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
+        model = GNN_LSTM(gnn=gnn_model, lstm_hidden_dim=lstm_hidden_dim, num_classes=2)  # Choose appropriate dimensions
+    else:
+        raise ValueError(f'Unknown GNN type: {gnn_type}')
+
     return model
 
 def train_gnn(gnn_type='GAT',
@@ -137,6 +144,8 @@ def train_gnn(gnn_type='GAT',
               n_validation_sequences=64,
               min_nodes=0,
               max_nodes=99999999,
+              min_snapshots=0,
+              max_snapshots=99999999,
               log_window=99999999,
               learning_rate=0.01, 
               batch_size=1, 
@@ -146,11 +155,14 @@ def train_gnn(gnn_type='GAT',
               n_hidden_layer_4=0,
               edge_embedding_dim=16, # Add a parameter to set edge embedding dimension in case of GAT
               heads_per_layer=2, # Add a parameter to set number of attention heads per layer in case of GAT
+              lstm_hidden_dim=128, # Add a parameter to set LSTM hidden dimension in case of GAT_LSTM
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
-    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_training_sequences, n_validation_sequences)
+    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
+    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method='random')
+    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method='random')
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
     logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_training_sequences}')
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
@@ -161,7 +173,10 @@ def train_gnn(gnn_type='GAT',
                       heads_per_layer=heads_per_layer, 
                       actual_num_features=log_window + 1, 
                       num_relations=num_relations, 
-                      hidden_layers=hidden_layers)
+                      hidden_layers=hidden_layers, 
+                      lstm_hidden_dim=lstm_hidden_dim)
+    if gnn_type == 'GAT_LSTM':
+        log_window = 1
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     train_loss_values = []
@@ -171,56 +186,29 @@ def train_gnn(gnn_type='GAT',
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
-        total_batches = 0
         # all_val_snapshots = []
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
-        for i, file_name in enumerate(training_sequence_filenames):
-            logging.info(f'Training on file {i}/{len(training_sequence_filenames)}: {file_name}.')
-            data = bucket_manager.torch_load_from_bucket(file_name)
-            snapshot_sequence = data['snapshot_sequence']
-            # Truncate the log window to the specified length
-            for snapshot in snapshot_sequence:
-                snapshot.x = snapshot.x[:, :log_window + 1]
 
-            # Splitting the data into training and validation sets for this file
-            # train_snapshots, val_snapshots = split_snapshots(snapshot_sequence)
-            # all_val_snapshots.extend(val_snapshots)
-            train_loader = DataLoader(snapshot_sequence, batch_size=batch_size, shuffle=True)
+        for i, batch in enumerate(training_data_loader):
+            number_of_compromised_nodes += torch.sum(batch.y == 1).item()
+            number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
+            global_step += len(batch.y)
+            optimizer.zero_grad()
+            out = model(batch)
+            out = F.log_softmax(out, dim=1)
+            loss = F.nll_loss(out, batch.y)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+            logging.info(f'Epoch {epoch}, Batch {i}, Processed node {global_step}. Training Loss: {loss.item():.4f}.')
 
-            for batch in train_loader:
-                number_of_compromised_nodes += torch.sum(batch.y == 1).item()
-                number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
-                global_step += len(batch.y)
-                optimizer.zero_grad()
-                out = model(batch)
-                out = F.log_softmax(out, dim=1)
-                loss = F.nll_loss(out, batch.y)
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()
-                total_batches += 1
-
-        if total_batches > 0:
-            epoch_loss /= total_batches
+        epoch_loss /= len(training_data_loader)
         train_loss_values.append(epoch_loss)
 
-        all_predicted_labels = []
-        all_true_labels = []
-        val_loss_values = []
+        val_loss, predicted_labels, true_labels = evaluate_model(model, validation_data_loader)
 
-        for i, file_name in enumerate(validation_sequence_filenames):
-            logging.info(f'Validating on file {i}/{len(training_sequence_filenames)}: {file_name}.')
-            data = bucket_manager.torch_load_from_bucket(file_name)
-            snapshot_sequence = data['snapshot_sequence']
-            val_loader = DataLoader(snapshot_sequence, batch_size=batch_size, shuffle=False)
-            val_loss, predicted_labels, true_labels = evaluate_model(model, val_loader)
-            val_loss_values.append(val_loss)
-            all_predicted_labels.extend(predicted_labels)
-            all_true_labels.extend(true_labels)
-
-        overall_val_loss = np.mean(val_loss_values)
-        f1 = f1_score(all_true_labels, all_predicted_labels, average='binary', zero_division=0)
+        f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
 
         end_time = time.time()
         hpt = hypertune.HyperTune()
@@ -228,7 +216,7 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {overall_val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
 
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
@@ -238,7 +226,7 @@ def train_gnn(gnn_type='GAT',
                                            hidden_layers=hidden_layers, 
                                            learning_rate=learning_rate, 
                                            batch_size=batch_size, 
-                                           snapshot_sequence=snapshot_sequence)
+                                           snapshot_sequence_length=training_data_loader.snapshot_sequence_length())
 
     return model_file_name
 

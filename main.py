@@ -49,7 +49,7 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 # and --rddl_path
 
 # Training
-parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN'], help='Type of GNN to use for training')
+parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
 parser.add_argument('--max_training_sequences', type=int, default=256, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=64, help='Number of sequences to use for validation')
 parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
@@ -62,6 +62,7 @@ parser.add_argument('--n_hidden_layer_3', type=int, default=0, help='Number of n
 parser.add_argument('--n_hidden_layer_4', type=int, default=0, help='Number of neurons in hidden layer 4 for GNN')
 parser.add_argument('--edge_embedding_dim', type=int, default=16, help='Edge embedding dimension for GAT')
 parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
+parser.add_argument('--lstm_hidden_dim', type=int, default=128, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
 
 # Evaluation and animation
@@ -190,6 +191,7 @@ if 'train' in args.modes:
                     n_hidden_layer_4=args.n_hidden_layer_4,
                     edge_embedding_dim=args.edge_embedding_dim,
                     heads_per_layer=args.heads_per_layer, 
+                    lstm_hidden_dim=args.lstm_hidden_dim,
                     checkpoint_interval=1,  # Add a parameter to set checkpoint interval
                     checkpoint_file=args.checkpoint_file,  # Add checkpoint file parameter
                     checkpoint_path='checkpoints/')

@@ -34,9 +34,11 @@ class Evaluator:
                           min_nodes, 
                           max_nodes, 
                           log_window, 
-                          max_sequences):
+                          max_sequences,
+                          min_snapshots=0,
+                          max_snapshots=9999999):
         predictor = Predictor(predictor_type, predictor_filename, bucket_manager=bucket_manager)
-        sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, log_window, max_sequences)
+        sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_sequences)
         logging.info(f'Evaluating {predictor_type} predictor {predictor_filename} on {len(sequence_filenames)} snapshot sequences.')
         start_time = time.time()
         all_predicted_labels = []

@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, GATConv, Sequential
 
@@ -72,6 +73,21 @@ class GAT(torch.nn.Module):
                 x = F.dropout(x, training=self.training)
         return x
     
+    
+class GNN_LSTM(torch.nn.Module):
+    def __init__(self, gnn, lstm_hidden_dim, num_classes):
+        super(GNN_LSTM, self).__init__()
+        self.gnn = gnn
+        self.lstm = nn.LSTM(input_size=gnn.output_dim, hidden_size=lstm_hidden_dim, batch_first=True)
+        self.classifier = nn.Linear(lstm_hidden_dim, num_classes)
+
+    def forward(self, data, hidden_state=None):
+        gnn_out = self.gnn(data)  # Get node embeddings from GNN
+        # LSTM expects input of shape (batch, seq_len, features)
+        gnn_out = gnn_out.unsqueeze(1)  # Add sequence length dimension
+        lstm_out, hidden_state = self.lstm(gnn_out, hidden_state)
+        logits = self.classifier(lstm_out.squeeze(1))
+        return logits, hidden_state
 
 
 class GIN(torch.nn.Module):
