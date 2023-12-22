@@ -44,14 +44,19 @@ def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
     return train_snapshots, val_snapshots
 
 
-def evaluate_model(model, data_loader):
+def evaluate_model(model, data_loader, gnn_type):
     model.eval()
     total_loss = 0
     all_predicted_labels = []
     all_true_labels = []
+    hidden_state = None
     with torch.no_grad():
         for batch in data_loader:
-            out = model(batch)
+            if gnn_type == 'GAT_LSTM':
+                out, hidden_state = model(batch, hidden_state)
+                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+            else:
+                out = model(batch)
             out = F.log_softmax(out, dim=1)
             loss = F.nll_loss(out, batch.y)
             total_loss += loss.item()
@@ -127,8 +132,8 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
         heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
         model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
     elif gnn_type == 'GAT_LSTM':
-        heads = [heads_per_layer] * (len(hidden_layers)) + [1] # Number of attention heads in each layer
-        gnn_model = GAT([actual_num_features] + hidden_layers + [2], heads, num_relations, edge_embedding_dim)
+        heads = [heads_per_layer] * (len(hidden_layers) - 1) + [1] # Number of attention heads in each layer, but setting the last layer to 1
+        gnn_model = GAT([actual_num_features] + hidden_layers, heads, num_relations, edge_embedding_dim)
         model = GNN_LSTM(gnn=gnn_model, lstm_hidden_dim=lstm_hidden_dim, num_classes=2)  # Choose appropriate dimensions
     else:
         raise ValueError(f'Unknown GNN type: {gnn_type}')
@@ -160,23 +165,27 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
+    if gnn_type == 'GAT_LSTM':
+        log_window = 1 # The LSTM will only consider the current time step, so we set the log window to 1
+        batch_method = 'by_time_step' # The LSTM requires the snapshots to be ordered by time step
+    else:
+        batch_method = 'random'
     training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
-    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method='random')
-    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method='random')
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
     logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_training_sequences}')
+    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
+    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
+
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
-
     model = get_model(gnn_type=gnn_type, 
-                      edge_embedding_dim=edge_embedding_dim, 
-                      heads_per_layer=heads_per_layer, 
-                      actual_num_features=log_window + 1, 
-                      num_relations=num_relations, 
-                      hidden_layers=hidden_layers, 
+                      edge_embedding_dim=edge_embedding_dim,
+                      heads_per_layer=heads_per_layer,
+                      actual_num_features=log_window + 1,
+                      num_relations=num_relations,
+                      hidden_layers=hidden_layers,
                       lstm_hidden_dim=lstm_hidden_dim)
-    if gnn_type == 'GAT_LSTM':
-        log_window = 1
+
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     train_loss_values = []
@@ -189,13 +198,18 @@ def train_gnn(gnn_type='GAT',
         # all_val_snapshots = []
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
+        hidden_state = None
 
         for i, batch in enumerate(training_data_loader):
             number_of_compromised_nodes += torch.sum(batch.y == 1).item()
             number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
             global_step += len(batch.y)
             optimizer.zero_grad()
-            out = model(batch)
+            if gnn_type == 'GAT_LSTM':
+                out, hidden_state = model(batch, hidden_state)
+                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+            else:
+                out = model(batch)
             out = F.log_softmax(out, dim=1)
             loss = F.nll_loss(out, batch.y)
             loss.backward()
@@ -206,7 +220,7 @@ def train_gnn(gnn_type='GAT',
         epoch_loss /= len(training_data_loader)
         train_loss_values.append(epoch_loss)
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model, validation_data_loader)
+        val_loss, predicted_labels, true_labels = evaluate_model(model, validation_data_loader, gnn_type)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
 

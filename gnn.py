@@ -78,7 +78,7 @@ class GNN_LSTM(torch.nn.Module):
     def __init__(self, gnn, lstm_hidden_dim, num_classes):
         super(GNN_LSTM, self).__init__()
         self.gnn = gnn
-        self.lstm = nn.LSTM(input_size=gnn.output_dim, hidden_size=lstm_hidden_dim, batch_first=True)
+        self.lstm = nn.LSTM(input_size=gnn.layers[-1].out_channels, hidden_size=lstm_hidden_dim, batch_first=True)
         self.classifier = nn.Linear(lstm_hidden_dim, num_classes)
 
     def forward(self, data, hidden_state=None):

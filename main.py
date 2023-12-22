@@ -49,7 +49,7 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 # and --rddl_path
 
 # Training
-parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
+parser.add_argument('--gnn_type', default='GAT_LSTM', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
 parser.add_argument('--max_training_sequences', type=int, default=256, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=64, help='Number of sequences to use for validation')
 parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
@@ -173,7 +173,7 @@ if 'simulate' in args.modes:
 if 'train' in args.modes:
     logging.info(f'Training GNN on a specific graph.')
     predictor_filename = train_gnn(
-                    gnn_type='GAT',
+                    gnn_type=args.gnn_type,
                     bucket_manager=bucket_manager,
                     sequence_dir_path=config['training_sequence_dirpath'],
                     model_dirpath='models/',
