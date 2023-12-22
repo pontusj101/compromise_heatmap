@@ -37,7 +37,7 @@ parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=32, help='Number of instances to create')
 parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=64, help='Maximum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=128, help='Maximum number of hosts in each instance')
 parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 parser.add_argument('--game_time', type=int, default=256, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
@@ -50,18 +50,18 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 
 # Training
 parser.add_argument('--gnn_type', default='GAT_LSTM', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
-parser.add_argument('--max_training_sequences', type=int, default=256, help='Maximum number of instances to use for training')
+parser.add_argument('--max_training_sequences', type=int, default=1024, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=64, help='Number of sequences to use for validation')
-parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
-parser.add_argument('--epochs', type=int, default=4, help='Number of epochs for GNN training')
+parser.add_argument('--train_log_window', type=int, default=256, help='Size of the logging window')
+parser.add_argument('--epochs', type=int, default=16, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=256, help='Batch size for GNN training')
-parser.add_argument('--n_hidden_layer_1', type=int, default=128, help='Number of neurons in hidden layer 1 for GNN')
-parser.add_argument('--n_hidden_layer_2', type=int, default=128, help='Number of neurons in hidden layer 2 for GNN')
-parser.add_argument('--n_hidden_layer_3', type=int, default=0, help='Number of neurons in hidden layer 3 for GNN')
+parser.add_argument('--n_hidden_layer_1', type=int, default=1024, help='Number of neurons in hidden layer 1 for GNN')
+parser.add_argument('--n_hidden_layer_2', type=int, default=512, help='Number of neurons in hidden layer 2 for GNN')
+parser.add_argument('--n_hidden_layer_3', type=int, default=256, help='Number of neurons in hidden layer 3 for GNN')
 parser.add_argument('--n_hidden_layer_4', type=int, default=0, help='Number of neurons in hidden layer 4 for GNN')
-parser.add_argument('--edge_embedding_dim', type=int, default=16, help='Edge embedding dimension for GAT')
-parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
+parser.add_argument('--edge_embedding_dim', type=int, default=128, help='Edge embedding dimension for GAT')
+parser.add_argument('--heads_per_layer', type=int, default=4, help='Number of attention heads per layer for GAT')
 parser.add_argument('--lstm_hidden_dim', type=int, default=128, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
 

@@ -172,7 +172,6 @@ def train_gnn(gnn_type='GAT',
         batch_method = 'random'
     training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
-    logging.info(f'{len(training_sequence_filenames)} training sequences match the criteria: min_nodes: {min_nodes}, max_nodes: {max_nodes}, log_window: {log_window}, max_sequences: {max_training_sequences}')
     training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
     validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
 
@@ -190,7 +189,11 @@ def train_gnn(gnn_type='GAT',
 
     train_loss_values = []
     global_step = 0
-
+    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} batches of {int(training_data_loader[0].batch[-1]) + 1} graphs each.')
+    if batch_method == 'by_time_step':
+        logging.info(f'Each batch is one time step, so {len(training_data_loader)} timesteps.') 
+    logging.info(f'Validating on {len(validation_data_loader)} batches of {int(validation_data_loader[0].batch[-1]) + 1} graphs each.')
+    logging.info(f'The first graph in the first batch has {sum(training_data_loader[0].batch == 0)} nodes, while the second and third have {sum(training_data_loader[0].batch == 1)} and {sum(training_data_loader[0].batch == 2)}.')
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
@@ -215,7 +218,7 @@ def train_gnn(gnn_type='GAT',
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-            logging.info(f'Epoch {epoch}, Batch {i}, Processed node {global_step}. Training Loss: {loss.item():.4f}.')
+            logging.debug(f'Epoch {epoch}, Batch {i}, Processed node {global_step}. Training Loss: {loss.item():.4f}.')
 
         epoch_loss /= len(training_data_loader)
         train_loss_values.append(epoch_loss)

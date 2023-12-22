@@ -67,7 +67,7 @@ def get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nod
     node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
     n_snapshot_filtered_filenames = [fn for fn in node_num_filtered_filenames if int(fn.split('/')[3].split('_')[0]) >= min_snapshots and int(fn.split('/')[3].split('_')[0]) < max_snapshots]
     random.shuffle(n_snapshot_filtered_filenames)
-    if len(node_num_filtered_filenames) < n_validation_sequences + 1:
-        raise ValueError(f'Not enough sequences for training and validation. {len(node_num_filtered_filenames)} sequences found, but {n_validation_sequences} validation sequences requested, and at least one additional is required for training.')
-    return node_num_filtered_filenames[:n_validation_sequences], node_num_filtered_filenames[n_validation_sequences:n_validation_sequences+max_sequences:] # Limit the number of sequences to max_sequences
+    if len(n_snapshot_filtered_filenames) < n_validation_sequences + 1:
+        raise ValueError(f'Not enough sequences for training and validation. {len(n_snapshot_filtered_filenames)} sequences found, but {n_validation_sequences} validation sequences requested, and at least one additional is required for training.')
+    return n_snapshot_filtered_filenames[n_validation_sequences:n_validation_sequences+max_sequences:], n_snapshot_filtered_filenames[:n_validation_sequences] # Limit the number of sequences to max_sequences
 
