@@ -165,6 +165,9 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    logging.info(f'Using device: {device}')
+
     if gnn_type == 'GAT_LSTM':
         log_window = 1 # The LSTM will only consider the current time step, so we set the log window to 1
         batch_method = 'by_time_step' # The LSTM requires the snapshots to be ordered by time step
@@ -183,7 +186,7 @@ def train_gnn(gnn_type='GAT',
                       actual_num_features=log_window + 1,
                       num_relations=num_relations,
                       hidden_layers=hidden_layers,
-                      lstm_hidden_dim=lstm_hidden_dim)
+                      lstm_hidden_dim=lstm_hidden_dim).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -204,6 +207,7 @@ def train_gnn(gnn_type='GAT',
         hidden_state = None
 
         for i, batch in enumerate(training_data_loader):
+            batch.to(device)
             number_of_compromised_nodes += torch.sum(batch.y == 1).item()
             number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
             global_step += len(batch.y)
@@ -223,7 +227,7 @@ def train_gnn(gnn_type='GAT',
         epoch_loss /= len(training_data_loader)
         train_loss_values.append(epoch_loss)
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model, validation_data_loader, gnn_type)
+        val_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
 
@@ -235,7 +239,7 @@ def train_gnn(gnn_type='GAT',
             global_step=global_step)
         logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
-
+    model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_dirpath, 
                                            model=model, 
