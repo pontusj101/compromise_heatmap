@@ -172,6 +172,9 @@ def train_gnn(gnn_type='GAT',
     if gnn_type == 'GAT_LSTM':
         log_window = 1 # The LSTM will only consider the current time step, so we set the log window to 1
         batch_method = 'by_time_step' # The LSTM requires the snapshots to be ordered by time step
+    # TODO: GAT should train on random, so remove this elif
+    elif gnn_type == 'GAT':
+        batch_method = 'by_time_step' 
     else:
         batch_method = 'random'
     training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
