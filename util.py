@@ -1,6 +1,8 @@
 import io
 import torch
 import random
+import logging
+import numpy as np
 from google.cloud import storage
 from torch.utils.data import Dataset
 from torch_geometric.data import Batch
@@ -19,7 +21,7 @@ class TimeSeriesDataset(Dataset):
         self.batch_size = batch_size
         self.batch_method = batch_method
         self.data = self.load_all_data(file_paths)
-        self.length = len(self.data[0]) 
+        self.length = len(self.data) 
 
     def load_all_data(self, file_paths):
         all_snapshot_sequences = []
@@ -28,8 +30,15 @@ class TimeSeriesDataset(Dataset):
             for snapshot in snapshot_sequence:
                 snapshot.x = snapshot.x[:, :self.max_log_window + 1] # Truncate the log window
             all_snapshot_sequences.append(snapshot_sequence)
-        self.common_snapshot_sequence_length = min(len(seq) for seq in all_snapshot_sequences) # Truncate all sequences to the length of the shortest one
-        adjusted_sequences = [seq[:self.common_snapshot_sequence_length] for seq in all_snapshot_sequences]
+        # Removing the shortest sequences, as they limit the lengths of all sequences
+        sorted_snapshot_sequences = sorted(all_snapshot_sequences, key=len)
+        sorted_all_snapshot_sequence_lengths = [len(s) for s in sorted_snapshot_sequences]
+        truncation_threshold = np.argmax([sorted_all_snapshot_sequence_lengths[i]*(len(sorted_all_snapshot_sequence_lengths)-i) for i in range(len(sorted_all_snapshot_sequence_lengths))])
+        truncated_snapshot_sequences = sorted_snapshot_sequences[truncation_threshold:]
+
+        # Truncate all sequences to the length of the shortest one
+        self.common_snapshot_sequence_length = min(len(seq) for seq in truncated_snapshot_sequences)
+        adjusted_sequences = [seq[:self.common_snapshot_sequence_length] for seq in truncated_snapshot_sequences]
         if self.batch_method == 'by_time_step':
             batch_list = list(zip(*adjusted_sequences))  # Transpose to group by time step
             return [Batch.from_data_list(batch) for batch in batch_list]
@@ -69,5 +78,6 @@ def get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nod
     random.shuffle(n_snapshot_filtered_filenames)
     if len(n_snapshot_filtered_filenames) < n_validation_sequences + 1:
         raise ValueError(f'Not enough sequences for training and validation. {len(n_snapshot_filtered_filenames)} sequences found, but {n_validation_sequences} validation sequences requested, and at least one additional is required for training.')
+    logging.info(f'Found {len(n_snapshot_filtered_filenames)} sequences. Using {min(max_sequences, len(n_snapshot_filtered_filenames)-n_validation_sequences)} for training and {n_validation_sequences} for validation.')
     return n_snapshot_filtered_filenames[n_validation_sequences:n_validation_sequences+max_sequences:], n_snapshot_filtered_filenames[:n_validation_sequences] # Limit the number of sequences to max_sequences
 

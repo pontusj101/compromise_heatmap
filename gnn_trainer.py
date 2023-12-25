@@ -165,6 +165,7 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
+    logging.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device: {device}')
 
@@ -230,6 +231,8 @@ def train_gnn(gnn_type='GAT',
         val_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
+        recall = recall_score(true_labels, predicted_labels, average='binary', zero_division=0)
 
         end_time = time.time()
         hpt = hypertune.HyperTune()
@@ -237,7 +240,7 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
