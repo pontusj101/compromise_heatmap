@@ -22,6 +22,9 @@ class Animator:
         indexed_snapshot_sequence = bucket_manager.torch_load_from_bucket(animation_sequence_filename)
 
         self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
+        # Assuming an LSTM model, we only need the first log entry (and the node type, which is at index 0)
+        for snapshot in self.snapshot_sequence:
+            snapshot.x = snapshot.x[:, :2]
         self.graph_index = indexed_snapshot_sequence['graph_index']
         num_nodes = len(self.graph_index.object_mapping)
         self.figsize = (30, 30)  # Define figure size
@@ -94,12 +97,12 @@ class Animator:
         
         return color_map, size_map, edge_colors, edge_widths
     
-    def update_graph(self, num, pos, ax, predictor):
+    def update_graph(self, num, pos, ax, probabilities):
         logging.debug(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
         ax.clear()
         snapshot = self.snapshot_sequence[num]
 
-        prediction = predictor.predict(snapshot)
+        prediction = probabilities[:, num]
 
         G = self.create_graph(num=num)
 
@@ -135,6 +138,8 @@ class Animator:
 
         predictor = Predictor(predictor_type, predictor_filename, self.bucket_manager)
 
+        probabilities = predictor.predict_sequence(self.snapshot_sequence)
+
         fig, ax = plt.subplots(figsize=self.figsize)
         
         # Calculate layout once
@@ -145,29 +150,29 @@ class Animator:
         self.hide_state = False
         self.hide_prediction = False
         ani_all = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
+                                    fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
         ani_all.save('network_animation_state_and_pred.mp4', writer='ffmpeg', fps=frames_per_second)
 
-        logging.info(f'Showing only prediction.')
-        self.hide_state = True
-        self.hide_prediction = False
-        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
-        ani_hide_state.save('network_animation_pred.mp4', writer='ffmpeg', fps=frames_per_second)
+        # logging.info(f'Showing only prediction.')
+        # self.hide_state = True
+        # self.hide_prediction = False
+        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        # ani_hide_state.save('network_animation_pred.mp4', writer='ffmpeg', fps=frames_per_second)
 
-        logging.info(f'Showing only state.')
-        self.hide_state = False
-        self.hide_prediction = True
-        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
-        ani_hide_state.save('network_animation_state.mp4', writer='ffmpeg', fps=frames_per_second)
+        # logging.info(f'Showing only state.')
+        # self.hide_state = False
+        # self.hide_prediction = True
+        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        # ani_hide_state.save('network_animation_state.mp4', writer='ffmpeg', fps=frames_per_second)
 
-        logging.info(f'Showing neither prediction nor state.')
-        self.hide_state = True
-        self.hide_prediction = True
-        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
-                                    fargs=(pos, ax, predictor), interval=int(1000/frames_per_second))
-        ani_hide_state.save('network_animation_none.mp4', writer='ffmpeg', fps=frames_per_second)
+        # logging.info(f'Showing neither prediction nor state.')
+        # self.hide_state = True
+        # self.hide_prediction = True
+        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence), 
+        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        # ani_hide_state.save('network_animation_none.mp4', writer='ffmpeg', fps=frames_per_second)
 
 
         # Optional: Close the plot to prevent display issues in some environments

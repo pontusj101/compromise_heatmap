@@ -1,5 +1,6 @@
 import io
 import torch
+import torch.nn.functional as F
 from torch.nn.functional import softmax
 from google.cloud import storage
 from bucket_manager import BucketManager
@@ -48,4 +49,9 @@ class Predictor:
         elif self.predictor_type == 'none':
             return torch.zeros(len(snapshot.y))
         
+    def predict_sequence(self, sequence):
+        hidden_state = None
+        logits, hidden_state = self.model(sequence, hidden_state)
+        probabilities = F.softmax(logits, dim=-1)
+        return probabilities[:,:,1]
 

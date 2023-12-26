@@ -69,7 +69,7 @@ parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of t
 # Evaluation and animation
 # Best model so far
 # parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_1448,2896,2896_nsnpsht_32526_lr_0.0010000000000000002_bs_91_20231216_070612.pt', help='Path the model filename, relative to the bucket root.')
-parser.add_argument('--model_filepath', type=str, default='models/model_log_window_64/_hl_8192,8192,286_nsnpsht_64_lr_0.0006_bs_35_20231218_153719.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_362,362,362_nsnpsht_362_lr_0.0001_bs_128_20231226_075422.pt', help='Path the model filename, relative to the bucket root.')
 # Some other model
 # parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_569,1532,5172_nsnpsht_16945_lr_0.0010334153904374018_bs_45_20231216_001205.pt', help='Path the model filename, relative to the bucket root.')
 # Evaluation
