@@ -51,8 +51,8 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 
 # Training
 parser.add_argument('--gnn_type', default='GAT_LSTM', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
-parser.add_argument('--max_training_sequences', type=int, default=1, help='Maximum number of instances to use for training')
-parser.add_argument('--n_validation_sequences', type=int, default=1, help='Number of sequences to use for validation')
+parser.add_argument('--max_training_sequences', type=int, default=32, help='Maximum number of instances to use for training')
+parser.add_argument('--n_validation_sequences', type=int, default=16, help='Number of sequences to use for validation')
 parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=128, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.0002, help='Learning rate for GNN training')
@@ -117,6 +117,7 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 # Supress unwanted logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('storage').setLevel(logging.WARNING)
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Attempting to set identical low and high ylims makes transformation singular; automatically expanding.", module="pyRDDLGym.Visualizer.ChartViz")

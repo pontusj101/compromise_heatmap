@@ -78,7 +78,7 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss Curve')
     plt.legend()
-    plt.savefig('loss_curves/' + filename)
+    plt.savefig(filename)
     plt.close()
 
 def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels, start_time):
@@ -205,6 +205,7 @@ def train_gnn(gnn_type='GAT',
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     train_loss_values = []
+    validation_loss_values = []
     global_step = 0
     logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} batches of one graph each.')
     if batch_method == 'by_time_step':
@@ -241,6 +242,7 @@ def train_gnn(gnn_type='GAT',
         train_loss_values.append(epoch_loss)
 
         val_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
+        validation_loss_values.append(val_loss)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
         precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
@@ -254,6 +256,8 @@ def train_gnn(gnn_type='GAT',
             global_step=global_step)
         logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
         
+        plot_training_results('loss_plot.png', train_loss_values, validation_loss_values)
+
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_dirpath, 

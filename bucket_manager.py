@@ -34,3 +34,7 @@ class BucketManager:
         json_data = json.dumps(data)
         blob = self.bucket.blob(blob_name)
         blob.upload_from_string(json_data)
+
+    def undefined_save_to_bucket(self, data, blob_name):
+        blob = self.bucket.blob(blob_name)
+        blob.upload_from_string(data)
