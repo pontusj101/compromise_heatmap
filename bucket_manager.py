@@ -35,6 +35,6 @@ class BucketManager:
         blob = self.bucket.blob(blob_name)
         blob.upload_from_string(json_data)
 
-    def undefined_save_to_bucket(self, data, blob_name):
+    def upload_from_filepath(self, filepath, blob_name):
         blob = self.bucket.blob(blob_name)
-        blob.upload_from_string(data)
+        blob.upload_from_filename(filepath)

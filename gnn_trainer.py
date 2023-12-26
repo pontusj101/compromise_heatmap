@@ -49,9 +49,9 @@ def evaluate_model(model, data_loader, gnn_type):
     total_loss = 0
     all_predicted_labels = []
     all_true_labels = []
-    hidden_state = None
     with torch.no_grad():
         for sequence in data_loader:
+            hidden_state = None
             if gnn_type == 'GAT_LSTM':
                 logits, hidden_state = model(sequence, hidden_state)
                 hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
@@ -70,7 +70,7 @@ def evaluate_model(model, data_loader, gnn_type):
 
     return total_loss / len(data_loader), all_predicted_labels, all_true_labels
 
-def plot_training_results(filename, loss_values, val_loss_values):
+def plot_training_results(bucket_manager, filename, loss_values, val_loss_values):
     plt.figure(figsize=(10, 6))
     plt.plot(loss_values, label='Training Loss')
     plt.plot(val_loss_values, label='Validation Loss')
@@ -78,8 +78,9 @@ def plot_training_results(filename, loss_values, val_loss_values):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss Curve')
     plt.legend()
-    plt.savefig(filename)
+    plt.savefig('loss_plt.png')
     plt.close()
+    bucket_manager.upload_from_filepath('loss_plt.png', filename)
 
 def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_labels, start_time):
     true_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 1))
@@ -95,13 +96,16 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length):
+def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
+    model_file_name = model_filename(model_path, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str)
+    bucket_manager.torch_save_to_bucket(model, model_file_name)
+    return model_file_name
+
+def model_filename(model_path, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
     snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
-    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{snapshot_sequence_length}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
     filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
     model_file_name = f'{model_path}model_{filename_root}.pt'
-    bucket_manager.torch_save_to_bucket(model, model_file_name)
     return model_file_name
 
 def get_num_relations(bucket_manager, training_sequence_filenames):
@@ -175,6 +179,7 @@ def train_gnn(gnn_type='GAT',
               checkpoint_file=None,  # Add checkpoint file parameter
               checkpoint_path='checkpoints/'):
 
+    date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     logging.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device: {device}')
@@ -217,9 +222,9 @@ def train_gnn(gnn_type='GAT',
         epoch_loss = 0.0
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
-        hidden_state = None
 
         for i, sequence in enumerate(training_data_loader):
+            hidden_state = None
             # sequence.to(device)
             for snapshot in sequence:
                 number_of_compromised_nodes += torch.sum(snapshot.y == 1).item()
@@ -255,8 +260,9 @@ def train_gnn(gnn_type='GAT',
             metric_value=f1,
             global_step=global_step)
         logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-        
-        plot_training_results('loss_plot.png', train_loss_values, validation_loss_values)
+
+        mfn = model_filename(model_dirpath, training_sequence_filenames, hidden_layers, learning_rate, batch_size, len(training_data_loader), date_time_str)
+        plot_training_results(bucket_manager, f'loss_plot_{mfn}.png', train_loss_values, validation_loss_values)
 
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
@@ -266,7 +272,8 @@ def train_gnn(gnn_type='GAT',
                                            hidden_layers=hidden_layers, 
                                            learning_rate=learning_rate, 
                                            batch_size=batch_size, 
-                                           snapshot_sequence_length=len(training_data_loader))
+                                           snapshot_sequence_length=len(training_data_loader),
+                                           date_time_str=date_time_str)
 
     return model_file_name
 
