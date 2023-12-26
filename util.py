@@ -13,13 +13,9 @@ class TimeSeriesDataset(Dataset):
     def __init__(self, 
                  bucket_manager, 
                  file_paths, 
-                 max_log_window=999999,
-                 batch_size=1,
-                 batch_method='by_time_step'): # 'by_sequence', 'random'
+                 max_log_window=999999): # 'by_sequence', 'random'
         self.bucket_manager = bucket_manager
         self.max_log_window = max_log_window
-        self.batch_size = batch_size
-        self.batch_method = batch_method
         self.data = self.load_all_data(file_paths)
         self.length = len(self.data) 
 
@@ -30,35 +26,11 @@ class TimeSeriesDataset(Dataset):
             for snapshot in snapshot_sequence:
                 snapshot.x = snapshot.x[:, :self.max_log_window + 1] # Truncate the log window
             all_snapshot_sequences.append(snapshot_sequence)
-        # Removing the shortest sequences, as they limit the lengths of all sequences
-        sorted_snapshot_sequences = sorted(all_snapshot_sequences, key=len)
-        sorted_all_snapshot_sequence_lengths = [len(s) for s in sorted_snapshot_sequences]
-        truncation_threshold = np.argmax([sorted_all_snapshot_sequence_lengths[i]*(len(sorted_all_snapshot_sequence_lengths)-i) for i in range(len(sorted_all_snapshot_sequence_lengths))])
-        truncated_snapshot_sequences = sorted_snapshot_sequences[truncation_threshold:]
-
-        # Truncate all sequences to the length of the shortest one
-        self.common_snapshot_sequence_length = min(len(seq) for seq in truncated_snapshot_sequences)
-        adjusted_sequences = [seq[:self.common_snapshot_sequence_length] for seq in truncated_snapshot_sequences]
-        if self.batch_method == 'by_time_step':
-            batch_list = list(zip(*adjusted_sequences))  # Transpose to group by time step
-            return [Batch.from_data_list(batch) for batch in batch_list]
-        elif self.batch_method == 'by_sequence':
-            batch_list = adjusted_sequences
-            return [Batch.from_data_list(batch) for batch in batch_list]
-        elif self.batch_method == 'random':
-            flattened_adjusted_sequences = [item for sublist in adjusted_sequences for item in sublist]
-            random.shuffle(flattened_adjusted_sequences)
-            random_batch_list = [Batch.from_data_list(flattened_adjusted_sequences[i:i + self.batch_size]) for i in range(0, len(flattened_adjusted_sequences), self.batch_size)]
-            return random_batch_list
-        else:
-            raise ValueError(f'Batch method {self.batch_method} not supported.')
-
+        return all_snapshot_sequences
+    
     def load_snapshot_sequence(self, file_name):
         data = self.bucket_manager.torch_load_from_bucket(file_name)
         return data['snapshot_sequence']
-
-    def snapshot_sequence_length(self):
-        return self.common_snapshot_sequence_length
 
     def __len__(self):
         return self.length

@@ -51,22 +51,22 @@ def evaluate_model(model, data_loader, gnn_type):
     all_true_labels = []
     hidden_state = None
     with torch.no_grad():
-        for batch in data_loader:
+        for sequence in data_loader:
             if gnn_type == 'GAT_LSTM':
-                out, hidden_state = model(batch, hidden_state)
+                logits, hidden_state = model(sequence, hidden_state)
                 hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
             else:
-                out = model(batch)
-            out = F.log_softmax(out, dim=1)
-            loss = F.nll_loss(out, batch.y)
+                logits = model(sequence)
+            targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
+            loss = calculate_loss(logits, targets)
             total_loss += loss.item()
-            predicted_labels = out.max(1)[1]
+            probabilities = F.softmax(logits, dim=-1)
+            predicted_labels = torch.argmax(probabilities, dim=-1)
             all_predicted_labels.append(predicted_labels.cpu().numpy())
-            true_labels = batch.y
-            all_true_labels.append(true_labels.cpu().numpy())
+            all_true_labels.append(targets.cpu().numpy())
 
-    all_predicted_labels = np.concatenate(all_predicted_labels)
-    all_true_labels = np.concatenate(all_true_labels)
+    all_predicted_labels = np.concatenate([l.flatten() for l in all_predicted_labels])
+    all_true_labels = np.concatenate([l.flatten() for l in all_true_labels])
 
     return total_loss / len(data_loader), all_predicted_labels, all_true_labels
 
@@ -140,6 +140,16 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
 
     return model
 
+def calculate_loss(logits, target_labels):
+    # Assume logits is of shape (batch_size, sequence_length, num_classes)
+    # and target_labels is of shape (batch_size, sequence_length)
+    # You might need to adapt this depending on how logits and target_labels are structured
+    loss = 0
+    for t in range(logits.shape[1]):  # Loop over each time step
+        loss += F.nll_loss(F.log_softmax(logits[:, t, :], dim=1), target_labels[:,t])
+    return loss / logits.shape[1]  # Average loss over the sequence
+
+
 def train_gnn(gnn_type='GAT',
               bucket_manager=None,
               sequence_dir_path='training_sequences/',
@@ -179,8 +189,8 @@ def train_gnn(gnn_type='GAT',
         batch_method = 'random'
     training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
-    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
-    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, batch_size=batch_size, batch_method=batch_method)
+    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window)
+    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window)
 
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
@@ -196,33 +206,32 @@ def train_gnn(gnn_type='GAT',
 
     train_loss_values = []
     global_step = 0
-    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} batches of {int(training_data_loader[0].batch[-1]) + 1} graphs each.')
+    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} batches of one graph each.')
     if batch_method == 'by_time_step':
         logging.info(f'Each batch is one time step, so {len(training_data_loader)} timesteps.') 
-    logging.info(f'Validating on {len(validation_data_loader)} batches of {int(validation_data_loader[0].batch[-1]) + 1} graphs each.')
-    logging.info(f'The first graph in the first batch has {sum(training_data_loader[0].batch == 0)} nodes, while the second and third have {sum(training_data_loader[0].batch == 1)} and {sum(training_data_loader[0].batch == 2)}.')
+    logging.info(f'Validating on {len(validation_data_loader)} batches of one graph each.')
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
         epoch_loss = 0.0
-        # all_val_snapshots = []
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
         hidden_state = None
 
-        for i, batch in enumerate(training_data_loader):
-            batch.to(device)
-            number_of_compromised_nodes += torch.sum(batch.y == 1).item()
-            number_of_uncompromised_nodes += torch.sum(batch.y == 0).item()
-            global_step += len(batch.y)
+        for i, sequence in enumerate(training_data_loader):
+            # sequence.to(device)
+            for snapshot in sequence:
+                number_of_compromised_nodes += torch.sum(snapshot.y == 1).item()
+                number_of_uncompromised_nodes += torch.sum(snapshot.y == 0).item()
+            global_step += sum([len(s.y) for s in sequence])
             optimizer.zero_grad()
             if gnn_type == 'GAT_LSTM':
-                out, hidden_state = model(batch, hidden_state)
+                logits, hidden_state = model(sequence, hidden_state)
                 hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
             else:
-                out = model(batch)
-            out = F.log_softmax(out, dim=1)
-            loss = F.nll_loss(out, batch.y)
+                logits = model(sequence)
+            targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
+            loss = calculate_loss(logits, targets)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
@@ -253,7 +262,7 @@ def train_gnn(gnn_type='GAT',
                                            hidden_layers=hidden_layers, 
                                            learning_rate=learning_rate, 
                                            batch_size=batch_size, 
-                                           snapshot_sequence_length=training_data_loader.snapshot_sequence_length())
+                                           snapshot_sequence_length=len(training_data_loader))
 
     return model_file_name
 

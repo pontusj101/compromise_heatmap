@@ -59,32 +59,40 @@ class GAT(torch.nn.Module):
             self.layers.append(GATConv(in_channels, out_channels, heads=heads[i]))
             in_channels = out_channels * heads[i]  # Update in_channels for the next layer
 
-    def forward(self, data):
-        x, edge_index, edge_type = data.x, data.edge_index, data.edge_type
+    def forward(self, sequence):
+        gnn_outs = []
+        for snapshot in sequence:
+            x, edge_index, edge_type = snapshot.x, snapshot.edge_index, snapshot.edge_type
 
-        # Embed edge types
-        edge_attr = self.edge_type_embedding(edge_type)
+            # Embed edge types
+            edge_attr = self.edge_type_embedding(edge_type)
 
-        for i, layer in enumerate(self.layers):
-            x = layer(x, edge_index, edge_attr=edge_attr)
-            if i < len(self.layers) - 1:  # Apply ReLU and Dropout to all but the last layer
-                x = F.relu(x)
-                x = F.dropout(x, training=self.training)
-        return x
+            for i, layer in enumerate(self.layers):
+                x = layer(x, edge_index, edge_attr=edge_attr)
+                if i < len(self.layers) - 1:  # Apply ReLU and Dropout to all but the last layer
+                    x = F.relu(x)
+                    x = F.dropout(x, training=self.training)
+            gnn_outs.append(x)
+        return torch.stack(gnn_outs, dim=0).transpose(0, 1)  # Shape: (batch_size, sequence_length, num_nodes * gnn_output_size)
     
     
 class GNN_LSTM(torch.nn.Module):
     def __init__(self, gnn, lstm_hidden_dim, num_classes):
         super(GNN_LSTM, self).__init__()
-        self.gnn = gnn
-        self.lstm = nn.LSTM(input_size=gnn.layers[-1].out_channels, hidden_size=lstm_hidden_dim, batch_first=True)
+        self.gnn = gnn  # The GNN model (GAT in this case)
+        # Assume the output dimension of GNN is known or calculate dynamically
+        self.lstm = nn.LSTM(input_size=gnn.layers[-1].out_channels,  # Adjust based on GAT's output
+                            hidden_size=lstm_hidden_dim, 
+                            batch_first=True)
         self.classifier = nn.Linear(lstm_hidden_dim, num_classes)
 
-    def forward(self, data, hidden_state=None):
-        gnn_out = self.gnn(data)  # Get node embeddings from GNN
-        # LSTM expects input of shape (batch, seq_len, features)
-        gnn_out = gnn_out.unsqueeze(1)  # Add sequence length dimension
-        lstm_out, hidden_state = self.lstm(gnn_out, hidden_state)
+    def forward(self, sequence, hidden_state=None):
+        # Assume 'sequence' is a list of graph snapshots (each is an instance of Data)
+        gnn_outs = []
+        gnn_outs = self.gnn(sequence)  # Process each snapshot through GNN
+        # Convert list of outputs to tensor suitable for LSTM input
+        # Pass the sequence to LSTM
+        lstm_out, hidden_state = self.lstm(gnn_outs, hidden_state)
         logits = self.classifier(lstm_out.squeeze(1))
         return logits, hidden_state
 
