@@ -51,9 +51,9 @@ parser.add_argument('--random_agent_seed', default=None, help='Seed for random c
 
 # Training
 parser.add_argument('--gnn_type', default='GAT_LSTM', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
-parser.add_argument('--max_training_sequences', type=int, default=256, help='Maximum number of instances to use for training')
-parser.add_argument('--n_validation_sequences', type=int, default=32, help='Number of sequences to use for validation')
-parser.add_argument('--n_uncompromised_sequences', type=int, default=128, help='Number of uncompromised sequences to use')
+parser.add_argument('--max_training_sequences', type=int, default=64, help='Maximum number of instances to use for training')
+parser.add_argument('--n_validation_sequences', type=int, default=16, help='Number of sequences to use for validation')
+parser.add_argument('--n_uncompromised_sequences', type=int, default=16, help='Number of uncompromised sequences to use')
 parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.0002, help='Learning rate for GNN training')
@@ -70,7 +70,7 @@ parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of t
 # Evaluation and animation
 # Best model so far
 # parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_1448,2896,2896_nsnpsht_32526_lr_0.0010000000000000002_bs_91_20231216_070612.pt', help='Path the model filename, relative to the bucket root.')
-parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_362,362,362_nsnpsht_362_lr_0.0001_bs_128_20231226_075422.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_294,200,1292_nsnpsht_256_lr_0.0002_bs_128_20231227_075033.pt', help='Path the model filename, relative to the bucket root.')
 # Some other model
 # parser.add_argument('--model_filepath', type=str, default='models/model_ninst_512_lw_256_nnodes_28_gt_512_20231214_102112_4614_hl_569,1532,5172_nsnpsht_16945_lr_0.0010334153904374018_bs_45_20231216_001205.pt', help='Path the model filename, relative to the bucket root.')
 # Evaluation
@@ -82,7 +82,7 @@ parser.add_argument('--n_evaluation_sequences', type=int, default=32, help='Numb
 
 # Animation
 # parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_255/252_nodes/257_snapshots/20231215_134213_9153.pkl', help='Path the animation sequence filename, relative to the bucket root.')
-parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/64_nodes/192_snapshots/20231218_163349_4471.pkl', help='Path the animation sequence filename, relative to the bucket root.')
+parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/30_nodes/189_snapshots/random/20231227_074227_5063.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')

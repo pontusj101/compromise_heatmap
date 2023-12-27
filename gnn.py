@@ -78,22 +78,30 @@ class GAT(torch.nn.Module):
     
 class GNN_LSTM(torch.nn.Module):
     def __init__(self, gnn, lstm_hidden_dim, num_classes):
+        self.num_classes = num_classes
         super(GNN_LSTM, self).__init__()
         self.gnn = gnn  # The GNN model (GAT in this case)
-        # Assume the output dimension of GNN is known or calculate dynamically
-        self.lstm = nn.LSTM(input_size=gnn.layers[-1].out_channels,  # Adjust based on GAT's output
+        # Shared LSTM for all nodes
+        self.lstm = nn.LSTM(input_size=gnn.layers[-1].out_channels,  
                             hidden_size=lstm_hidden_dim, 
                             batch_first=True)
         self.classifier = nn.Linear(lstm_hidden_dim, num_classes)
 
     def forward(self, sequence, hidden_state=None):
-        # Assume 'sequence' is a list of graph snapshots (each is an instance of Data)
-        gnn_outs = []
-        gnn_outs = self.gnn(sequence)  # Process each snapshot through GNN
-        # Convert list of outputs to tensor suitable for LSTM input
-        # Pass the sequence to LSTM
+        # Process each snapshot through GNN
+        gnn_outs = self.gnn(sequence)  # Shape: (batch_size, sequence_length, num_nodes * gnn_output_size)
+
+        # Reshape for LSTM: treat each node as a separate sequence
+        # New shape: (batch_size * num_nodes, sequence_length, gnn_output_size)
+        gnn_outs = gnn_outs.view(-1, len(sequence), self.gnn.layers[-1].out_channels)
+
+        # Process the reshaped sequence through the shared LSTM
         lstm_out, hidden_state = self.lstm(gnn_outs, hidden_state)
-        logits = self.classifier(lstm_out.squeeze(1))
+        
+        # Reshape and classify
+        # New shape after classifier: (batch_size, num_nodes, num_classes)
+        logits = self.classifier(lstm_out)
+
         return logits, hidden_state
 
 
