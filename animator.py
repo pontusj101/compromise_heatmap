@@ -98,7 +98,8 @@ class Animator:
         return color_map, size_map, edge_colors, edge_widths
     
     def update_graph(self, num, pos, ax, probabilities):
-        logging.debug(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
+        if num % 10 == 0:
+            logging.debug(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
         ax.clear()
         snapshot = self.snapshot_sequence[num]
 

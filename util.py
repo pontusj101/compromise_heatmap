@@ -40,7 +40,14 @@ class TimeSeriesDataset(Dataset):
         return self.data[idx]
 
 
-def get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_sequences, n_validation_sequences):
+def get_sequence_filenames(bucket_manager, 
+                           sequence_dir_path, 
+                           min_nodes, max_nodes, 
+                           min_snapshots, max_snapshots, 
+                           log_window, 
+                           max_sequences, 
+                           n_validation_sequences, 
+                           n_uncompromised_sequences):
     # TODO: #1 Now filtering by exact log window, but should select all above log_window, as they are truncate later anyhow.
     prefix = f'{sequence_dir_path}'
     filenames = [blob.name for blob in bucket_manager.bucket.list_blobs(prefix=prefix)]
@@ -48,8 +55,14 @@ def get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nod
     node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
     n_snapshot_filtered_filenames = [fn for fn in node_num_filtered_filenames if int(fn.split('/')[3].split('_')[0]) >= min_snapshots and int(fn.split('/')[3].split('_')[0]) < max_snapshots]
     random.shuffle(n_snapshot_filtered_filenames)
-    if len(n_snapshot_filtered_filenames) < n_validation_sequences + 1:
-        raise ValueError(f'Not enough sequences for training and validation. {len(n_snapshot_filtered_filenames)} sequences found, but {n_validation_sequences} validation sequences requested, and at least one additional is required for training.')
-    logging.info(f'Found {len(n_snapshot_filtered_filenames)} sequences. Using {min(max_sequences, len(n_snapshot_filtered_filenames)-n_validation_sequences)} for training and {n_validation_sequences} for validation.')
-    return n_snapshot_filtered_filenames[n_validation_sequences:n_validation_sequences+max_sequences:], n_snapshot_filtered_filenames[:n_validation_sequences] # Limit the number of sequences to max_sequences
+    uncompromised_filenames = [f for f in n_snapshot_filtered_filenames if 'passive' in f]
+    compromised_filenames = [f for f in n_snapshot_filtered_filenames if 'passive' not in f]
+    if len(uncompromised_filenames) < n_uncompromised_sequences:
+        raise ValueError(f'Not enough uncompromised sequences. {len(uncompromised_filenames)} sequences found, but {n_uncompromised_sequences} uncompromised sequences requested.')
+    filtered_filenames = uncompromised_filenames[:n_uncompromised_sequences] + compromised_filenames[:n_validation_sequences+max_sequences-n_uncompromised_sequences]
+    random.shuffle(filtered_filenames)
+    if len(filtered_filenames) < n_validation_sequences + 1:
+        raise ValueError(f'Not enough sequences for training and validation. {len(uncompromised_filenames) + len(compromised_filenames)} sequences found, but {n_validation_sequences} validation sequences requested, and at least one additional is required for training.')
+    logging.info(f'Found {len(compromised_filenames)} compromised and {len(uncompromised_filenames)} uncompromised sequences. Using {min(max_sequences, len(filtered_filenames)-n_validation_sequences)} for training and {n_validation_sequences} for validation. Using {n_uncompromised_sequences} uncompromised sequences.')
+    return n_snapshot_filtered_filenames[n_validation_sequences:n_validation_sequences+max_sequences], n_snapshot_filtered_filenames[:n_validation_sequences] # Limit the number of sequences to max_sequences
 

@@ -161,6 +161,7 @@ def train_gnn(gnn_type='GAT',
               number_of_epochs=8, 
               max_training_sequences=99999999,
               n_validation_sequences=64,
+              n_uncompromised_sequences=64,
               min_nodes=0,
               max_nodes=99999999,
               min_snapshots=0,
@@ -192,7 +193,7 @@ def train_gnn(gnn_type='GAT',
         batch_method = 'by_time_step' 
     else:
         batch_method = 'random'
-    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences)
+    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences, n_uncompromised_sequences)
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
     training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window)
     validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window)
@@ -212,10 +213,9 @@ def train_gnn(gnn_type='GAT',
     train_loss_values = []
     validation_loss_values = []
     global_step = 0
-    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} batches of one graph each.')
+    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} graphs.  Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
     if batch_method == 'by_time_step':
-        logging.info(f'Each batch is one time step, so {len(training_data_loader)} timesteps.') 
-    logging.info(f'Validating on {len(validation_data_loader)} batches of one graph each.')
+    logging.info(f'Validating on {len(validation_data_loader)} graphs.')
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
@@ -241,7 +241,7 @@ def train_gnn(gnn_type='GAT',
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-            logging.debug(f'Epoch {epoch}, Batch {i}, Processed node {global_step}. Training Loss: {loss.item():.4f}.')
+            logging.debug(f'Epoch {epoch}, Batch {i}/{len(training_data_loader)}, Processed nodes: {global_step}. Training Loss: {loss.item():.4f}.')
 
         epoch_loss /= len(training_data_loader)
         train_loss_values.append(epoch_loss)
@@ -259,7 +259,7 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
 
         mfn = model_filename(model_dirpath, training_sequence_filenames, hidden_layers, learning_rate, batch_size, len(training_data_loader), date_time_str)
         plot_training_results(bucket_manager, f'loss_plot_{mfn}.png', train_loss_values, validation_loss_values)

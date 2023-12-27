@@ -140,7 +140,7 @@ class Simulator:
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
 
-        output_file = f"{storage_path}log_window_{log_window}/{n_nodes}_nodes/{len(snapshot_sequence)}_snapshots/{date_time_str}.pkl"
+        output_file = f"{storage_path}log_window_{log_window}/{n_nodes}_nodes/{len(snapshot_sequence)}_snapshots/{cyber_agent_type}/{date_time_str}.pkl"
         buffer = io.BytesIO()
         torch.save(indexed_snapshot_sequence, buffer)
         buffer.seek(0)
