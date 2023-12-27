@@ -213,9 +213,7 @@ def train_gnn(gnn_type='GAT',
     train_loss_values = []
     validation_loss_values = []
     global_step = 0
-    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} graphs.  Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}')
-    if batch_method == 'by_time_step':
-    logging.info(f'Validating on {len(validation_data_loader)} graphs.')
+    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} graphs. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Validating on {len(validation_data_loader)} graphs.')
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
