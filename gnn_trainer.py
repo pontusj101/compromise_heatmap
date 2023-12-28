@@ -19,57 +19,6 @@ from bucket_manager import BucketManager
 from torch_geometric.loader import DataLoader
 from gnn import GCN, RGCN, GIN, GAT, GNN_LSTM
 
-
-def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
-    """
-    Split the snapshots into training and validation sets.
-    """
-    n_snapshots = len(snapshot_sequence)
-    n_train = int(train_share * n_snapshots)
-    n_val = int(val_share * n_snapshots)
-
-    # Ensure that we have at least one snapshot in each set
-    n_train = max(1, n_train)
-    n_val = max(1, n_val)
-
-    # Shuffle and split the snapshot indices
-    indices = list(range(n_snapshots))
-    random.shuffle(indices)
-    train_indices = indices[:n_train]
-    val_indices = indices[n_train:n_train + n_val]
-
-    train_snapshots = [snapshot_sequence[i] for i in train_indices]
-    val_snapshots = [snapshot_sequence[i] for i in val_indices]
-
-    return train_snapshots, val_snapshots
-
-
-def evaluate_model(model, data_loader, gnn_type):
-    model.eval()
-    total_loss = 0
-    all_predicted_labels = []
-    all_true_labels = []
-    with torch.no_grad():
-        for sequence in data_loader:
-            hidden_state = None
-            if gnn_type == 'GAT_LSTM':
-                logits, hidden_state = model(sequence, hidden_state)
-                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
-            else:
-                logits = model(sequence)
-            targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
-            loss = calculate_loss(logits, targets)
-            total_loss += loss.item()
-            probabilities = F.softmax(logits, dim=-1)
-            predicted_labels = torch.argmax(probabilities, dim=-1)
-            all_predicted_labels.append(predicted_labels.cpu().numpy())
-            all_true_labels.append(targets.cpu().numpy())
-
-    all_predicted_labels = np.concatenate([l.flatten() for l in all_predicted_labels])
-    all_true_labels = np.concatenate([l.flatten() for l in all_true_labels])
-
-    return total_loss / len(data_loader), all_predicted_labels, all_true_labels
-
 def plot_training_results(bucket_manager, filename, loss_values, val_loss_values):
     plt.figure(figsize=(10, 6))
     plt.plot(loss_values, label='Training Loss')
@@ -125,6 +74,30 @@ def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_h
         hidden_layers = [n_hidden_layer_1, n_hidden_layer_2]
     return hidden_layers
 
+
+def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
+    """
+    Split the snapshots into training and validation sets.
+    """
+    n_snapshots = len(snapshot_sequence)
+    n_train = int(train_share * n_snapshots)
+    n_val = int(val_share * n_snapshots)
+
+    # Ensure that we have at least one snapshot in each set
+    n_train = max(1, n_train)
+    n_val = max(1, n_val)
+
+    # Shuffle and split the snapshot indices
+    indices = list(range(n_snapshots))
+    random.shuffle(indices)
+    train_indices = indices[:n_train]
+    val_indices = indices[n_train:n_train + n_val]
+
+    train_snapshots = [snapshot_sequence[i] for i in train_indices]
+    val_snapshots = [snapshot_sequence[i] for i in val_indices]
+
+    return train_snapshots, val_snapshots
+
 def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features, num_relations, hidden_layers, lstm_hidden_dim):
     if gnn_type == 'GCN':
         model = GCN([actual_num_features] + hidden_layers + [2])
@@ -143,6 +116,32 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
         raise ValueError(f'Unknown GNN type: {gnn_type}')
 
     return model
+
+def evaluate_model(model, data_loader, gnn_type):
+    model.eval()
+    total_loss = 0
+    all_predicted_labels = []
+    all_true_labels = []
+    with torch.no_grad():
+        for sequence in data_loader:
+            hidden_state = None
+            if gnn_type == 'GAT_LSTM':
+                logits, hidden_state = model(sequence, hidden_state)
+                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+            else:
+                logits = model(sequence)
+            targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
+            loss = calculate_loss(logits, targets)
+            total_loss += loss.item()
+            probabilities = F.softmax(logits, dim=-1)
+            predicted_labels = torch.argmax(probabilities, dim=-1)
+            all_predicted_labels.append(predicted_labels.cpu().numpy())
+            all_true_labels.append(targets.cpu().numpy())
+
+    all_predicted_labels = np.concatenate([l.flatten() for l in all_predicted_labels])
+    all_true_labels = np.concatenate([l.flatten() for l in all_true_labels])
+
+    return total_loss / len(data_loader), all_predicted_labels, all_true_labels
 
 def calculate_loss(logits, target_labels):
     # Assume logits is of shape (batch_size, sequence_length, num_classes)
@@ -231,7 +230,7 @@ def train_gnn(gnn_type='GAT',
             optimizer.zero_grad()
             if gnn_type == 'GAT_LSTM':
                 logits, hidden_state = model(sequence, hidden_state)
-                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+                # hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
             else:
                 logits = model(sequence)
             targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)

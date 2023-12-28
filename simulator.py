@@ -89,7 +89,7 @@ class Simulator:
         log_feature_vectors = torch.zeros((n_nodes, log_window))
         log_steps_after_total_compromise = 0
         for step in range(myEnv.horizon):
-            if step % 10 == 0:
+            if step % 30 == 0:
                 logging.info(f'Simulation {sim_id}. Step {step}/{myEnv.horizon}. Time: {time.time() - start_time:.2f}s.')
             if step == start_step:
                 if cyber_agent_type == 'random':
