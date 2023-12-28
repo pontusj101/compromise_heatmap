@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.functional import softmax
 from google.cloud import storage
 from bucket_manager import BucketManager
+from gnn import GNN_LSTM
 
 
 class Predictor:
@@ -51,7 +52,11 @@ class Predictor:
         
     def predict_sequence(self, sequence):
         hidden_state = None
-        logits, hidden_state = self.model(sequence, hidden_state)
+        if isinstance(self.model, GNN_LSTM):
+            logits, hidden_state = self.model(sequence, hidden_state)
+            # hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+        else:
+            logits = self.model(sequence)
         probabilities = F.softmax(logits, dim=-1)
         return probabilities[:,:,1]
 

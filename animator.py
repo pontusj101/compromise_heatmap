@@ -10,6 +10,7 @@ import math
 from google.cloud import storage
 from predictor import Predictor
 from bucket_manager import BucketManager
+from gnn import GNN_LSTM
 
 class Animator:
     def __init__(self, animation_sequence_filename, bucket_manager, hide_prediction=False, hide_state=False):
@@ -22,9 +23,6 @@ class Animator:
         indexed_snapshot_sequence = bucket_manager.torch_load_from_bucket(animation_sequence_filename)
 
         self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
-        # Assuming an LSTM model, we only need the first log entry (and the node type, which is at index 0)
-        for snapshot in self.snapshot_sequence:
-            snapshot.x = snapshot.x[:, :2]
         self.graph_index = indexed_snapshot_sequence['graph_index']
         num_nodes = len(self.graph_index.object_mapping)
         self.figsize = (30, 30)  # Define figure size
@@ -138,6 +136,12 @@ class Animator:
         logging.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
         predictor = Predictor(predictor_type, predictor_filename, self.bucket_manager)
+
+        # If an LSTM model, we only need the first log entry (and the node type, which is at index 0)
+        if isinstance(predictor.model, GNN_LSTM):
+            for snapshot in self.snapshot_sequence:
+                snapshot.x = snapshot.x[:, :2]
+
 
         probabilities = predictor.predict_sequence(self.snapshot_sequence)
 
