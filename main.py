@@ -34,17 +34,18 @@ parser.add_argument(
 parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of the GCP bucket to use for storage.')
 
 # Instance creation and training
-parser.add_argument('--min_size', type=int, default=16, help='Minimum number of hosts in each instance')
+parser.add_argument('--min_size', type=int, default=64, help='Minimum number of hosts in each instance')
 parser.add_argument('--max_size', type=int, default=64, help='Maximum number of hosts in each instance')
+parser.add_argument('--min_game_time', type=int, default=8, help='Min time horizon for the simulation and training.') # small: 70, large: 500
+parser.add_argument('--max_game_time', type=int, default=1024, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
 
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=1024, help='Number of instances to create')
 parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
-parser.add_argument('--game_time', type=int, default=1024, help='Max time horizon for the simulation. Will stop early if whole graph is compromised.') # small: 70, large: 500
 
 # Simulation
-parser.add_argument('-l', '--sim_log_window', type=int, default=64, help='Size of the logging window')
+parser.add_argument('-l', '--sim_log_window', type=int, default=1, help='Size of the logging window')
 parser.add_argument('--agent_type', default='random', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 # and --rddl_path
@@ -79,7 +80,8 @@ parser.add_argument('--n_evaluation_sequences', type=int, default=32, help='Numb
 
 # Animation
 # parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_255/252_nodes/257_snapshots/20231215_134213_9153.pkl', help='Path the animation sequence filename, relative to the bucket root.')
-parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/64_nodes/960_snapshots/passive/20231227_134331_9326.pkl', help='Path the animation sequence filename, relative to the bucket root.')
+# parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/64_nodes/960_snapshots/passive/20231227_134331_9326.pkl', help='Path the animation sequence filename, relative to the bucket root.')
+parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_1/64_nodes/206_snapshots/random/20231228_123615_2688.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')
@@ -120,7 +122,7 @@ warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layou
 warnings.filterwarnings("ignore", message="Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Attempting to set identical low and high ylims makes transformation singular; automatically expanding.", module="pyRDDLGym.Visualizer.ChartViz")
 
-max_start_time_step = args.sim_log_window + int((args.game_time - args.sim_log_window) / 2)
+max_start_time_step = args.sim_log_window + int((args.max_game_time - args.sim_log_window) / 2)
 max_log_steps_after_total_compromise = int(args.sim_log_window / 2)
 if args.sim_log_window == -1:
     sim_log_window = int(2.5 * args.max_size)
@@ -147,7 +149,7 @@ if 'instance' in args.modes:
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
         extra_host_host_connection_ratio=args.extra_host_host_connection_ratio,
-        horizon=args.game_time)
+        horizon=args.max_game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
     bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
@@ -183,6 +185,8 @@ if 'train' in args.modes:
                     n_uncompromised_sequences=args.n_uncompromised_sequences,
                     min_nodes=args.min_size,
                     max_nodes=args.max_size,
+                    min_snapshots=args.min_game_time,
+                    max_snapshots=args.max_game_time,
                     log_window=args.train_log_window,
                     learning_rate=args.learning_rate, 
                     batch_size=args.batch_size, 
@@ -208,7 +212,7 @@ if 'eval_seq' in args.modes:
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
-        horizon=args.game_time)
+        horizon=args.max_game_time)
     config['eval_instance_rddl_filepaths'] = instance_rddl_filepaths
     config['eval_graph_index_filepaths'] = graph_index_filepaths
     bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
@@ -249,7 +253,7 @@ if 'anim_seq' in args.modes:
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised_animate,
-        horizon=args.game_time)
+        horizon=args.max_game_time)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
