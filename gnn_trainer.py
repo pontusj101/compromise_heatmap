@@ -45,16 +45,16 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
-def save_model_to_bucket(bucket_manager, model_path, model, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
-    model_file_name = model_filename(model_path, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str)
+def save_model_to_bucket(bucket_manager, model_path, model, gnn_type, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
+    model_file_name = model_filename(model_path, gnn_type, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str)
     bucket_manager.torch_save_to_bucket(model, model_file_name)
     return model_file_name
 
-def model_filename(model_path, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
+def model_filename(model_path, gnn_type, training_sequence_filenames, hidden_layers, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
     snapshot_name = os.path.commonprefix(training_sequence_filenames).replace('training_sequences/', '')
-    filename_root = f'{snapshot_name}_hl{hidden_layers}nsnpsht_{snapshot_sequence_length}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
+    filename_root = f'{gnn_type}/{snapshot_name}_hl{hidden_layers}nsnpsht_{snapshot_sequence_length}_lr_{learning_rate:.4f}_bs_{batch_size}_{date_time_str}'
     filename_root = filename_root.replace('[', '_').replace(']', '_').replace(' ', '')
-    model_file_name = f'{model_path}model_{filename_root}.pt'
+    model_file_name = f'{model_path}model/{filename_root}.pt'
     return model_file_name
 
 def get_num_relations(bucket_manager, training_sequence_filenames):
@@ -258,13 +258,14 @@ def train_gnn(gnn_type='GAT',
             global_step=global_step)
         logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
 
-        mfn = model_filename(model_dirpath, training_sequence_filenames, hidden_layers, learning_rate, batch_size, len(training_data_loader), date_time_str)
+        mfn = model_filename(model_dirpath, gnn_type, training_sequence_filenames, hidden_layers, learning_rate, batch_size, len(training_data_loader), date_time_str)
         plot_training_results(bucket_manager, f'loss_plot_{mfn}.png', train_loss_values, validation_loss_values)
 
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 
                                            model_path=model_dirpath, 
                                            model=model, 
+                                           gnn_type=gnn_type,
                                            training_sequence_filenames=training_sequence_filenames, 
                                            hidden_layers=hidden_layers, 
                                            learning_rate=learning_rate, 

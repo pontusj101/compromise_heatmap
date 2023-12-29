@@ -137,10 +137,14 @@ class Animator:
 
         predictor = Predictor(predictor_type, predictor_filename, self.bucket_manager)
 
-        # If an LSTM model, we only need the first log entry (and the node type, which is at index 0)
+        snapshot_sequence_log_window_size = self.snapshot_sequence[0].x.shape[1]
         if isinstance(predictor.model, GNN_LSTM):
+            model_log_window = 2
+        else:
+            model_log_window = predictor.model.layers[0].in_channels
+        if model_log_window < snapshot_sequence_log_window_size:
             for snapshot in self.snapshot_sequence:
-                snapshot.x = snapshot.x[:, :2]
+                snapshot.x = snapshot.x[:, :model_log_window]
 
 
         probabilities = predictor.predict_sequence(self.snapshot_sequence)
