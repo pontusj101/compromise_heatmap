@@ -36,10 +36,15 @@ def create_random_instance(num_hosts, num_credentials, n_init_compromised, horiz
 
     # Additional random connections (optional, for more complexity)
     target_n_connections = int((1 + extra_host_host_connection_ratio)*num_hosts)
+    n_trials = 100
     while len(connected_pairs) < target_n_connections:
         a, b = random.sample(hosts, 2)
         if a != b and (a, b) not in connected_pairs and (b, a) not in connected_pairs and num_hosts > 4:
             connected_pairs.add((a, b))
+        else:
+            n_trials -= 1
+            if n_trials == 0:
+                break
        
     # Assign credentials to hosts
     credential_to_host = {}

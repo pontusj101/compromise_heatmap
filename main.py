@@ -34,18 +34,18 @@ parser.add_argument(
 parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of the GCP bucket to use for storage.')
 
 # Instance creation and training
-parser.add_argument('--min_size', type=int, default=32, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=32, help='Maximum number of hosts in each instance')
+parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=4, help='Maximum number of hosts in each instance')
 parser.add_argument('--min_game_time', type=int, default=8, help='Min time horizon for the simulation and training.') # small: 70, large: 500
 parser.add_argument('--max_game_time', type=int, default=256, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
 
 # Instance creation
-parser.add_argument('--n_instances', type=int, default=1024, help='Number of instances to create')
+parser.add_argument('--n_instances', type=int, default=256, help='Number of instances to create')
 parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 
 # Simulation
-parser.add_argument('-l', '--sim_log_window', type=int, default=64, help='Size of the logging window')
+parser.add_argument('-l', '--sim_log_window', type=int, default=32, help='Size of the logging window')
 parser.add_argument('--agent_type', default='random', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 
@@ -70,7 +70,7 @@ parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of t
 # Evaluation and animation
 #parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_16,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_121849.pt', help='Path the model filename, relative to the bucket root.')
 # GAT parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_3018,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_135634.pt', help='Path the model filename, relative to the bucket root.')
-parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_256,256,256_nsnpsht_1232_lr_0.0002_bs_128_20231229_064923.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_256,256,256_nsnpsht_2024_lr_0.0002_bs_128_20231229_064936.pt', help='Path the model filename, relative to the bucket root.')
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
