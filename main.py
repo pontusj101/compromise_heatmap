@@ -69,8 +69,8 @@ parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of t
 
 # Evaluation and animation
 #parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_16,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_121849.pt', help='Path the model filename, relative to the bucket root.')
-parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_3018,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_135634.pt', help='Path the model filename, relative to the bucket root.')
-# parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_256,256,256_nsnpsht_64_lr_0.0002_bs_128_20231228_115803.pt', help='Path the model filename, relative to the bucket root.')
+# GAT parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_3018,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_135634.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_256,256,256_nsnpsht_1232_lr_0.0002_bs_128_20231229_064923.pt', help='Path the model filename, relative to the bucket root.')
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
