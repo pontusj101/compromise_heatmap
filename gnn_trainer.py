@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
+import wandb
 import hypertune
 from google.cloud import storage
 from google.cloud.storage.retry import DEFAULT_RETRY
@@ -98,6 +99,24 @@ def split_snapshots(snapshot_sequence, train_share=0.8, val_share=0.2):
 
     return train_snapshots, val_snapshots
 
+def attach_forward_hook(model):
+    outputs = []
+
+    def get_activation(name):
+        def hook(model, input, output):
+            if isinstance(output, tuple):
+                outputs.append((name, output[0].detach()))
+                outputs.append((name, output[1][0].detach()))
+                outputs.append((name, output[1][1].detach()))
+            else:
+                outputs.append((name, output.detach()))
+        return hook
+
+    for name, layer in model.named_modules():
+        layer.register_forward_hook(get_activation(name))
+
+    return outputs
+
 def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features, num_relations, hidden_layers, lstm_hidden_dim):
     if gnn_type == 'GCN':
         model = GCN([actual_num_features] + hidden_layers + [2])
@@ -114,7 +133,7 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
         model = GNN_LSTM(gnn=gnn_model, lstm_hidden_dim=lstm_hidden_dim, num_classes=2)  # Choose appropriate dimensions
     else:
         raise ValueError(f'Unknown GNN type: {gnn_type}')
-
+    
     return model
 
 def evaluate_model(model, data_loader, gnn_type):
@@ -127,7 +146,7 @@ def evaluate_model(model, data_loader, gnn_type):
             hidden_state = None
             if gnn_type == 'GAT_LSTM':
                 logits, hidden_state = model(sequence, hidden_state)
-                hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
+                # hidden_state = (hidden_state[0].detach(), hidden_state[1].detach()) # Detach the hidden state to prevent backpropagation through time
             else:
                 logits = model(sequence)
             targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
@@ -153,7 +172,8 @@ def calculate_loss(logits, target_labels):
     return loss / logits.shape[1]  # Average loss over the sequence
 
 
-def train_gnn(gnn_type='GAT',
+def train_gnn(wandb_api_key,
+              gnn_type='GAT',
               bucket_manager=None,
               sequence_dir_path='training_sequences/',
               model_dirpath='models/',
@@ -209,6 +229,34 @@ def train_gnn(gnn_type='GAT',
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+    os.environ['WANDB_API_KEY'] = wandb_api_key
+
+    wandb.init(
+        project="gnn_rddl",
+        
+        config={
+        "learning_rate": learning_rate,
+        "gnn_type": gnn_type,
+        "number_of_epochs": number_of_epochs, 
+        "max_training_sequences": max_training_sequences,
+        "n_validation_sequences": n_validation_sequences,
+        "n_uncompromised_sequences": n_uncompromised_sequences,
+        "min_nodes": min_nodes,
+        "max_nodes": max_nodes,
+        "min_snapshots": min_snapshots,
+        "max_snapshots": max_snapshots,
+        "log_window": log_window,
+        "batch_size": batch_size,
+        "n_hidden_layer_1": n_hidden_layer_1,
+        "n_hidden_layer_2": n_hidden_layer_2,
+        "n_hidden_layer_3": n_hidden_layer_3,
+        "n_hidden_layer_4": n_hidden_layer_4,
+        "edge_embedding_dim": edge_embedding_dim,
+        "heads_per_layer": heads_per_layer,
+        "lstm_hidden_dim": lstm_hidden_dim
+        }
+    )
+
     train_loss_values = []
     validation_loss_values = []
     global_step = 0
@@ -216,7 +264,7 @@ def train_gnn(gnn_type='GAT',
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
-        epoch_loss = 0.0
+        training_loss = 0.0
         number_of_compromised_nodes = 0
         number_of_uncompromised_nodes = 0
 
@@ -237,14 +285,14 @@ def train_gnn(gnn_type='GAT',
             loss = calculate_loss(logits, targets)
             loss.backward()
             optimizer.step()
-            epoch_loss += loss.item()
+            training_loss += loss.item()
             logging.debug(f'Epoch {epoch}, Batch {i}/{len(training_data_loader)}, Processed nodes: {global_step}. Training Loss: {loss.item():.4f}.')
 
-        epoch_loss /= len(training_data_loader)
-        train_loss_values.append(epoch_loss)
+        training_loss /= len(training_data_loader)
+        train_loss_values.append(training_loss)
 
-        val_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
-        validation_loss_values.append(val_loss)
+        validation_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
+        validation_loss_values.append(validation_loss)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)
         precision = precision_score(true_labels, predicted_labels, average='binary', zero_division=0)
@@ -256,10 +304,31 @@ def train_gnn(gnn_type='GAT',
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {epoch_loss:.4f}. Validation Loss: {val_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
+        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {training_loss:.4f}. Validation Loss: {validation_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
+
+        wandb.log({
+            "global_step": global_step,
+            "f1": f1, 
+            "precision": precision, 
+            "recall": recall, 
+            "training_loss": training_loss, 
+            "validation_loss": validation_loss, 
+            "number_of_compromised_nodes": number_of_compromised_nodes, 
+            "number_of_uncompromised_nodes": number_of_uncompromised_nodes, 
+            "time": end_time - start_time
+            })
+        
+        # logging.info(f'Edge embedding weights: {[(n, p) for (n, p) in model.named_parameters()][1][1].data}')
+        # logging.info(f'Edge embedding gradients: {[(n, p) for (n, p) in model.named_parameters()][1][1].grad}')
+        for name, param in model.named_parameters():
+            wandb.log({f"weights/{name}": wandb.Histogram(param.data.numpy()), "global_step": global_step})
+            wandb.log({f"gradients/{name}": wandb.Histogram(param.grad.numpy()), "global_step": global_step})
+
 
         mfn = model_filename(model_dirpath, gnn_type, training_sequence_filenames, hidden_layers, lstm_hidden_dim, learning_rate, batch_size, len(training_data_loader), date_time_str)
         plot_training_results(bucket_manager, f'loss_plot_{mfn}.png', train_loss_values, validation_loss_values)
+
+    wandb.finish()
 
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager, 

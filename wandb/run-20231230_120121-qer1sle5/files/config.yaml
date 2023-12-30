@@ -1,0 +1,89 @@
+wandb_version: 1
+
+learning_rate:
+  desc: null
+  value: 0.0002
+gnn_type:
+  desc: null
+  value: GAT
+number_of_epochs:
+  desc: null
+  value: 8
+max_training_sequences:
+  desc: null
+  value: 128
+n_validation_sequences:
+  desc: null
+  value: 32
+n_uncompromised_sequences:
+  desc: null
+  value: 64
+min_nodes:
+  desc: null
+  value: 4
+max_nodes:
+  desc: null
+  value: 4
+min_snapshots:
+  desc: null
+  value: 8
+max_snapshots:
+  desc: null
+  value: 32
+log_window:
+  desc: null
+  value: 4
+batch_size:
+  desc: null
+  value: 128
+n_hidden_layer_1:
+  desc: null
+  value: 8
+n_hidden_layer_2:
+  desc: null
+  value: 0
+n_hidden_layer_3:
+  desc: null
+  value: 0
+n_hidden_layer_4:
+  desc: null
+  value: 0
+edge_embedding_dim:
+  desc: null
+  value: 8
+heads_per_layer:
+  desc: null
+  value: 1
+lstm_hidden_dim:
+  desc: null
+  value: 8
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.8
+    cli_version: 0.16.1
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1703937681.323661
+    t:
+      1:
+      - 1
+      - 5
+      - 53
+      - 55
+      - 77
+      2:
+      - 1
+      - 5
+      - 53
+      - 55
+      - 77
+      3:
+      - 16
+      - 23
+      4: 3.10.8
+      5: 0.16.1
+      8:
+      - 5
+      13: linux-x86_64

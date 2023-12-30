@@ -56,7 +56,7 @@ class GAT(torch.nn.Module):
             if heads[i] > layer_sizes[i + 1]:
                 heads[i] = layer_sizes[i + 1]
             out_channels = layer_sizes[i + 1] // heads[i]
-            self.layers.append(GATConv(in_channels, out_channels, heads=heads[i]))
+            self.layers.append(GATConv(in_channels, out_channels, edge_dim=edge_embedding_dim, heads=heads[i]))
             in_channels = out_channels * heads[i]  # Update in_channels for the next layer
 
     def forward(self, sequence):

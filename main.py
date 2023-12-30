@@ -5,6 +5,7 @@ import warnings
 import ast
 import json
 from google.cloud import storage
+from google.cloud import secretmanager
 import google.cloud.logging
 from google.cloud.logging.handlers import CloudLoggingHandler
 from animator import Animator
@@ -37,7 +38,7 @@ parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of
 parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
 parser.add_argument('--max_size', type=int, default=4, help='Maximum number of hosts in each instance')
 parser.add_argument('--min_game_time', type=int, default=8, help='Min time horizon for the simulation and training.') # small: 70, large: 500
-parser.add_argument('--max_game_time', type=int, default=256, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--max_game_time', type=int, default=32, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
 
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=256, help='Number of instances to create')
@@ -45,26 +46,26 @@ parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 
 # Simulation
-parser.add_argument('-l', '--sim_log_window', type=int, default=32, help='Size of the logging window')
-parser.add_argument('--agent_type', default='random', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('-l', '--sim_log_window', type=int, default=8, help='Size of the logging window')
+parser.add_argument('--agent_type', default='passive', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 
 # Training
-parser.add_argument('--gnn_type', default='GAT_LSTM', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
-parser.add_argument('--max_training_sequences', type=int, default=1024, help='Maximum number of instances to use for training')
+parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
+parser.add_argument('--max_training_sequences', type=int, default=128, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=32, help='Number of sequences to use for validation')
-parser.add_argument('--n_uncompromised_sequences', type=int, default=512, help='Number of uncompromised sequences to use')
-parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
-parser.add_argument('--epochs', type=int, default=16, help='Number of epochs for GNN training')
+parser.add_argument('--n_uncompromised_sequences', type=int, default=64, help='Number of uncompromised sequences to use')
+parser.add_argument('--train_log_window', type=int, default=4, help='Size of the logging window')
+parser.add_argument('--epochs', type=int, default=8, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.0002, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=128, help='Batch size for GNN training')
-parser.add_argument('--n_hidden_layer_1', type=int, default=256, help='Number of neurons in hidden layer 1 for GNN')
-parser.add_argument('--n_hidden_layer_2', type=int, default=256, help='Number of neurons in hidden layer 2 for GNN')
-parser.add_argument('--n_hidden_layer_3', type=int, default=256, help='Number of neurons in hidden layer 3 for GNN')
+parser.add_argument('--n_hidden_layer_1', type=int, default=8, help='Number of neurons in hidden layer 1 for GNN')
+parser.add_argument('--n_hidden_layer_2', type=int, default=0, help='Number of neurons in hidden layer 2 for GNN')
+parser.add_argument('--n_hidden_layer_3', type=int, default=0, help='Number of neurons in hidden layer 3 for GNN')
 parser.add_argument('--n_hidden_layer_4', type=int, default=0, help='Number of neurons in hidden layer 4 for GNN')
-parser.add_argument('--edge_embedding_dim', type=int, default=256, help='Edge embedding dimension for GAT')
-parser.add_argument('--heads_per_layer', type=int, default=5, help='Number of attention heads per layer for GAT')
-parser.add_argument('--lstm_hidden_dim', type=int, default=512, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
+parser.add_argument('--edge_embedding_dim', type=int, default=8, help='Edge embedding dimension for GAT')
+parser.add_argument('--heads_per_layer', type=int, default=1, help='Number of attention heads per layer for GAT')
+parser.add_argument('--lstm_hidden_dim', type=int, default=8, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
 
 # Evaluation and animation
@@ -174,7 +175,13 @@ if 'simulate' in args.modes:
 
 if 'train' in args.modes:
     logging.info(f'Training {args.gnn_type}.')
+    smsClient = secretmanager.SecretManagerServiceClient()
+    name = 'projects/473095460232/secrets/Weights_Biases_API_Key/versions/latest'
+    response = smsClient.access_secret_version(request={"name": name})
+    wandb_api_key = response.payload.data.decode("UTF-8")
+
     predictor_filename = train_gnn(
+                    wandb_api_key=wandb_api_key,
                     gnn_type=args.gnn_type,
                     bucket_manager=bucket_manager,
                     sequence_dir_path=config['training_sequence_dirpath'],

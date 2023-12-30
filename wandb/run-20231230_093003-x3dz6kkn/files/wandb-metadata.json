@@ -1,0 +1,82 @@
+{
+    "os": "Linux-6.2.0-1018-azure-x86_64-with-glibc2.31",
+    "python": "3.10.8",
+    "heartbeatAt": "2023-12-30T09:30:04.314440",
+    "startedAt": "2023-12-30T09:30:03.846297",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "train"
+    ],
+    "state": "running",
+    "program": "/workspaces/rddl_training_data_producer/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "https://github.com/pontusj101/rddl_training_data_producer",
+        "commit": "b93f275fb5c012cce204c7d0bcba705cd3d18cd2"
+    },
+    "email": "pontusj@kth.se",
+    "root": "/workspaces/rddl_training_data_producer",
+    "host": "codespaces-18e4a4",
+    "username": "codespace",
+    "executable": "/home/codespace/.python/current/bin/python3",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 3243.9967500000002,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3243.47,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3257.734,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3240.751,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3241.934,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3243.487,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3212.684,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3243.159,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3237.787,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 62.82011413574219,
+            "used": 17.04409408569336
+        }
+    },
+    "memory": {
+        "total": 31.33248519897461
+    }
+}

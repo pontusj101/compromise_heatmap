@@ -1,0 +1,26 @@
+2023-12-30 09:29:12,002 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Current SDK version is 0.16.1
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Configure stats pid to 15497
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Loading settings from /home/codespace/.config/wandb/settings
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Loading settings from /workspaces/rddl_training_data_producer/wandb/settings
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'api_key': '***REDACTED***'}
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': '/workspaces/rddl_training_data_producer/main.py', 'program': '/workspaces/rddl_training_data_producer/main.py'}
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_init.py:_log_setup():524] Logging user logs to /workspaces/rddl_training_data_producer/wandb/run-20231230_092912-oija4ijk/logs/debug.log
+2023-12-30 09:29:12,003 INFO    MainThread:15497 [wandb_init.py:_log_setup():525] Logging internal logs to /workspaces/rddl_training_data_producer/wandb/run-20231230_092912-oija4ijk/logs/debug-internal.log
+2023-12-30 09:29:12,004 INFO    MainThread:15497 [wandb_init.py:init():564] calling init triggers
+2023-12-30 09:29:12,004 INFO    MainThread:15497 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {'learning_rate': 0.0002, 'gnn_type': 'GAT_LSTM', 'number_of_epochs': 8, 'max_training_sequences': 128, 'n_validation_sequences': 32, 'n_uncompromised_sequences': 64, 'min_nodes': 4, 'max_nodes': 4, 'min_snapshots': 8, 'max_snapshots': 32, 'log_window': 1, 'batch_size': 128, 'n_hidden_layer_1': 8, 'n_hidden_layer_2': 0, 'n_hidden_layer_3': 0, 'n_hidden_layer_4': 0, 'edge_embedding_dim': 8, 'heads_per_layer': 1, 'lstm_hidden_dim': 8}
+2023-12-30 09:29:12,004 INFO    MainThread:15497 [wandb_init.py:init():614] starting backend
+2023-12-30 09:29:12,004 INFO    MainThread:15497 [wandb_init.py:init():618] setting up manager
+2023-12-30 09:29:12,007 INFO    MainThread:15497 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-12-30 09:29:12,009 INFO    MainThread:15497 [wandb_init.py:init():624] backend started and connected
+2023-12-30 09:29:12,015 INFO    MainThread:15497 [wandb_init.py:init():716] updated telemetry
+2023-12-30 09:29:12,024 INFO    MainThread:15497 [wandb_init.py:init():749] communicating run to backend with 90.0 second timeout
+2023-12-30 09:29:12,409 INFO    MainThread:15497 [wandb_run.py:_on_init():2254] communicating current version
+2023-12-30 09:29:12,443 INFO    MainThread:15497 [wandb_run.py:_on_init():2263] got version response 
+2023-12-30 09:29:12,443 INFO    MainThread:15497 [wandb_init.py:init():800] starting run threads in backend
+2023-12-30 09:29:12,541 INFO    MainThread:15497 [wandb_run.py:_console_start():2233] atexit reg
+2023-12-30 09:29:12,541 INFO    MainThread:15497 [wandb_run.py:_redirect():2088] redirect: wrap_raw
+2023-12-30 09:29:12,541 INFO    MainThread:15497 [wandb_run.py:_redirect():2153] Wrapping output streams.
+2023-12-30 09:29:12,542 INFO    MainThread:15497 [wandb_run.py:_redirect():2178] Redirects installed.
+2023-12-30 09:29:12,542 INFO    MainThread:15497 [wandb_init.py:init():841] run started, returning control to user process
