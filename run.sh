@@ -1,0 +1,1 @@
+docker run -v /Users/professor/Library/Mobile\ Documents/com\~apple\~CloudDocs/Docker/GNN_RDDL/gnn-rddl-fc7986271609.json:/secrets/service-account-file.json -e GOOGLE_APPLICATION_CREDENTIALS=/secrets/service-account-file.json -it gnn_rddl bash

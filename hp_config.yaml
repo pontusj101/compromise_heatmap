@@ -1,0 +1,99 @@
+studySpec:
+  metrics:
+  - metricId: F1
+    goal: MAXIMIZE
+  parameters:
+  - parameterId: gnn_type
+    categoricalValueSpec:
+      values: ['GAT']
+  - parameterId: min_game_time
+    integerValueSpec:
+      minValue: 4
+      maxValue: 4
+  - parameterId: max_game_time
+    integerValueSpec:
+      minValue: 1024
+      maxValue: 1024
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: max_training_sequences
+    integerValueSpec:
+      minValue: 64
+      maxValue: 64
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: n_validation_sequences
+    integerValueSpec:
+      minValue: 16
+      maxValue: 16
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: n_uncompromised_sequences
+    integerValueSpec:
+      minValue: 32
+      maxValue: 32
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: batch_size
+    integerValueSpec:
+      minValue: 128
+      maxValue: 128
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: min_size
+    integerValueSpec:
+      minValue: 128
+      maxValue: 128
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: max_size
+    integerValueSpec:
+      minValue: 256
+      maxValue: 256
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: train_log_window
+    integerValueSpec:
+      minValue: 64
+      maxValue: 64
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: epochs
+    integerValueSpec:
+      minValue: 16
+      maxValue: 16
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: learning_rate
+    doubleValueSpec:
+      minValue: 0.0001
+      maxValue: 0.001
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: n_hidden_layer_1
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: n_hidden_layer_2
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: n_hidden_layer_3
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: edge_embedding_dim
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: heads_per_layer
+    integerValueSpec:
+      minValue: 1
+      maxValue: 8
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: lstm_hidden_dim
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+trialJobSpec:
+  workerPoolSpecs:
+    - machineSpec:
+        machineType: n1-standard-8
+      replicaCount: 1
+      containerSpec:
+        imageUri: europe-west1-docker.pkg.dev/gnn-rddl/gnn-rddl/gnnrddl
