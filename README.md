@@ -4,5 +4,8 @@ A brief paper on this repo is available as [Johnson & Ekstedt, "Towards a Graph 
 
 The code can run in GitHub Codespaces, as well as in GCP Batch and GCP Vertex AI. 
 
+In Codespaces (or some other execution environment), try `python3 main train`. 
 To run it in GCP Vertex AI for hyperparameter tuning, use hp_tuning.sh.
 To run it in GCP Batch for parallel simulation, use batch.sh.
+
+You will need a GCP bucket, and you will need to provide a GCP service account with access to that bucket.
