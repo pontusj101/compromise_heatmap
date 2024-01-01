@@ -9,3 +9,5 @@ To run it in GCP Vertex AI for hyperparameter tuning, use hp_tuning.sh.
 To run it in GCP Batch for parallel simulation, use batch.sh.
 
 You will need a GCP bucket, and you will need to provide a GCP service account with access to that bucket.
+
+The project is also integrated with Weights & Biases, so you will need a wandb API key.
