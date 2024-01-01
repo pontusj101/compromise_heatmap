@@ -14,7 +14,7 @@ from google.cloud import storage
 from google.cloud.storage.retry import DEFAULT_RETRY
 from torch_geometric.data import Data
 from pyRDDLGym import RDDLEnv
-from agents import PassiveCyberAgent, RandomCyberAgent, HostTargetedCyberAgent, KeyboardCyberAgent
+from agents import PassiveCyberAgent, RandomCyberAgent, LessRandomCyberAgent, HostTargetedCyberAgent, KeyboardCyberAgent, NoveltyFocusedRandomCyberAgent
 from graph_index import GraphIndex
 
 class Simulator:
@@ -60,6 +60,7 @@ class Simulator:
                           instance_rddl_filepath, 
                           storage_path, 
                           cyber_agent_type='random',
+                          novelty_priority=2,
                           random_cyber_agent_seed=None):
 
         logging.info(f'Simulation {sim_id} started.')
@@ -95,12 +96,18 @@ class Simulator:
                 if cyber_agent_type == 'random':
                     agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
                     logging.info(f'Simulation {sim_id}. Deploying random attacker.')
+                elif cyber_agent_type == 'less_random':
+                    agent = LessRandomCyberAgent(action_space=myEnv.action_space, novelty_priority=novelty_priority, seed=random_cyber_agent_seed)
+                    logging.info(f'Simulation {sim_id}. Deploying a less random attacker.')
                 elif cyber_agent_type == 'host_targeted':
                     agent = HostTargetedCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
                     logging.info(f'Simulation {sim_id}. Deploying host-targeted attacker.')
                 elif cyber_agent_type == 'keyboard':
                     agent = KeyboardCyberAgent(action_space=myEnv.action_space)
                     logging.info(f'Simulation {sim_id}. Deploying keyboard attacker.')
+                elif cyber_agent_type == 'novelty':
+                    agent = NoveltyFocusedRandomCyberAgent(action_space=myEnv.action_space)
+                    logging.info(f'Simulation {sim_id}. Deploying novelty-focused attacker.')
                 elif cyber_agent_type == 'passive':
                     pass
                     logging.info(f'Simulation {sim_id}. Deploying passive attacker.')
@@ -139,7 +146,6 @@ class Simulator:
         end_time = time.time()
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
-
         output_file = f"{storage_path}log_window_{log_window}/{n_nodes}_nodes/{len(snapshot_sequence)}_snapshots/{cyber_agent_type}/{date_time_str}.pkl"
         buffer = io.BytesIO()
         torch.save(indexed_snapshot_sequence, buffer)
@@ -165,6 +171,7 @@ class Simulator:
         rddl_path='rddl/', 
         snapshot_sequence_path = 'snapshot_sequences/',
         agent_type='random',
+        novelty_priority=2,
         random_agent_seed=None):
         
         start_time = time.time()
@@ -182,7 +189,7 @@ class Simulator:
         logging.info(f'Starting simulation of {n_simulations} instance models and a log window of {log_window}.')
         pool = multiprocessing.Pool(processes=n_processes)
 
-        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], snapshot_sequence_path, agent_type, random_agent_seed) for i in range(n_simulations)]
+        simulation_args = [(i, bucket_name, log_window, max_start_time_step, max_log_steps_after_total_compromise, graph_index_filepaths[i], local_domain_filepath, instance_rddl_filepaths[i], snapshot_sequence_path, agent_type, novelty_priority, random_agent_seed) for i in range(n_simulations)]
 
         result_filenames = pool.starmap(self.simulation_worker, simulation_args)
         pool.close()

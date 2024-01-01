@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, RGCNConv, GATConv, Sequential
 
+from lrgcn import LRGCN
 
 class GCN(torch.nn.Module):
     def __init__(self, layer_sizes):
@@ -23,6 +24,8 @@ class GCN(torch.nn.Module):
         
         # return F.log_softmax(x, dim=1)
         return x
+
+
 
 
 class RGCN(torch.nn.Module):

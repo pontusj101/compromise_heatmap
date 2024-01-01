@@ -4,7 +4,13 @@ from google.cloud import storage
 from datetime import datetime
 from graph_index import GraphIndex
 
-def create_random_instance(num_hosts, num_credentials, n_init_compromised, horizon, extra_host_host_connection_ratio=0.25, rddl_path='rddl/'):
+def create_random_instance(num_hosts, 
+                           num_credentials, 
+                           n_init_compromised,
+                           random_inital_compromise, 
+                           horizon, 
+                           extra_host_host_connection_ratio=0.25, 
+                           rddl_path='rddl/'):
 
     graph_index = GraphIndex(size=None)
     # Generate hosts and credentials
@@ -109,8 +115,12 @@ def create_random_instance(num_hosts, num_credentials, n_init_compromised, horiz
     # Define instance
     instance = 'instance simple_network_instance {\n\tdomain = simple_compromise;\n\tnon-fluents = simple_network;\n\n\tinit-state{\n'
     
-    initial_hosts = ['h1']
-    for i in range(n_init_compromised - 1):
+    initial_hosts = []
+    nic = n_init_compromised
+    if not random_inital_compromise:
+        initial_hosts.append('h1')
+        nic -= 1
+    for i in range(nic):
         initial_hosts.append(hosts[random.randint(1, num_hosts - 1)])
     for initial_host in initial_hosts:
         instance += f'\t\tcompromised({initial_host}) = true;\n'
@@ -176,7 +186,8 @@ def create_instance(
         max_size=32,
         n_init_compromised=1,
         extra_host_host_connection_ratio=0.25,
-        horizon=150):
+        horizon=150,
+        random_inital_compromise=False):
     
     rddl_file_paths = []
     graph_index_file_paths = []
@@ -188,6 +199,7 @@ def create_instance(
             num_hosts, 
             num_credentials, 
             n_init_compromised,
+            random_inital_compromise,
             horizon=horizon, 
             extra_host_host_connection_ratio=extra_host_host_connection_ratio, 
             rddl_path=rddl_path)

@@ -15,6 +15,15 @@
             "justMyCode": true
         },
         {
+            "name": "Instance Random Initial Compromise",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/rddl_training_data_producer/main.py",
+            "args": ["instance", "--random_initial_compromise"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Simulate",
             "type": "python",
             "request": "launch",

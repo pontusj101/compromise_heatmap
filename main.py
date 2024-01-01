@@ -35,19 +35,21 @@ parser.add_argument(
 parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of the GCP bucket to use for storage.')
 
 # Instance creation and training
-parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=4, help='Maximum number of hosts in each instance')
+parser.add_argument('--min_size', type=int, default=72, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=72, help='Maximum number of hosts in each instance')
 parser.add_argument('--min_game_time', type=int, default=8, help='Min time horizon for the simulation and training.') # small: 70, large: 500
-parser.add_argument('--max_game_time', type=int, default=32, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
+parser.add_argument('--max_game_time', type=int, default=1024, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
 
 # Instance creation
 parser.add_argument('--n_instances', type=int, default=256, help='Number of instances to create')
-parser.add_argument('--n_init_compromised', type=int, default=1, help='Number of hosts initially compromised in each instance')
+parser.add_argument('--random_initial_compromise', action='store_true', help='Randomly choose all initial compromised hosts.')
+parser.add_argument('--n_init_compromised', type=int, default=3, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.25, help='0.25 means that 25% of hosts will have more than one connection to another host.')
 
 # Simulation
-parser.add_argument('-l', '--sim_log_window', type=int, default=8, help='Size of the logging window')
-parser.add_argument('--agent_type', default='passive', choices=['random', 'host_targeted', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('-l', '--sim_log_window', type=int, default=64, help='Size of the logging window')
+parser.add_argument('--agent_type', default='passive', choices=['random', 'less_random', 'host_targeted', 'novelty', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('--novelty_priority', type=int, default=2, help='Priority of newly discovered actions for less_random agent')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 
 # Training
@@ -55,23 +57,23 @@ parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 
 parser.add_argument('--max_training_sequences', type=int, default=128, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=32, help='Number of sequences to use for validation')
 parser.add_argument('--n_uncompromised_sequences', type=int, default=64, help='Number of uncompromised sequences to use')
-parser.add_argument('--train_log_window', type=int, default=4, help='Size of the logging window')
+parser.add_argument('--train_log_window', type=int, default=64, help='Size of the logging window')
 parser.add_argument('--epochs', type=int, default=32, help='Number of epochs for GNN training')
 parser.add_argument('--learning_rate', type=float, default=0.0002, help='Learning rate for GNN training')
 parser.add_argument('--batch_size', type=int, default=128, help='Batch size for GNN training')
-parser.add_argument('--n_hidden_layer_1', type=int, default=32, help='Number of neurons in hidden layer 1 for GNN')
-parser.add_argument('--n_hidden_layer_2', type=int, default=32, help='Number of neurons in hidden layer 2 for GNN')
-parser.add_argument('--n_hidden_layer_3', type=int, default=32, help='Number of neurons in hidden layer 3 for GNN')
+parser.add_argument('--n_hidden_layer_1', type=int, default=128, help='Number of neurons in hidden layer 1 for GNN')
+parser.add_argument('--n_hidden_layer_2', type=int, default=128, help='Number of neurons in hidden layer 2 for GNN')
+parser.add_argument('--n_hidden_layer_3', type=int, default=128, help='Number of neurons in hidden layer 3 for GNN')
 parser.add_argument('--n_hidden_layer_4', type=int, default=0, help='Number of neurons in hidden layer 4 for GNN')
-parser.add_argument('--edge_embedding_dim', type=int, default=32, help='Edge embedding dimension for GAT')
-parser.add_argument('--heads_per_layer', type=int, default=1, help='Number of attention heads per layer for GAT')
-parser.add_argument('--lstm_hidden_dim', type=int, default=32, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
+parser.add_argument('--edge_embedding_dim', type=int, default=128, help='Edge embedding dimension for GAT')
+parser.add_argument('--heads_per_layer', type=int, default=2, help='Number of attention heads per layer for GAT')
+parser.add_argument('--lstm_hidden_dim', type=int, default=128, help='Number of neurons in LSTM hidden layer for GNN_LSTM')
 parser.add_argument('--checkpoint_file', type=str, default=None, help='Name of the checkpoint file to resume training from.')
 
 # Evaluation and animation
-#parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_16,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_121849.pt', help='Path the model filename, relative to the bucket root.')
-# GAT parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_3018,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_135634.pt', help='Path the model filename, relative to the bucket root.')
-parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_256,256,256_nsnpsht_2024_lr_0.0002_bs_128_20231229_064936.pt', help='Path the model filename, relative to the bucket root.')
+# parser.add_argument('--model_filepath', type=str, default='models/model_log_window__hl_16,256,256_nsnpsht_256_lr_0.0002_bs_128_20231228_121849.pt', help='Path the model filename, relative to the bucket root.')
+parser.add_argument('--model_filepath', type=str, default='models/model/GAT/log_window__hl_380,209,439_lstm_284_nsnpsht_128_lr_0.0002_bs_128_20231231_143651.pt', help='Path the model filename, relative to the bucket root.')
+# LSTM parser.add_argument('--model_filepath', type=str, default='models/model/GAT_LSTM/log_window__hl_256,256,256_lstm_256_nsnpsht_256_lr_0.0002_bs_128_20231230_172202.pt', help='Path the model filename, relative to the bucket root.')
 # Evaluation
 parser.add_argument('--trigger_threshold', type=float, default=0.5, help='The threashold probability at which a predicted label is considered positive.')
 parser.add_argument('--predictor_type', default='gnn', choices=['gnn', 'tabular', 'none'], help='Type of predictor')
@@ -82,7 +84,8 @@ parser.add_argument('--n_evaluation_sequences', type=int, default=32, help='Numb
 # Animation
 # parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_255/252_nodes/257_snapshots/20231215_134213_9153.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 # passive parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_1/32_nodes/255_snapshots/passive/20231228_135631_9990.pkl', help='Path the animation sequence filename, relative to the bucket root.')
-parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/32_nodes/150_snapshots/random/20231228_204628_5684.pkl', help='Path the animation sequence filename, relative to the bucket root.')
+# 32 large? parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/32_nodes/150_snapshots/random/20231228_204628_5684.pkl', help='Path the animation sequence filename, relative to the bucket root.')
+parser.add_argument('--animation_sequence_filepath', type=str, default='animation_sequences/log_window_64/256_nodes/960_snapshots/novelty/20231231_210248_3828.pkl', help='Path the animation sequence filename, relative to the bucket root.')
 parser.add_argument('--frames_per_second', type=int, default=25, help='Frames per second in the animation.')
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')
@@ -149,6 +152,7 @@ if 'instance' in args.modes:
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
+        random_inital_compromise=args.random_initial_compromise,
         extra_host_host_connection_ratio=args.extra_host_host_connection_ratio,
         horizon=args.max_game_time)
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
@@ -170,6 +174,7 @@ if 'simulate' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
+        novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
     logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
@@ -218,6 +223,7 @@ if 'eval_seq' in args.modes:
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised,
+        random_inital_compromise=args.random_initial_compromise,
         horizon=args.max_game_time)
     config['eval_instance_rddl_filepaths'] = instance_rddl_filepaths
     config['eval_graph_index_filepaths'] = graph_index_filepaths
@@ -235,6 +241,7 @@ if 'eval_seq' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
+        novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
     logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
 
@@ -259,6 +266,7 @@ if 'anim_seq' in args.modes:
         min_size=args.min_size,
         max_size=args.max_size,
         n_init_compromised=args.n_init_compromised_animate,
+        random_inital_compromise=args.random_initial_compromise,
         horizon=args.max_game_time)
     logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
@@ -273,6 +281,7 @@ if 'anim_seq' in args.modes:
         max_start_time_step=max_start_time_step, 
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
+        novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
     logging.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
 
