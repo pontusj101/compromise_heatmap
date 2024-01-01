@@ -1,1 +1,2 @@
 
+2024-01-01 09:59:29,557 - Training GAT with a log window of 64, 128 graphs. Learning rate: 0.0002. Hidden Layers: [128, 128, 128]. Validating on 32 graphs.
