@@ -1,2 +1,0 @@
-
-2023-12-30 09:29:12,543 - Training GAT_LSTM with a log window of 1, 128 graphs. Learning rate: 0.0002. Hidden Layers: [8]. Validating on 32 graphs.
