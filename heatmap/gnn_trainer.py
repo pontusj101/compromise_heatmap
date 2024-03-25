@@ -172,7 +172,7 @@ def calculate_loss(logits, target_labels):
     return loss / logits.shape[1]  # Average loss over the sequence
 
 
-def train_gnn(wandb_api_key,
+def train_gnn(wandb_api_key=None,
               gnn_type='GAT',
               bucket_manager=None,
               sequence_dir_path='training_sequences/',
@@ -201,6 +201,7 @@ def train_gnn(wandb_api_key,
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     logging.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available else 'cpu')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device: {device}')
 
@@ -229,33 +230,34 @@ def train_gnn(wandb_api_key,
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    os.environ['WANDB_API_KEY'] = wandb_api_key
+    if wandb_api_key:
+        os.environ['WANDB_API_KEY'] = wandb_api_key
 
-    wandb.init(
-        project="gnn_rddl",
+        wandb.init(
+            project="gnn_rddl",
 
-        config={
-        "learning_rate": learning_rate,
-        "gnn_type": gnn_type,
-        "number_of_epochs": number_of_epochs,
-        "max_training_sequences": max_training_sequences,
-        "n_validation_sequences": n_validation_sequences,
-        "n_uncompromised_sequences": n_uncompromised_sequences,
-        "min_nodes": min_nodes,
-        "max_nodes": max_nodes,
-        "min_snapshots": min_snapshots,
-        "max_snapshots": max_snapshots,
-        "log_window": log_window,
-        "batch_size": batch_size,
-        "n_hidden_layer_1": n_hidden_layer_1,
-        "n_hidden_layer_2": n_hidden_layer_2,
-        "n_hidden_layer_3": n_hidden_layer_3,
-        "n_hidden_layer_4": n_hidden_layer_4,
-        "edge_embedding_dim": edge_embedding_dim,
-        "heads_per_layer": heads_per_layer,
-        "lstm_hidden_dim": lstm_hidden_dim
-        }
-    )
+            config={
+            "learning_rate": learning_rate,
+            "gnn_type": gnn_type,
+            "number_of_epochs": number_of_epochs,
+            "max_training_sequences": max_training_sequences,
+            "n_validation_sequences": n_validation_sequences,
+            "n_uncompromised_sequences": n_uncompromised_sequences,
+            "min_nodes": min_nodes,
+            "max_nodes": max_nodes,
+            "min_snapshots": min_snapshots,
+            "max_snapshots": max_snapshots,
+            "log_window": log_window,
+            "batch_size": batch_size,
+            "n_hidden_layer_1": n_hidden_layer_1,
+            "n_hidden_layer_2": n_hidden_layer_2,
+            "n_hidden_layer_3": n_hidden_layer_3,
+            "n_hidden_layer_4": n_hidden_layer_4,
+            "edge_embedding_dim": edge_embedding_dim,
+            "heads_per_layer": heads_per_layer,
+            "lstm_hidden_dim": lstm_hidden_dim
+            }
+        )
 
     train_loss_values = []
     validation_loss_values = []
@@ -306,29 +308,29 @@ def train_gnn(wandb_api_key,
             global_step=global_step)
         logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {training_loss:.4f}. Validation Loss: {validation_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
 
-        wandb.log({
-            "global_step": global_step,
-            "f1": f1,
-            "precision": precision,
-            "recall": recall,
-            "training_loss": training_loss,
-            "validation_loss": validation_loss,
-            "number_of_compromised_nodes": number_of_compromised_nodes,
-            "number_of_uncompromised_nodes": number_of_uncompromised_nodes,
-            "time": end_time - start_time
-            })
+        if wandb_api_key:
+            wandb.log({
+                "global_step": global_step,
+                "f1": f1,
+                "precision": precision,
+                "recall": recall,
+                "training_loss": training_loss,
+                "validation_loss": validation_loss,
+                "number_of_compromised_nodes": number_of_compromised_nodes,
+                "number_of_uncompromised_nodes": number_of_uncompromised_nodes,
+                "time": end_time - start_time
+                })
 
-        # logging.info(f'Edge embedding weights: {[(n, p) for (n, p) in model.named_parameters()][1][1].data}')
-        # logging.info(f'Edge embedding gradients: {[(n, p) for (n, p) in model.named_parameters()][1][1].grad}')
-        for name, param in model.named_parameters():
-            wandb.log({f"weights/{name}": wandb.Histogram(param.data.numpy()), "global_step": global_step})
-            wandb.log({f"gradients/{name}": wandb.Histogram(param.grad.numpy()), "global_step": global_step})
+            for name, param in model.named_parameters():
+                wandb.log({f"weights/{name}": wandb.Histogram(param.data.numpy()), "global_step": global_step})
+                wandb.log({f"gradients/{name}": wandb.Histogram(param.grad.numpy()), "global_step": global_step})
 
 
         mfn = model_filename(model_dirpath, gnn_type, training_sequence_filenames, hidden_layers, lstm_hidden_dim, learning_rate, batch_size, len(training_data_loader), date_time_str)
         plot_training_results(bucket_manager, f'loss_plot_{mfn}.png', train_loss_values, validation_loss_values)
 
-    wandb.finish()
+    if wandb_api_key:
+        wandb.finish()
 
     model = model.to('cpu')
     model_file_name = save_model_to_bucket(bucket_manager=bucket_manager,

@@ -1,6 +1,5 @@
 import argparse
 import os
-import logging
 import warnings
 import ast
 import json
@@ -15,6 +14,7 @@ from .simulator import Simulator
 from .evaluator import Evaluator
 from .gnn_trainer import train_gnn
 from .bucket_manager import BucketManager
+from . import logging as heatmap_logging
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
 
@@ -31,6 +31,7 @@ parser.add_argument(
     choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'eval', 'anim', 'explore', 'clean', 'all'],
     help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, eval, anim, explore, clean and all.'
 )
+parser.add_argument('--debug', action="store_true")
 parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of the GCP bucket to use for storage.')
 
 # Instance creation and training
@@ -52,6 +53,7 @@ parser.add_argument('--novelty_priority', type=int, default=2, help='Priority of
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
 
 # Training
+parser.add_argument('--enable_wandb', action='store_true')
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
 parser.add_argument('--max_training_sequences', type=int, default=128, help='Maximum number of instances to use for training')
 parser.add_argument('--n_validation_sequences', type=int, default=32, help='Number of sequences to use for validation')
@@ -94,33 +96,9 @@ parser.add_argument('--hide_state', action='store_true', help='Hide the attacker
 # Parse arguments
 args = parser.parse_args()
 
-client = google.cloud.logging.Client()
-handler = CloudLoggingHandler(client)
-logging.getLogger().setLevel(logging.INFO)
-logging.getLogger().addHandler(handler)
-# Get the root logger
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)  # Set the log level
-# Clear existing handlers
-for handler in logger.handlers[:]:
-    logger.removeHandler(handler)
-# Create a file handler and set level to debug
-file_handler = logging.FileHandler('log.log')
-file_handler.setLevel(logging.DEBUG)
-# Create a console (stream) handler and set level to debug
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-# Create a formatter
-formatter = logging.Formatter('%(asctime)s - %(message)s')
-# Set formatter for file and console handlers
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-# Add file and console handlers to the root logger
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-# Supress unwanted logging
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('storage').setLevel(logging.WARNING)
+heatmap_logging.debug = args.debug
+logger = heatmap_logging.setup_logging(__name__)
+
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Attempting to set identical low and high ylims makes transformation singular; automatically expanding.", module="pyRDDLGym.Visualizer.ChartViz")
@@ -143,7 +121,7 @@ if 'all' in args.modes:
     args.modes = ['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'eval', 'anim']
 
 if 'instance' in args.modes:
-    logging.info(f'Creating new instance specification.')
+    logger.info(f'Creating new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance(
         bucket_name=args.bucket_name,
         rddl_path=config['rddl_dirpath'],
@@ -157,16 +135,15 @@ if 'instance' in args.modes:
     config['instance_rddl_filepaths'] = instance_rddl_filepaths
     config['graph_index_filepaths'] = graph_index_filepaths
     bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
-    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
+    logger.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
 
 if 'simulate' in args.modes:
-    logging.info(f'Producing training data.')
+    logger.info(f'Producing training data.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
         bucket_name=args.bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
-        graph_index_filepaths=config['graph_index_filepaths'],
         rddl_path=config['rddl_dirpath'],
         snapshot_sequence_path=config['training_sequence_dirpath'],
         log_window=sim_log_window,
@@ -175,14 +152,20 @@ if 'simulate' in args.modes:
         agent_type=args.agent_type,
         novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
-    logging.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
+    logger.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
 if 'train' in args.modes:
-    logging.info(f'Training {args.gnn_type}.')
-    smsClient = secretmanager.SecretManagerServiceClient()
-    name = 'projects/473095460232/secrets/Weights_Biases_API_Key/versions/latest'
-    response = smsClient.access_secret_version(request={"name": name})
-    wandb_api_key = response.payload.data.decode("UTF-8")
+    logger.info(f'Training {args.gnn_type}.')
+
+
+    wandb_api_key = None
+    if args.enable_wandb:
+        # smsClient = secretmanager.SecretManagerServiceClient()
+        # name = 'projects/473095460232/secrets/Weights_Biases_API_Key/versions/latest'
+        # response = smsClient.access_secret_version(request={"name": name})
+        # wandb_api_key = response.payload.data.decode("UTF-8")
+        with open('./wandb.key') as f:
+            wandb_api_key = read(f)
 
     predictor_filename = train_gnn(
                     wandb_api_key=wandb_api_key,
@@ -212,10 +195,10 @@ if 'train' in args.modes:
                     checkpoint_file=args.checkpoint_file,  # Add checkpoint file parameter
                     checkpoint_path='checkpoints/')
 
-    logging.info(f'{args.gnn_type} trained. Model written to {predictor_filename}.')
+    logger.info(f'{args.gnn_type} trained. Model written to {predictor_filename}.')
 
 if 'eval_seq' in args.modes:
-    logging.info(f'Producing {args.n_evaluation_sequences} evaluation snapshot sequences.')
+    logger.info(f'Producing {args.n_evaluation_sequences} evaluation snapshot sequences.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance(
         rddl_path=config['rddl_dirpath'],
         n_instances=args.n_evaluation_sequences,
@@ -227,7 +210,7 @@ if 'eval_seq' in args.modes:
     config['eval_instance_rddl_filepaths'] = instance_rddl_filepaths
     config['eval_graph_index_filepaths'] = graph_index_filepaths
     bucket_manager.json_save_to_bucket(config, CONFIG_FILE)
-    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
+    logger.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
         bucket_name=args.bucket_name,
@@ -242,7 +225,7 @@ if 'eval_seq' in args.modes:
         agent_type=args.agent_type,
         novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
-    logging.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
+    logger.info(f'Evaulation data produced and written to {config["evaluation_sequence_dirpath"]}.')
 
 if 'eval' in args.modes:
     evaluator = Evaluator(trigger_threshold=args.trigger_threshold)
@@ -257,8 +240,8 @@ if 'eval' in args.modes:
         max_sequences = args.n_evaluation_sequences)
 
 if 'anim_seq' in args.modes:
-    logging.info(f'Producing single animantion snapshot sequence.')
-    logging.info(f'Creating new instance specification.')
+    logger.info(f'Producing single animantion snapshot sequence.')
+    logger.info(f'Creating new instance specification.')
     instance_rddl_filepaths, graph_index_filepaths = create_instance(
         rddl_path=config['rddl_dirpath'],
         n_instances=1,
@@ -267,7 +250,7 @@ if 'anim_seq' in args.modes:
         n_init_compromised=args.n_init_compromised_animate,
         random_inital_compromise=args.random_initial_compromise,
         horizon=args.max_game_time)
-    logging.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
+    logger.info(f'{len(instance_rddl_filepaths)} instance specifications and graph indicies written to file.')
     simulator = Simulator()
     simulator.produce_training_data_parallel(
         bucket_name=args.bucket_name,
@@ -282,10 +265,10 @@ if 'anim_seq' in args.modes:
         agent_type=args.agent_type,
         novelty_priority=args.novelty_priority,
         random_agent_seed=args.random_agent_seed)
-    logging.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
+    logger.info(f'Animation data produced and written to {config["animation_sequence_dirpath"]}.')
 
 if 'anim' in args.modes:
-    logging.info(f'Creating animation.')
+    logger.info(f'Creating animation.')
 
     animator = Animator(args.animation_sequence_filepath,
                         bucket_manager=bucket_manager,
@@ -295,7 +278,7 @@ if 'anim' in args.modes:
                              predictor_filename=args.model_filepath,
                              frames_per_second=args.frames_per_second)
     s = f'Animation written to file.'
-    logging.info(s)
+    logger.info(s)
     print(s)
 
 

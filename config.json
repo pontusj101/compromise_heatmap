@@ -7,9 +7,9 @@
     "predictor_type": "gnn",
     "predictor_filename": "models/model_n1024_l128_n_46_256_20231210_080641_3768_hl_[128, 128]_n_129819_lr_0.001_bs_256_20231211_132754.pt",
     "instance_rddl_filepaths": [
-        "rddl/instance_n_256_256_20231210_101114_6310.rddl"
+        "rddl/instance_nnodes_72_gt_1024_20240314_135059_1656.rddl"
     ],
     "graph_index_filepaths": [
-        "rddl/graph_index_n_256_256_20231210_101114_6310.pkl"
+        "rddl/graph_index_nnodes_72_gt_1024_20240314_135059_1656.pkl"
     ]
 }
