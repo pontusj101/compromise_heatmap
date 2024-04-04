@@ -13,7 +13,7 @@ import numpy as np
 from google.cloud import storage
 from google.cloud.storage.retry import DEFAULT_RETRY
 from torch_geometric.data import Data
-from .agents import PassiveCyberAgent, RandomCyberAgent, LessRandomCyberAgent, HostTargetedCyberAgent, KeyboardCyberAgent, NoveltyFocusedRandomCyberAgent
+from malpzsim.agents.searchers import BreadthFirstAttacker, PassiveAttacker
 from maltoolbox.language import specification, LanguageGraph, LanguageClassesFactory
 from maltoolbox.attackgraph import AttackGraph
 from maltoolbox.model import Model
@@ -22,7 +22,7 @@ from malpzsim.agents.searchers import BreadthFirstAttacker
 
 from . import logging as heatmap_logging
 
-logger = heatmap_logging.setup_logging(__name__)
+logger = logging.getLogger(__name__)
 
 class Simulator:
     stdin = None
@@ -41,7 +41,8 @@ class Simulator:
                           random_cyber_agent_seed=None):
         import sys
         sys.stdin = open("/dev/tty")
-        logger = heatmap_logging.setup_logging(__name__)
+        heatmap_logging.debug = '--debug' in sys.argv
+        logger = heatmap_logging.setup_logging()
 
         logger.info(f'Simulation {sim_id} started.')
 #
@@ -53,33 +54,33 @@ class Simulator:
         # instance_blob.delete()
         # gi_blob.delete()
 
-        lang_file = "../mal-petting-zoo-simulator/tests/org.mal-lang.coreLang-1.0.0.mar"
-        lang_spec = specification.load_language_specification_from_mar(lang_file)
-        specification.save_language_specification_to_json(lang_spec, "../mal-petting-zoo-simulator/tests/lang_spec.json")
-        lang_classes_factory = LanguageClassesFactory(lang_spec)
+        lang_graph = LanguageGraph.from_mar_archive(domain_rddl_path)
+        lang_classes_factory = LanguageClassesFactory(lang_graph)
         lang_classes_factory.create_classes()
 
-        lang_graph = LanguageGraph(lang_spec)
+        model = Model.load_from_file("../mal-petting-zoo-simulator/tests/example_model.json", lang_classes_factory)
+        model.save_to_file("tmp/model.json")
 
-        model = Model("Test Model", lang_spec, lang_classes_factory)
-        model.load_from_file("../mal-petting-zoo-simulator/tests/example_model.json")
-
-        attack_graph = AttackGraph(lang_spec, model)
-        attack_graph.attach_attackers(model)
+        attack_graph = AttackGraph(lang_graph, model)
+        attack_graph.attach_attackers()
         attack_graph.save_to_file("tmp/attack_graph.json")
 
         # max_iter is the episode horizon
-        myEnv = MalPettingZooSimulator(lang_graph, model, attack_graph, max_iter=5)
+        horizon = 400
+        myEnv = MalPettingZooSimulator(lang_graph, model, attack_graph, max_iter=horizon)
 
         start_time = time.time()
         n_nodes = len(attack_graph.nodes)
-        start_step = random.randint(log_window, max_start_time_step)
+        # start_step = random.randint(log_window, max_start_time_step)
+        start_step = random.randint(log_window, 100)
 
-        agent = BreadthFirstAttacker({})
+        logger.info(f"start step: {start_step}")
+
+        agent = PassiveAttacker()
         total_reward = 0
         snapshot_sequence = []
         log_feature_vectors = torch.zeros((n_nodes, log_window))
-        log_steps_after_total_compromise = myEnv.horizon = 200
+        log_steps_after_total_compromise = myEnv.horizon = horizon
 
         myEnv.register_attacker("attacker", 0)
         myEnv.register_defender("defender")
@@ -93,22 +94,9 @@ class Simulator:
             if step % 30 == 0:
                 logger.info(f'Simulation {sim_id}. Step {step}/{myEnv.horizon}. Time: {time.time() - start_time:.2f}s.')
             if step == start_step:
-                agent = BreadthFirstAttacker({})
-                if cyber_agent_type == 'randomi':
-                    agent = RandomCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
+                if cyber_agent_type == 'random':
+                    agent = BreadthFirstAttacker({"randomize": True})
                     logger.info(f'Simulation {sim_id}. Deploying random attacker.')
-                elif cyber_agent_type == 'less_random':
-                    agent = LessRandomCyberAgent(action_space=myEnv.action_space, novelty_priority=novelty_priority, seed=random_cyber_agent_seed)
-                    logger.info(f'Simulation {sim_id}. Deploying a less random attacker.')
-                elif cyber_agent_type == 'host_targeted':
-                    agent = HostTargetedCyberAgent(action_space=myEnv.action_space, seed=random_cyber_agent_seed)
-                    logger.info(f'Simulation {sim_id}. Deploying host-targeted attacker.')
-                elif cyber_agent_type == 'keyboard':
-                    agent = KeyboardCyberAgent(action_space=myEnv.action_space)
-                    logger.info(f'Simulation {sim_id}. Deploying keyboard attacker.')
-                elif cyber_agent_type == 'novelty':
-                    agent = NoveltyFocusedRandomCyberAgent(action_space=myEnv.action_space)
-                    logger.info(f'Simulation {sim_id}. Deploying novelty-focused attacker.')
                 elif cyber_agent_type == 'passive':
                     pass
                     logger.info(f'Simulation {sim_id}. Deploying passive attacker.')
@@ -131,27 +119,46 @@ class Simulator:
             total_reward += rewards['attacker']
 
             new_logs = torch.from_numpy(state['defender']['observed_state'])
+
+            logger.debug(f"new_state: {new_logs}")
+            logger.debug(f"old logs: {log_line}")
+
+
             if log_line is None:
                 log_line = new_logs
             else:
-                log_line = ((log_line == 0) & (new_logs == 1)).to(torch.int)
+                log_line = ((log_line == 0) & (new_logs == 1)).to(torch.long)
+
+            logger.debug(f"new logs: {log_line}")
+
+            flips = torch.bernoulli(torch.full_like(log_line.to(torch.float), 0.1)) * (log_line == 0)
+
+            log_line = (log_line + flips).to(torch.long)
+
+            logger.debug(f"fin logs: {log_line}")
+
+            logger.debug(f"=============================")
 
             log_feature_vectors = torch.cat((log_feature_vectors[:, 1:], log_line.unsqueeze(1)), dim=1)
 
-            labels = torch.from_numpy(state['attacker']['observed_state'])
-
             if terminations['attacker']:
+                logger.info(f"All steps compromised ({step} - {start_step} = {step-start_step})")
                 if log_steps_after_total_compromise == 0:
-                    logger.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised after {step-start_step} steps. The graph contains {n_nodes} attack steps. Continuing to log for {max_log_steps_after_total_compromise} steps.')
+                    logger.debug(f'Simulation {sim_id}. Step {step}: All attack steps were compromised after {step_start_step} steps. The graph contains {n_nodes} attack steps. Continuing to log for {max_log_steps_after_total_compromise} steps.')
                 log_steps_after_total_compromise += 1
                 if log_steps_after_total_compromise > max_log_steps_after_total_compromise:
                     logger.debug(f'Simulation {sim_id} terminated due to complete compromise.')
                     break
 
-            nodes_as_features = torch.tensor(list(attack_graph.nodes_as_features.values())).unsqueeze(1)
-            combined_features = torch.cat((nodes_as_features, log_feature_vectors), dim=1)
+            nodes_as_features = torch.tensor(list(state['defender']['step_name'])).unsqueeze(1)
 
-            snapshot = Data(x=combined_features, edge_index=state['defender']['edges'], y=labels)
+            combined_features = torch.cat((nodes_as_features, log_feature_vectors), dim=1).to(torch.long)
+            edge_index = torch.from_numpy(state['defender']['edges'].T).to(torch.long)
+            edge_type = torch.zeros(edge_index.shape[1]).to(torch.long)
+            labels = torch.from_numpy(state['attacker']['observed_state']).to(torch.long)
+            labels = torch.where(labels==-1, torch.tensor(0), labels)
+
+            snapshot = Data(x=combined_features, edge_index=edge_index, edge_type=edge_type, y=labels)
 
             # Only add snapshots after the log window has been filled with unmalicious log lines
             if step >= log_window:
@@ -165,19 +172,24 @@ class Simulator:
         del myEnv
         end_time = time.time()
         # TODO see if i need to keep track of the attack graph
-        # indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_index}
+        # indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence, 'graph_index': graph_indexe
         indexed_snapshot_sequence = {'snapshot_sequence': snapshot_sequence}
         date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
         output_file = f"{storage_path}log_window_{log_window}/{n_nodes}_nodes/{len(snapshot_sequence)}_snapshots/{cyber_agent_type}/{date_time_str}.pkl"
         buffer = io.BytesIO()
         torch.save(indexed_snapshot_sequence, buffer)
-        buffer.seek(0)
-        blob = bucket.blob(output_file)
-        modified_retry = DEFAULT_RETRY.with_deadline(60)
-        modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
+        os.makedirs("data/" + os.path.dirname(output_file), exist_ok=True)
+        with open(f"data/{output_file}", "wb") as f:
+            f.write(buffer.getvalue())
+        logger.info(f"Wrote training data to {output_file}")
 
-        blob.upload_from_file(buffer, retry=modified_retry)
-        buffer.close()
+        # buffer.seek(0)
+        # blob = bucket.blob(output_file)
+        # modified_retry = DEFAULT_RETRY.with_deadline(60)
+        # modified_retry = modified_retry.with_delay(initial=0.5, multiplier=1.2, maximum=10.0)
+        #
+        # blob.upload_from_file(buffer, retry=modified_retry)
+        # buffer.close()
         logger.info(f'Simulation {sim_id} completed. Time: {end_time - start_time:.2f}s. Written to {output_file}.')
         return output_file
 
@@ -197,11 +209,12 @@ class Simulator:
 
         start_time = time.time()
 
-        local_domain_filepath = f'/tmp/domain.rddl'
-        storage_client = storage.Client()
-        bucket = storage_client.get_bucket(bucket_name)
-        domain_blob = bucket.blob(domain_rddl_path)
-        domain_blob.download_to_filename(local_domain_filepath)
+        # local_domain_filepath = f'/tmp/domain.rddl'
+        # storage_client = storage.Client()
+        # bucket = storage_client.get_bucket(bucket_name)
+        # domain_blob = bucket.blob(domain_rddl_path)
+        # domain_blob.download_to_filename(local_domain_filepath)
+        local_domain_filepath = domain_rddl_path
 
 
 
@@ -222,18 +235,4 @@ class Simulator:
         pool.close()
         pool.join()
 
-        # n_completely_compromised = sum([(snap_seq['snapshot_sequence'][-1].y[1:] == 1).all() for snap_seq in results])
-
-        # snapshot_sequence = [item for sublist in [r['snapshot_sequence'] for r in results] for item in sublist]
-        # compromised_snapshots = sum(tensor.sum() > 1 for tensor in [s.y for s in snapshot_sequence])
         logger.info(f'Sapshot sequence data generation completed. Time: {time.time() - start_time:.2f}s.')
-        # logger.info(f'Number of snapshots: {len(snapshot_sequence)}, of which {compromised_snapshots} are compromised, and {n_completely_compromised} of {n_simulations} simulations ended in complete compromise.')
-        # random_snapshot_index = np.random.randint(0, len(snapshot_sequence))
-        # random_snapshot = snapshot_sequence[random_snapshot_index]
-        # logger.debug(f'Random snapshot ({random_snapshot_index}) node features, log sequence and labels:')
-        # logger.debug(f'\n{random_snapshot.x[:,:1]}')
-        # logger.debug(f'\n{random_snapshot.x[:,1:]}')
-        # logger.debug(random_snapshot.y)
-
-
-        # return file_name

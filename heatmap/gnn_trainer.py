@@ -20,6 +20,8 @@ from .bucket_manager import BucketManager
 from torch_geometric.loader import DataLoader
 from .gnn import GCN, RGCN, GIN, GAT, GNN_LSTM
 
+logger = logging.getLogger(__name__)
+
 def plot_training_results(bucket_manager, filename, loss_values, val_loss_values):
     plt.figure(figsize=(10, 6))
     plt.plot(loss_values, label='Training Loss')
@@ -37,14 +39,14 @@ def print_results(methods, snapshot_sequence, test_true_labels, test_predicted_l
     false_positives = np.sum(np.logical_and(test_predicted_labels == 1, test_true_labels == 0))
     false_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 1))
     true_negatives = np.sum(np.logical_and(test_predicted_labels == 0, test_true_labels == 0))
-    logging.info(f'{methods} training completed. Time: {time.time() - start_time:.2f}s.')
-    logging.debug(f'Test: Predicted Labels: \n{test_predicted_labels}')
-    logging.debug(f'Test: True Labels: \n{test_true_labels}')
-    logging.info(f'{methods}. Test: True Positives: {true_positives}, False Positives: {false_positives}, False Negatives: {false_negatives}, True Negatives: {true_negatives}.')
+    logger.info(f'{methods} training completed. Time: {time.time() - start_time:.2f}s.')
+    logger.debug(f'Test: Predicted Labels: \n{test_predicted_labels}')
+    logger.debug(f'Test: True Labels: \n{test_true_labels}')
+    logger.info(f'{methods}. Test: True Positives: {true_positives}, False Positives: {false_positives}, False Negatives: {false_negatives}, True Negatives: {true_negatives}.')
     precision = precision_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     recall = recall_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
     f1 = f1_score(test_true_labels, test_predicted_labels, average='binary', zero_division=0)
-    logging.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
+    logger.warning(f'{methods}. Test: F1 Score: {f1:.2f}. Precision: {precision:.2f}, Recall: {recall:.2f}. {len(snapshot_sequence)} snapshots.')
 
 def save_model_to_bucket(bucket_manager, model_path, model, gnn_type, training_sequence_filenames, hidden_layers, lstm_hidden_dim, learning_rate, batch_size, snapshot_sequence_length, date_time_str):
     model_file_name = model_filename(model_path, gnn_type, training_sequence_filenames, hidden_layers, lstm_hidden_dim, learning_rate, batch_size, snapshot_sequence_length, date_time_str)
@@ -60,10 +62,13 @@ def model_filename(model_path, gnn_type, training_sequence_filenames, hidden_lay
 
 def get_num_relations(bucket_manager, training_sequence_filenames):
     first_filename = training_sequence_filenames[0]
-    first_data = bucket_manager.torch_load_from_bucket(first_filename)
-    first_snapshot = first_data['snapshot_sequence'][0]
-    num_relations = first_snapshot.num_edge_types
-    return num_relations
+    # first_data = bucket_manager.torch_load_from_bucket(first_filename)
+    # with open('data/' + first_filename, "rb") as f:
+        # first_data = torch.load(f)
+    # first_snapshot = first_data['snapshot_sequence'][0]
+    # num_relations = first_snapshot.num_edge_types
+    return 1
+    # return num_relations
 
 def make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4):
     hidden_layers = [n_hidden_layer_1]
@@ -200,10 +205,10 @@ def train_gnn(wandb_api_key=None,
               checkpoint_path='checkpoints/'):
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    logging.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
+    logger.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
     # device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available else 'cpu')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logging.info(f'Using device: {device}')
+    logger.info(f'Using device: {device}')
 
     if gnn_type == 'GAT_LSTM':
         log_window = 1 # The LSTM will only consider the current time step, so we set the log window to 1
@@ -213,6 +218,7 @@ def train_gnn(wandb_api_key=None,
         batch_method = 'by_time_step'
     else:
         batch_method = 'random'
+
     training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences, n_uncompromised_sequences)
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
     training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window)
@@ -262,7 +268,7 @@ def train_gnn(wandb_api_key=None,
     train_loss_values = []
     validation_loss_values = []
     global_step = 0
-    logging.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} graphs. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Validating on {len(validation_data_loader)} graphs.')
+    logger.info(f'Training {gnn_type} with a log window of {log_window}, {len(training_data_loader)} graphs. Learning rate: {learning_rate}. Hidden Layers: {hidden_layers}. Validating on {len(validation_data_loader)} graphs.')
     for epoch in range(number_of_epochs):
         start_time = time.time()
         model.train()
@@ -288,7 +294,7 @@ def train_gnn(wandb_api_key=None,
             loss.backward()
             optimizer.step()
             training_loss += loss.item()
-            logging.debug(f'Epoch {epoch}, Batch {i}/{len(training_data_loader)}, Processed nodes: {global_step}. Training Loss: {loss.item():.4f}.')
+            logger.debug(f'Epoch {epoch}, Batch {i}/{len(training_data_loader)}, Processed nodes: {global_step}. Training Loss: {loss.item():.4f}.')
 
         training_loss /= len(training_data_loader)
         train_loss_values.append(training_loss)
@@ -306,7 +312,7 @@ def train_gnn(wandb_api_key=None,
             hyperparameter_metric_tag='F1',
             metric_value=f1,
             global_step=global_step)
-        logging.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {training_loss:.4f}. Validation Loss: {validation_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
+        logger.info(f'Epoch {epoch}: F1: {f1:.4f}. Precision: {precision:.4f}. Recall: {recall:.4f}. Training Loss: {training_loss:.4f}. Validation Loss: {validation_loss:.4f}. {number_of_compromised_nodes} compromised nodes. {number_of_uncompromised_nodes} uncompromised nodes. Time: {end_time - start_time:.4f}s.')
 
         if wandb_api_key:
             wandb.log({

@@ -97,7 +97,7 @@ parser.add_argument('--hide_state', action='store_true', help='Hide the attacker
 args = parser.parse_args()
 
 heatmap_logging.debug = args.debug
-logger = heatmap_logging.setup_logging(__name__)
+logger = heatmap_logging.setup_logging()
 
 warnings.filterwarnings("ignore", message="Tight layout not applied. tight_layout cannot make axes height small enough to accommodate all axes decorations", module="pyRDDLGym.Visualizer.ChartViz")
 warnings.filterwarnings("ignore", message="Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.", module="pyRDDLGym.Visualizer.ChartViz")
@@ -111,10 +111,10 @@ else:
     sim_log_window = args.sim_log_window
 
 bucket_manager = BucketManager(args.bucket_name)
-config = bucket_manager.json_load_from_bucket(CONFIG_FILE)
+config = bucket_manager.load_config_file(CONFIG_FILE)
 
-# with open(CONFIG_FILE, 'r') as f:
-#     config = json.load(f)
+with open(CONFIG_FILE, 'r') as f:
+    config = json.load(f)
 
 # Modes
 if 'all' in args.modes:
@@ -270,12 +270,13 @@ if 'anim_seq' in args.modes:
 if 'anim' in args.modes:
     logger.info(f'Creating animation.')
 
-    animator = Animator(args.animation_sequence_filepath,
+    animator = Animator(config['domain_rddl_filepath'],
+                        args.animation_sequence_filepath,
                         bucket_manager=bucket_manager,
                         hide_prediction=args.hide_prediction,
                         hide_state=args.hide_state)
     animator.create_animation(predictor_type=config['predictor_type'],
-                             predictor_filename=args.model_filepath,
+                             predictor_filename=config['predictor_filename'],
                              frames_per_second=args.frames_per_second)
     s = f'Animation written to file.'
     logger.info(s)

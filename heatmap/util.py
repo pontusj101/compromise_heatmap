@@ -1,5 +1,6 @@
 import io
 import torch
+from pathlib import Path
 import random
 import logging
 import numpy as np
@@ -29,7 +30,10 @@ class TimeSeriesDataset(Dataset):
         return all_snapshot_sequences
 
     def load_snapshot_sequence(self, file_name):
-        data = self.bucket_manager.torch_load_from_bucket(file_name)
+        # data = self.bucket_manager.torch_load_from_bucket(file_name)
+        with open('data/' + file_name, 'rb') as f:
+            # data = f.read()
+            data = torch.load(f)
         return data['snapshot_sequence']
 
     def __len__(self):
@@ -39,6 +43,13 @@ class TimeSeriesDataset(Dataset):
         # Return the idx-th time step across all series
         return self.data[idx]
 
+
+def list_files_relative_to_cwd(directory):
+    paths=[]
+    for file in Path(directory).rglob('*'):
+        if file.is_file():
+            paths.append(Path(*file.parts[1:]).as_posix())  # remove data/
+    return paths
 
 def get_sequence_filenames(bucket_manager,
                            sequence_dir_path,
@@ -50,7 +61,8 @@ def get_sequence_filenames(bucket_manager,
                            n_uncompromised_sequences):
     # TODO: #1 Now filtering by exact log window, but should select all above log_window, as they are truncate later anyhow.
     prefix = f'{sequence_dir_path}'
-    filenames = [blob.name for blob in bucket_manager.bucket.list_blobs(prefix=prefix)]
+    # filenames = [blob.name for blob in bucket_manager.bucket.list_blobs(prefix=prefix)]
+    filenames = list_files_relative_to_cwd('data/training_sequences')
     log_window_filtered_filenames = [fn for fn in filenames if int(fn.split('/')[1].split('_')[2]) >= log_window]
     node_num_filtered_filenames = [fn for fn in log_window_filtered_filenames if int(fn.split('/')[2].split('_')[0]) >= min_nodes and int(fn.split('/')[2].split('_')[0]) <= max_nodes]
     n_snapshot_filtered_filenames = [fn for fn in node_num_filtered_filenames if int(fn.split('/')[3].split('_')[0]) >= min_snapshots and int(fn.split('/')[3].split('_')[0]) < max_snapshots]

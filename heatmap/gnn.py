@@ -66,6 +66,8 @@ class GAT(torch.nn.Module):
         gnn_outs = []
         for snapshot in sequence:
             x, edge_index, edge_type = snapshot.x, snapshot.edge_index, snapshot.edge_type
+            x = x.to(torch.float)
+            # edge_index = edge_index.to(torch.float)
 
             # Embed edge types
             edge_attr = self.edge_type_embedding(edge_type)
