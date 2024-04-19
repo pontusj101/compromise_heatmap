@@ -1,4 +1,4 @@
-# rddl_training_data_producer
+# compromise_heatmap
 
 A brief paper on this repo is available as [Johnson & Ekstedt, "Towards a Graph Neural Network-Based Approach for Estimating Hidden States in Cyber Attack Simulations", 2023](https://arxiv.org/abs/2312.05666).
 
