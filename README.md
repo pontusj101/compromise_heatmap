@@ -1,6 +1,6 @@
 # compromise_heatmap
 
-A brief paper on this repo is available as [Johnson & Ekstedt, "Towards a Graph Neural Network-Based Approach for Estimating Hidden States in Cyber Attack Simulations", 2023](https://arxiv.org/abs/2312.05666).
+A brief paper on this repo is available as [Johnson & Ekstedt, "Towards a Graph Neural Network-Based Approach for Estimating Hidden States in Cyber Attack Simulations", 2023](https://arxiv.org/abs/2312.05666). Another brief paper, on the concept of detectors is available as [Johnson, Ekstedt & Kakouros, "Introducing_Threat_Detectors_in_the_Meta_Attack_Language.pdf", 2024](Introducing_Threat_Detectors_in_the_Meta_Attack_Language.pdf).
 
 The code can run in GitHub Codespaces, as well as in GCP Batch and GCP Vertex AI. 
 
