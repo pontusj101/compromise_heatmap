@@ -7,7 +7,7 @@ from google.cloud import storage
 from google.cloud import secretmanager
 import google.cloud.logging
 from google.cloud.logging.handlers import CloudLoggingHandler
-from .animator import Animator
+from .animator import Animator, GraphWebApp, Demo
 from .gnn_explorer import Explorer
 from .instance_creator import create_instance
 from .simulator import Simulator
@@ -91,6 +91,7 @@ parser.add_argument('--frames_per_second', type=int, default=25, help='Frames pe
 parser.add_argument('--n_init_compromised_animate', type=int, default=1, help='Number of hosts initially compromised in each instance')
 parser.add_argument('--hide_prediction', action='store_true', help='Hide prediction in the animation.')
 parser.add_argument('--hide_state', action='store_true', help='Hide the attacker\'s state in the animation.')
+parser.add_argument('--web', action='store_true', help="show anim in a browser")
 # and --predictor_filename and --predictor_type
 
 # Parse arguments
@@ -270,16 +271,28 @@ if 'anim_seq' in args.modes:
 if 'anim' in args.modes:
     logger.info(f'Creating animation.')
 
-    animator = Animator(config['domain_rddl_filepath'],
+    q=2
+    if q==1:
+        anim_class = Demo
+    elif q==2:
+        anim_class = GraphWebApp
+    else:
+        anim_class = Animator
+
+    animator = anim_class(config['domain_rddl_filepath'],
                         args.animation_sequence_filepath,
+                        predictor_type=config['predictor_type'],
+                        predictor_filename=config['predictor_filename'],
                         bucket_manager=bucket_manager,
                         hide_prediction=args.hide_prediction,
                         hide_state=args.hide_state)
-    animator.create_animation(predictor_type=config['predictor_type'],
-                             predictor_filename=config['predictor_filename'],
-                             frames_per_second=args.frames_per_second)
-    s = f'Animation written to file.'
-    logger.info(s)
-    print(s)
+
+    if q==1:
+        animator.socketio.run(animator.app, debug=False, use_reloader=True)
+    elif q==2:
+        animator.socketio.run(animator.app, debug=False, use_reloader=True)
+    else:
+        animator.create_animation(frames_per_second=args.frames_per_second)
+        logger.info(f'Animation written to file.')
 
 
