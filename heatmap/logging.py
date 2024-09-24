@@ -40,7 +40,7 @@ def setup_logging(name=None):
         ],
     )
 
-    logging.getLogger('malpzsim').setLevel(logging.WARN)
+    logging.getLogger('malsim').setLevel(logging.WARN)
     for logger_name in [name]:
         logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG if debug else logging.INFO)

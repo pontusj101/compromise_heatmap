@@ -14,6 +14,9 @@ from .gnn import GNN_LSTM
 from maltoolbox.model import Model
 from maltoolbox.attackgraph import AttackGraph
 from maltoolbox.language import LanguageGraph, LanguageClassesFactory
+from malsim.sims.mal_simulator import MalSimulator
+
+logger = logging.getLogger(__name__)
 
 class Animator:
     def __init__(self, domain_lang, animation_sequence_filename, bucket_manager,
@@ -29,16 +32,21 @@ class Animator:
 
         # indexed_snapshot_sequence = bucket_manager.torch_load_from_bucket(animation_sequence_filename)
 
-        lang_graph = LanguageGraph.from_mar_archive(domain_lang)
+        domain_lang = "langs/heatmap.mal"
+        try:
+            lang_graph = LanguageGraph.from_mar_archive(domain_lang)
+        except:
+            lang_graph = LanguageGraph.from_mal_spec(domain_lang)
         lang_classes_factory = LanguageClassesFactory(lang_graph)
-        lang_classes_factory.create_classes()
+        # lang_classes_factory.create_classes()
 
-        model = Model.load_from_file("../mal-petting-zoo-simulator/tests/example_model.json", lang_classes_factory)
+        model = Model.load_from_file("langs/instance-model.yml", lang_classes_factory)
         model.save_to_file("tmp/model.json")
 
         attack_graph = AttackGraph(lang_graph, model)
         attack_graph.attach_attackers()
         self.attack_graph = attack_graph
+        self.env = MalSimulator(lang_graph, model, attack_graph)
 
         self.snapshot_sequence = indexed_snapshot_sequence['snapshot_sequence']
         num_nodes = len(attack_graph.nodes)
@@ -59,6 +67,9 @@ class Animator:
         """ Interpolates between two colors based on a probability value. """
         color_start_rgb = mcolors.to_rgb(color_start)
         color_end_rgb = mcolors.to_rgb(color_end)
+        # import pdb
+        if probability > 0.7:
+            probability=0
         interpolated_rgb = [start + (end - start) * probability for start, end in zip(color_start_rgb, color_end_rgb)]
         return mcolors.to_hex(interpolated_rgb)
 
@@ -81,8 +92,11 @@ class Animator:
 
         for node_index, status in enumerate(node_status):
             node_name = self.reverse_mapping[node_index]
-            G.nodes[node_name]['status'] = status
-            G.nodes[node_name]['type'] = node_type[node_index]
+            try:
+                G.nodes[node_name]['status'] = status
+                G.nodes[node_name]['type'] = node_type[node_index]
+            except KeyError:
+                pass
 
         return G
 
@@ -118,7 +132,7 @@ class Animator:
 
     def update_graph(self, num, pos, ax, probabilities):
         if num % 50 == 0:
-            logging.info(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
+            logger.info(f'Animating step {num}/{len(self.snapshot_sequence)}. Time: {time.time() - self.start_time:.2f}s.')
         ax.clear()
         snapshot = self.snapshot_sequence[num]
 
@@ -127,9 +141,13 @@ class Animator:
         G = self.create_graph(num=num)
 
         # Separate nodes by type
-        # host_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 1]
-        # credential_nodes = [node for node, attr in G.nodes(data=True) if attr['type'] == 0]
-        all_nodes = [node for node, attr in G.nodes(data=True)]
+        project_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Project']
+        bucket_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Gcs_bucket']
+        object_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Gcs_object']
+        sa_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Service_account']
+        sa_key_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Service_account_key']
+        vm_nodes = [node for node, attr in G.nodes(data=True) if self.attack_graph.nodes[node].asset and self.attack_graph.nodes[node].asset.metaconcept == 'Gce_instance']
+        # all_nodes = [node for node, attr in G.nodes(data=True)]
 
         color_dark_grey = '#808080'
         color_light_grey = '#D3D3D3'
@@ -137,21 +155,27 @@ class Animator:
         color_yellow = '#FFFF99'
 
         # Update node colors and border styles based on their status and prediction
-        # color_map_host, size_map_host, edge_colors_host, edge_widths_host = self.process_nodes(host_nodes, snapshot, prediction)
-        # color_map_credential, size_map_credential, edge_colors_credential, edge_widths_credential = self.process_nodes(credential_nodes, snapshot, prediction)
+        color_map_project, size_map_project, edge_colors_project, edge_widths_project = self.process_nodes(project_nodes, snapshot, prediction)
+        color_map_bucket, size_map_bucket, edge_colors_bucket, edge_widths_bucket = self.process_nodes(bucket_nodes, snapshot, prediction)
+        color_map_object, size_map_object, edge_colors_object, edge_widths_object = self.process_nodes(object_nodes, snapshot, prediction)
+        color_map_sa, size_map_sa, edge_colors_sa, edge_widths_sa = self.process_nodes(sa_nodes, snapshot, prediction)
+        color_map_sa_key, size_map_sa_key, edge_colors_sa_key, edge_widths_sa_key = self.process_nodes(sa_key_nodes, snapshot, prediction)
+        color_map_vm, size_map_vm, edge_colors_vm, edge_widths_vm = self.process_nodes(vm_nodes, snapshot, prediction)
 
-        color_map, size_map, edge_colors, edge_widths = self.process_nodes(all_nodes, snapshot, prediction)
+        edge_colors_project = 'black' if edge_colors_project == 'black' else 'blue'
+        edge_colors_bucket = 'black' if edge_colors_bucket == 'black' else 'darkgreen'
+        edge_colors_object = 'black' if edge_colors_object == 'black' else 'green'
+        edge_colors_sa = 'black' if edge_colors_sa == 'black' else 'purple'
+        edge_colors_sa_key = 'black' if edge_colors_sa_key == 'black' else 'teal'
+        edge_colors_vm = 'black' if edge_colors_vm == 'black' else 'black'
 
         # Node drawing with specific border colors and widths
-        # nx.draw_networkx_nodes(G, pos, nodelist=host_nodes, node_color=color_map_host, node_size=size_map_host,
-                            # node_shape='s', ax=ax, edgecolors=edge_colors_host, linewidths=edge_widths_host)
-        # nx.draw_networkx_nodes(G, pos, nodelist=credential_nodes, node_color=color_map_credential, node_size=size_map_credential,
-                            # node_shape='o', ax=ax, edgecolors=edge_colors_credential, linewidths=edge_widths_credential)
-        nx.draw_networkx_nodes(G, pos, nodelist=all_nodes,
-                               node_color=color_map,
-                               node_size=size_map,
-                               node_shape='o', ax=ax, edgecolors=edge_colors,
-                               linewidths=edge_widths)
+        nx.draw_networkx_nodes(G, pos, nodelist=project_nodes, node_color=color_map_project, node_size=size_map_project, node_shape='o', ax=ax, edgecolors=edge_colors_project, linewidths=edge_widths_project)
+        nx.draw_networkx_nodes(G, pos, nodelist=bucket_nodes, node_color=color_map_bucket, node_size=size_map_bucket, node_shape='o', ax=ax, edgecolors=edge_colors_bucket, linewidths=edge_widths_bucket)
+        nx.draw_networkx_nodes(G, pos, nodelist=object_nodes, node_color=color_map_object, node_size=size_map_object, node_shape='o', ax=ax, edgecolors=edge_colors_object, linewidths=edge_widths_object)
+        nx.draw_networkx_nodes(G, pos, nodelist=sa_nodes, node_color=color_map_sa, node_size=size_map_sa, node_shape='o', ax=ax, edgecolors=edge_colors_sa, linewidths=edge_widths_sa)
+        nx.draw_networkx_nodes(G, pos, nodelist=sa_key_nodes, node_color=color_map_sa_key, node_size=size_map_sa_key, node_shape='o', ax=ax, edgecolors=edge_colors_sa_key, linewidths=edge_widths_sa_key)
+        nx.draw_networkx_nodes(G, pos, nodelist=vm_nodes, node_color=color_map_vm, node_size=size_map_vm, node_shape='o', ax=ax, edgecolors=edge_colors_vm, linewidths=edge_widths_vm)
 
         # Edge drawing with grey color
         nx.draw_networkx_edges(G, pos, ax=ax, edge_color='grey')
@@ -162,56 +186,62 @@ class Animator:
         ax.set_title(f"Step {num}")
 
     def create_animation(self, predictor_type, predictor_filename, frames_per_second=25):
-        logging.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
+        logger.info(f'Animating {len(self.snapshot_sequence)} frames of {predictor_type} predictor {predictor_filename} on {self.animation_sequence_filename}.')
 
-        predictor = Predictor(predictor_type, predictor_filename, self.bucket_manager)
+        if predictor_type is not None:
+            predictor = Predictor(predictor_type, predictor_filename, self.bucket_manager)
 
-        snapshot_sequence_log_window_size = self.snapshot_sequence[0].x.shape[1]
-        if isinstance(predictor.model, GNN_LSTM):
-            model_log_window = 2
+            snapshot_sequence_log_window_size = self.snapshot_sequence[0].x.shape[1]
+            if isinstance(predictor.model, GNN_LSTM):
+                model_log_window = 2
+            else:
+                model_log_window = predictor.model.layers[0].in_channels
+            if model_log_window < snapshot_sequence_log_window_size:
+                for snapshot in self.snapshot_sequence:
+                    snapshot.x = snapshot.x[:, :model_log_window]
+
+
+            probabilities = predictor.predict_sequence(self.snapshot_sequence)
+
         else:
-            model_log_window = predictor.model.layers[0].in_channels
-        if model_log_window < snapshot_sequence_log_window_size:
-            for snapshot in self.snapshot_sequence:
-                snapshot.x = snapshot.x[:, :model_log_window]
-
-
-        probabilities = predictor.predict_sequence(self.snapshot_sequence)
+            probabilities = torch.zeros(500, 500)
 
         fig, ax = plt.subplots(figsize=self.figsize)
 
         # Calculate layout once
         G_initial = self.create_graph(num=0)
-        pos = nx.spring_layout(G_initial)  # You can use other layouts as well
+        # pos = nx.spring_layout(G_initial)  # You can use other layouts as well
         pos = nx.kamada_kawai_layout(G_initial)
+        pos = nx.kamada_kawai_layout(G_initial, center=pos[13])
 
-        logging.info(f'Showing both prediction and state.')
+        logger.info(f'Showing both prediction and state.')
         self.hide_state = False
         self.hide_prediction = False
         ani_all = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
+        # ani_all = animation.FuncAnimation(fig, self.update_graph, frames=1,
                                     fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
         ani_all.save('network_animation_state_and_pred.mp4', writer='ffmpeg', fps=frames_per_second)
 
-        # logging.info(f'Showing only prediction.')
-        # self.hide_state = True
-        # self.hide_prediction = False
-        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
-        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
-        # ani_hide_state.save('network_animation_pred.mp4', writer='ffmpeg', fps=frames_per_second)
-
-        # logging.info(f'Showing only state.')
-        # self.hide_state = False
-        # self.hide_prediction = True
-        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
-        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
-        # ani_hide_state.save('network_animation_state.mp4', writer='ffmpeg', fps=frames_per_second)
-
-        # logging.info(f'Showing neither prediction nor state.')
-        # self.hide_state = True
-        # self.hide_prediction = True
-        # ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
-        #                             fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
-        # ani_hide_state.save('network_animation_none.mp4', writer='ffmpeg', fps=frames_per_second)
+        logger.info(f'Showing only prediction.')
+        self.hide_state = True
+        self.hide_prediction = False
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
+                                    fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_pred.mp4', writer='ffmpeg', fps=frames_per_second)
+#
+        logger.info(f'Showing only state.')
+        self.hide_state = False
+        self.hide_prediction = True
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
+                                    fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_state.mp4', writer='ffmpeg', fps=frames_per_second)
+#
+        logger.info(f'Showing neither prediction nor state.')
+        self.hide_state = True
+        self.hide_prediction = True
+        ani_hide_state = animation.FuncAnimation(fig, self.update_graph, frames=len(self.snapshot_sequence),
+                                    fargs=(pos, ax, probabilities), interval=int(1000/frames_per_second))
+        ani_hide_state.save('network_animation_none.mp4', writer='ffmpeg', fps=frames_per_second)
 
 
         # Optional: Close the plot to prevent display issues in some environments

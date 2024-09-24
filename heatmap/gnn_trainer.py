@@ -141,7 +141,7 @@ def get_model(gnn_type, edge_embedding_dim, heads_per_layer, actual_num_features
 
     return model
 
-def evaluate_model(model, data_loader, gnn_type):
+def evaluate_model(model, data_loader, gnn_type, minority_weight):
     model.eval()
     total_loss = 0
     all_predicted_labels = []
@@ -155,7 +155,7 @@ def evaluate_model(model, data_loader, gnn_type):
             else:
                 logits = model(sequence)
             targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
-            loss = calculate_loss(logits, targets)
+            loss = calculate_loss(logits, targets, minority_weight)
             total_loss += loss.item()
             probabilities = F.softmax(logits, dim=-1)
             predicted_labels = torch.argmax(probabilities, dim=-1)
@@ -167,13 +167,14 @@ def evaluate_model(model, data_loader, gnn_type):
 
     return total_loss / len(data_loader), all_predicted_labels, all_true_labels
 
-def calculate_loss(logits, target_labels):
+def calculate_loss(logits, target_labels, minority_weight):
     # Assume logits is of shape (batch_size, sequence_length, num_classes)
     # and target_labels is of shape (batch_size, sequence_length)
     # You might need to adapt this depending on how logits and target_labels are structured
     loss = 0
     for t in range(logits.shape[1]):  # Loop over each time step
-        loss += F.nll_loss(F.log_softmax(logits[:, t, :], dim=1), target_labels[:,t])
+        # loss += F.cross_entropy(F.log_softmax(logits[:, t, :], dim=1), target_labels[:,t], torch.Tensor([1, minority_weight]))
+        loss += F.nll_loss(F.log_softmax(logits[:, t, :], dim=1), target_labels[:,t], weight=torch.Tensor([1, minority_weight]))
     return loss / logits.shape[1]  # Average loss over the sequence
 
 
@@ -200,12 +201,15 @@ def train_gnn(wandb_api_key=None,
               edge_embedding_dim=16, # Add a parameter to set edge embedding dimension in case of GAT
               heads_per_layer=2, # Add a parameter to set number of attention heads per layer in case of GAT
               lstm_hidden_dim=128, # Add a parameter to set LSTM hidden dimension in case of GAT_LSTM
+              minority_weight=10,
               checkpoint_interval=1,  # Add a parameter to set checkpoint interval
               checkpoint_file=None,  # Add checkpoint file parameter
-              checkpoint_path='checkpoints/'):
+              checkpoint_path='checkpoints/',
+              online=False,
+              fp_rate=0.1):
 
     date_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    logger.info(f'Training {gnn_type} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
+    logger.info(f'Training {gnn_type} with FP rate {fp_rate} on a maximum of {max_training_sequences} snapshot sequences for {number_of_epochs} epochs, validating on {n_validation_sequences} sequences, on graphs of sizes between {min_nodes} and {max_nodes} and sequence lengths of between {min_snapshots} and {max_snapshots} with a log window of {log_window}.')
     # device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available else 'cpu')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f'Using device: {device}')
@@ -219,10 +223,10 @@ def train_gnn(wandb_api_key=None,
     else:
         batch_method = 'random'
 
-    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences, n_uncompromised_sequences)
+    training_sequence_filenames, validation_sequence_filenames = get_sequence_filenames(bucket_manager, sequence_dir_path, min_nodes, max_nodes, min_snapshots, max_snapshots, log_window, max_training_sequences, n_validation_sequences, n_uncompromised_sequences, fp_rate, online)
     # TODO: #2 Check that the balance between compromised and uncompromised nodes is not too skewed. If it is, then we should sample the training data to get a more balanced dataset.
-    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window)
-    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window)
+    training_data_loader = TimeSeriesDataset(bucket_manager, training_sequence_filenames, max_log_window=log_window, online=online)
+    validation_data_loader = TimeSeriesDataset(bucket_manager, validation_sequence_filenames, max_log_window=log_window, online=online)
 
     num_relations = get_num_relations(bucket_manager, training_sequence_filenames)
     hidden_layers = make_hidden_layers(n_hidden_layer_1, n_hidden_layer_2, n_hidden_layer_3, n_hidden_layer_4)
@@ -290,7 +294,7 @@ def train_gnn(wandb_api_key=None,
             else:
                 logits = model(sequence)
             targets = torch.stack([snapshot.y for snapshot in sequence], dim=0).transpose(0,1)
-            loss = calculate_loss(logits, targets)
+            loss = calculate_loss(logits, targets, minority_weight)
             loss.backward()
             optimizer.step()
             training_loss += loss.item()
@@ -299,7 +303,7 @@ def train_gnn(wandb_api_key=None,
         training_loss /= len(training_data_loader)
         train_loss_values.append(training_loss)
 
-        validation_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type)
+        validation_loss, predicted_labels, true_labels = evaluate_model(model.to(device), validation_data_loader, gnn_type, minority_weight)
         validation_loss_values.append(validation_loss)
 
         f1 = f1_score(true_labels, predicted_labels, average='binary', zero_division=0)

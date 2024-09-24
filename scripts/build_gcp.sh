@@ -1,1 +1,1 @@
-docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile -t europe-west1-docker.pkg.dev/gnn-rddl/gnn-rddl/gnnrddl ./
+docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile -t europe-north1-docker.pkg.dev/aps-validation-joarjox/heatmap-images/heatmap:latest ./

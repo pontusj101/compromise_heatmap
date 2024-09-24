@@ -31,12 +31,14 @@ parser.add_argument(
     choices=['instance', 'simulate', 'eval_seq', 'anim_seq', 'train', 'eval', 'anim', 'explore', 'clean', 'all'],
     help='Mode(s) of operation. Choose one or more from: instance, simulate, eval_seq, train, eval, anim, explore, clean and all.'
 )
+parser.add_argument('--sync-online', action="store_true")
 parser.add_argument('--debug', action="store_true")
-parser.add_argument('--bucket_name', type=str, default='gnn_rddl', help='Name of the GCP bucket to use for storage.')
+parser.add_argument('--bucket_name', type=str, default='heatmap-gnn-rddl',
+                    help='Name of the GCP bucket to use for storage.')
 
 # Instance creation and training
-parser.add_argument('--min_size', type=int, default=72, help='Minimum number of hosts in each instance')
-parser.add_argument('--max_size', type=int, default=72, help='Maximum number of hosts in each instance')
+parser.add_argument('--min_size', type=int, default=4, help='Minimum number of hosts in each instance')
+parser.add_argument('--max_size', type=int, default=1500, help='Maximum number of hosts in each instance')
 parser.add_argument('--min_game_time', type=int, default=8, help='Min time horizon for the simulation and training.') # small: 70, large: 500
 parser.add_argument('--max_game_time', type=int, default=1024, help='Max time horizon for the simulation and training. Will stop simulation early if whole graph is compromised.') # small: 70, large: 500
 
@@ -48,11 +50,14 @@ parser.add_argument('--extra_host_host_connection_ratio', type=float, default=0.
 
 # Simulation
 parser.add_argument('-l', '--sim_log_window', type=int, default=64, help='Size of the logging window')
-parser.add_argument('--agent_type', default='passive', choices=['random', 'less_random', 'host_targeted', 'novelty', 'keyboard', 'passive'], help='Type of agent to use for simulation')
+parser.add_argument('--agent_type', default='random', choices=['random', 'less_random', 'host_targeted', 'novelty', 'keyboard', 'passive'], help='Type of agent to use for simulation')
 parser.add_argument('--novelty_priority', type=int, default=2, help='Priority of newly discovered actions for less_random agent')
 parser.add_argument('--random_agent_seed', default=None, help='Seed for random cyber agent')
+parser.add_argument('--fp_rate', type=float, default=0.1, help='False positive rate')
+parser.add_argument('--n_simulations', type=int, default=1)
 
 # Training
+parser.add_argument('--minority_weight', type=int, default=10, help='Penalty for wrong classification of compromised seqs')
 parser.add_argument('--enable_wandb', action='store_true')
 parser.add_argument('--gnn_type', default='GAT', choices=['GAT', 'RGCN', 'GIN', 'GCN', 'GAT_LSTM'], help='Type of GNN to use for training')
 parser.add_argument('--max_training_sequences', type=int, default=128, help='Maximum number of instances to use for training')
@@ -111,7 +116,7 @@ else:
     sim_log_window = args.sim_log_window
 
 bucket_manager = BucketManager(args.bucket_name)
-config = bucket_manager.load_config_file(CONFIG_FILE)
+# config = bucket_manager.load_config_file(CONFIG_FILE)
 
 with open(CONFIG_FILE, 'r') as f:
     config = json.load(f)
@@ -144,6 +149,7 @@ if 'simulate' in args.modes:
         bucket_name=args.bucket_name,
         domain_rddl_path=config['domain_rddl_filepath'],
         instance_rddl_filepaths=config['instance_rddl_filepaths'],
+        n_simulations=args.n_simulations,
         rddl_path=config['rddl_dirpath'],
         snapshot_sequence_path=config['training_sequence_dirpath'],
         log_window=sim_log_window,
@@ -151,7 +157,9 @@ if 'simulate' in args.modes:
         max_log_steps_after_total_compromise=max_log_steps_after_total_compromise,
         agent_type=args.agent_type,
         novelty_priority=args.novelty_priority,
-        random_agent_seed=args.random_agent_seed)
+        random_agent_seed=args.random_agent_seed,
+        sync_online=args.sync_online,
+        fp_rate=args.fp_rate)
     logger.info(f'Training data produced and written to {config["training_sequence_dirpath"]}.')
 
 if 'train' in args.modes:
@@ -190,10 +198,13 @@ if 'train' in args.modes:
                     n_hidden_layer_4=args.n_hidden_layer_4,
                     edge_embedding_dim=args.edge_embedding_dim,
                     heads_per_layer=args.heads_per_layer,
+                    minority_weight=args.minority_weight,
                     lstm_hidden_dim=args.lstm_hidden_dim,
                     checkpoint_interval=1,  # Add a parameter to set checkpoint interval
                     checkpoint_file=args.checkpoint_file,  # Add checkpoint file parameter
-                    checkpoint_path='checkpoints/')
+                    checkpoint_path='checkpoints/',
+                    online=args.sync_online,
+                    fp_rate=args.fp_rate)
 
     logger.info(f'{args.gnn_type} trained. Model written to {predictor_filename}.')
 
@@ -270,13 +281,14 @@ if 'anim_seq' in args.modes:
 if 'anim' in args.modes:
     logger.info(f'Creating animation.')
 
+    # config["predictor_type"]=None
     animator = Animator(config['domain_rddl_filepath'],
                         args.animation_sequence_filepath,
                         bucket_manager=bucket_manager,
                         hide_prediction=args.hide_prediction,
                         hide_state=args.hide_state)
     animator.create_animation(predictor_type=config['predictor_type'],
-                             predictor_filename=config['predictor_filename'],
+                             predictor_filename=args.model_filepath,
                              frames_per_second=args.frames_per_second)
     s = f'Animation written to file.'
     logger.info(s)
