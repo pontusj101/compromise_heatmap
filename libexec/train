@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""A description
+
+Usage:
+  train [options]
+
+Options:
+  --sync                      Push/pull sample files to Google Cloud Storage bucket
+  --push                      Push trained model to Google Cloud Storage bucket
+
+  --log-window=<int>          How many logs to use as history [default: 40]
+  --fp-rate=<float>           False positive rate [default: 0.1]
+  --compromised=<int>         How many compromised samples to use for training [default: 100]
+  --uncompromised=<int>       How many uncompromised samples to use for training [default: 100]
+  --val-samples=<int>         How many samples to use for validation [default: 50]
+
+  --gnn-type=<type>           The GNN architecture to use [default: GAT]
+  --edge-embedding-dim=<int>  GNN parameter [default: 128]
+  --heads-per-layer=<int>     GNN parameter [default: 2]
+  --hidden-layer1=<int>       GNN parameter [default: 128]
+  --hidden-layer2=<int>       GNN parameter [default: 128]
+  --hidden-layer3=<int>       GNN parameter [default: 128]
+  --hidden-layer4=<int>       GNN parameter [default: 128]
+
+  --epochs=<int>              Training param [default: 1]
+  --learning-rate=<float>     Training param [default: 0.0002]
+  --minority-weight=<int>     Training param [default: 1]
+"""
+
+import importlib
+import logging
+from datetime import datetime
+from pathlib import Path
+
+import yaml
+
+from libexec.storage import GcsStorageBucket
+from libexec.util import get_sample_filenames, load_samples
+
+l = logging.getLogger(__name__)
+
+
+def main():
+    now_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    hidden_layers = [x.hidden_layer1, x.hidden_layer2, x.hidden_layer3, x.hidden_layer4]
+
+    model = _get_model(
+        gnn_type=x.gnn_type,
+        edge_embedding_dim=x.edge_embedding_dim,
+        heads_per_layer=x.heads_per_layer,
+        actual_num_features=x.log_window + 1,
+        hidden_layers=hidden_layers,
+    )
+
+    training_samples, validation_samples = _prepare_samples()
+
+    trained_model = train(
+        model,
+        training_samples,
+        validation_samples,
+        x.epochs,
+        x.learning_rate,
+        x.minority_weight,
+    )
+
+    model_path = _model_filepath(
+        x.gnn_type,
+        hidden_layers,
+        x.learning_rate,
+        x.compromised + x.uncompromised,
+        now_time,
+        x.heads_per_layer,
+        1,
+        x.edge_embedding_dim,
+        x.log_window + 1,
+    )
+
+    model_path = x.data_folder / "models" / model_path
+
+    l.info("Saving model at %s", model_path)
+
+    save_model(trained_model, Path("model"))
+    model_path = save_model(trained_model, model_path)
+
+    if x.backend == "torch":
+        files = [model_path]
+    else:
+        files = [
+            f
+            for f in x.data_folder.rglob("*")
+            if str(f).startswith(str(model_path))
+        ]
+
+    if x.push:
+        l.info("Pushing model to bucket")
+        for file in files:
+            GcsStorageBucket(x.bucket_name).upload(
+                file, file.relative_to(x.data_folder)
+            )
+
+
+def _prepare_samples():
+    training_sample_filenames, validation_sample_filenames = get_sample_filenames(
+        x.log_window,
+        x.val_samples,
+        x.compromised,
+        x.uncompromised,
+        x.fp_rate,
+        x.bucket_name if x.sync else None,
+        x.data_folder if not x.sync else None,
+    )
+
+    training_samples = load_samples(
+        training_sample_filenames,
+        x.bucket_name if x.sync else None,
+        x.data_folder,
+        x.log_window,
+    )
+    validation_samples = load_samples(
+        validation_sample_filenames,
+        x.bucket_name if x.sync else None,
+        x.data_folder,
+        x.log_window,
+    )
+
+    training_samples = [
+        convert_sample_to_tensors(sample) for sample in training_samples
+    ]
+    validation_samples = [
+        convert_sample_to_tensors(sample) for sample in validation_samples
+    ]
+
+    return training_samples, validation_samples
+
+
+def _get_model(
+    gnn_type,
+    edge_embedding_dim,
+    heads_per_layer,
+    actual_num_features,
+    hidden_layers,
+):
+    l.info("Creating model")
+    if gnn_type == "GCN":
+        model = GCN([actual_num_features] + hidden_layers + [2])
+    elif gnn_type == "GAT":
+        model = GAT(
+            [actual_num_features] + hidden_layers + [2],
+            [heads_per_layer] * (len(hidden_layers)) + [1],
+            1,
+            edge_embedding_dim,
+        )
+    else:
+        raise ValueError(f"Unknown GNN type: {gnn_type}")
+
+    return model
+
+
+def _model_filepath(
+    gnn_type,
+    hidden_layers,
+    learning_rate,
+    snapshot_sequence_length,
+    date_time_str,
+    heads,
+    num_edge_types,
+    edge_embedding_dim,
+    actual_num_features,
+):
+    name = ""
+    name += f"hl-{','.join(str(l) for l in [actual_num_features, *hidden_layers, 2])}_"
+    name += f"nsnpsht-{snapshot_sequence_length}_"
+    name += f"lr-{learning_rate:.4f}_"
+    name += f"heads-{heads}_edges-{num_edge_types}_embed-{edge_embedding_dim}_"
+    name += f"{date_time_str}"
+
+    # Adjust the path according to x.log_window (assuming x is a global variable or passed to this function)
+    path = Path(gnn_type) / str(x.log_window) / name
+
+    return path
+
+
+def _parse_args(kwargs: dict):
+    with Path("config.yml").open(encoding="utf8") as f:
+        conf = yaml.safe_load(f)
+
+    kwargs.update(conf["common"])
+    kwargs.update(conf.get(__epic_script__, {}))
+
+    kwargs["log_window"] = int(kwargs["log_window"])
+    kwargs["uncompromised"] = int(kwargs["uncompromised"])
+    kwargs["compromised"] = int(kwargs["compromised"])
+    kwargs["val_samples"] = int(kwargs["val_samples"])
+    kwargs["fp_rate"] = float(kwargs["fp_rate"])
+    kwargs["data_folder"] = Path(kwargs["data_folder"])
+    kwargs["edge_embedding_dim"] = int(kwargs["edge_embedding_dim"])
+    kwargs["heads_per_layer"] = int(kwargs["heads_per_layer"])
+    kwargs["hidden_layer1"] = int(kwargs["hidden_layer1"])
+    kwargs["hidden_layer2"] = int(kwargs["hidden_layer2"])
+    kwargs["hidden_layer3"] = int(kwargs["hidden_layer3"])
+    kwargs["hidden_layer4"] = int(kwargs["hidden_layer4"])
+    kwargs["epochs"] = int(kwargs["epochs"])
+    kwargs["learning_rate"] = float(kwargs["learning_rate"])
+    kwargs["minority_weight"] = int(kwargs["minority_weight"])
+
+    return kwargs
+
+
+x = _parse_args(kwargs)
+module = importlib.import_module(f"libexec.{x.backend}")
+GAT = module.GAT
+GCN = module.GCN
+convert_sample_to_tensors = module.convert_sample_to_tensors
+train = module.train
+save_model = module.save_model
+
+main()

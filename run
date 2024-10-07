@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -euxo pipefail
+# source .venv/bin/activate
+
+export TF_USE_LEGACY_KERAS=1
+
+while [[ $# -gt 0 ]]; do
+  name="${1##--}"
+  name="${name//-/_}"
+  declare $name=$2
+  shift 2
+done
+
+sed -i "s/backend: .*/backend: $backend/" config.yml
+
+./heatmap simulate --iterations $iterations --attacker bfs-random --fp-rate $fp_rate
+./heatmap simulate --iterations $iterations --attacker passive --fp-rate $fp_rate
+
+./heatmap train --push --fp-rate $fp_rate --compromised $compromised \
+    --uncompromised $uncompromised --val-samples $val_samples --edge-embedding-dim \
+    $edge_embedding_dim --heads-per-layer $heads_per_layer --hidden-layer1 $hidden_layer1 \
+    --hidden-layer2 $hidden_layer2 --hidden-layer3 $hidden_layer3 \
+    --hidden-layer4 $hidden_layer4 --epochs $epochs --learning-rate $learning_rate --debug
+
+./heatmap simulate --attacker bfs-random --fp-rate $fp_rate
+
+model=$(find "data/models" -type f | grep nsnpsht | head -n 1)
+
+model="${model%.*}"
+
+if [[ "$backend" == "tf" ]]; then
+  model="${model%.*}"
+fi
+
+./heatmap animate --sample sample --model $model

@@ -1,8 +1,10 @@
 import io
-import yaml
-import torch
 import json
+
+import torch
+import yaml
 from google.cloud import storage
+
 
 class BucketManager:
     def __init__(self, bucket_name):
@@ -29,7 +31,7 @@ class BucketManager:
     def load_config_file(self, config_file):
         blob = self.bucket.blob(config_file)
         config = blob.download_as_bytes()
-        return yaml.load(config.decode('utf-8'), Loader=yaml.SafeLoader)
+        return yaml.load(config.decode("utf-8"), Loader=yaml.SafeLoader)
 
     def json_save_to_bucket(self, data, blob_name):
         json_data = json.dumps(data)

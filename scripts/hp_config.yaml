@@ -3,79 +3,57 @@ studySpec:
   - metricId: F1
     goal: MAXIMIZE
   parameters:
-  # - parameterId: gnn_type
-  #   categoricalValueSpec:
-  #     values: ['GAT']
-  - parameterId: min_game_time
+  - parameterId: iterations
     integerValueSpec:
-      minValue: 4
-      maxValue: 4
-  # - parameterId: max_game_time
-  #   integerValueSpec:
-  #     minValue: 1024
-  #     maxValue: 1024
-  #   scaleType: UNIT_LOG_SCALE
-  - parameterId: max_training_sequences
+      minValue: 100
+      maxValue: 1000
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: compromised
     integerValueSpec:
       minValue: 64
       maxValue: 256
     scaleType: UNIT_LOG_SCALE
-  - parameterId: n_validation_sequences
-    integerValueSpec:
-      minValue: 16
-      maxValue: 32
-    scaleType: UNIT_LOG_SCALE
-  - parameterId: n_uncompromised_sequences
-    integerValueSpec:
-      minValue: 16
-      maxValue: 32
-    scaleType: UNIT_LOG_SCALE
-  # - parameterId: batch_size
-  #   integerValueSpec:
-  #     minValue: 128
-  #     maxValue: 128
-  #   scaleType: UNIT_LOG_SCALE
-  # - parameterId: min_size
-  #   integerValueSpec:
-  #     minValue: 4
-  #     maxValue: 4
-  #   scaleType: UNIT_LOG_SCALE
-  # - parameterId: max_size
-  #   integerValueSpec:
-  #     minValue: 1500
-  #     maxValue: 1500
-  #   scaleType: UNIT_LOG_SCALE
-  - parameterId: train_log_window
+  - parameterId: uncompromised
     integerValueSpec:
       minValue: 64
-      maxValue: 64
+      maxValue: 256
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: val-samples
+    integerValueSpec:
+      minValue: 16
+      maxValue: 32
     scaleType: UNIT_LOG_SCALE
   - parameterId: epochs
     integerValueSpec:
-      minValue: 10
+      minValue: 8
       maxValue: 32
     scaleType: UNIT_LOG_SCALE
-  - parameterId: fp_rate
+  - parameterId: fp-rate
     doubleValueSpec:
       minValue: 0.005
       maxValue: 0.1
     scaleType: UNIT_LOG_SCALE
-  - parameterId: learning_rate
+  - parameterId: learning-rate
     doubleValueSpec:
       minValue: 0.00005
       maxValue: 0.01
     scaleType: UNIT_LOG_SCALE
-  - parameterId: n_hidden_layer_1
+  - parameterId: hidden-layer1
     integerValueSpec:
       minValue: 256
       maxValue: 2048
     scaleType: UNIT_LOG_SCALE
-  - parameterId: n_hidden_layer_2
+  - parameterId: hidden-layer2
     integerValueSpec:
       minValue: 256
       maxValue: 2048
     scaleType: UNIT_LOG_SCALE
-  - parameterId: n_hidden_layer_3
+  - parameterId: hidden-layer3
+    integerValueSpec:
+      minValue: 256
+      maxValue: 2048
+    scaleType: UNIT_LOG_SCALE
+  - parameterId: hidden-layer4
     integerValueSpec:
       minValue: 256
       maxValue: 2048
@@ -85,21 +63,11 @@ studySpec:
       minValue: 256
       maxValue: 2048
     scaleType: UNIT_LOG_SCALE
-  - parameterId: heads_per_layer
+  - parameterId: heads-per-layer
     integerValueSpec:
       minValue: 1
       maxValue: 8
     scaleType: UNIT_LOG_SCALE
-  - parameterId: minority_weight
-    integerValueSpec:
-      minValue: 2
-      maxValue: 3
-    scaleType: UNIT_LOG_SCALE
-  # - parameterId: lstm_hidden_dim
-  #   integerValueSpec:
-  #     minValue: 256
-  #     maxValue: 2048
-  #   scaleType: UNIT_LOG_SCALE
 trialJobSpec:
   workerPoolSpecs:
     - machineSpec:

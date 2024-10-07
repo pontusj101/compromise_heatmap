@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+"""
+This is main script's help
+
+Usage:
+  heatmap <command>
+"""
+
+import importlib
+import sys
+from pathlib import Path
+
+from epic.epic_importer import EpicImporter
+
+# TODO: bad import path
+import libexec.logging as heatmap_logging
+
+sys.path.append("lib/python")
+
+sys.path.append("libexec")
+EpicImporter.load_paths.add('libexec')
+
+EpicImporter.help_tokens = {
+    "go": "heatmap",
+    "custom_help_token": "my help token",
+}
+
+if "--debug" in sys.argv:
+    heatmap_logging.debug = True
+    while True:
+        try:
+            sys.argv.remove('--debug')
+        except ValueError:
+            break
+
+heatmap_logging.setup_logging()
+
+def runner():
+    """Try to import the specified module (the script, in our case) and run it."""
+    sys.argv.pop(0)
+
+    complete = False
+
+    try:
+        arg = sys.argv.pop(0)
+
+        if arg == '--complete':
+            complete = True
+            arg = sys.argv.pop(0)
+
+        parent_mod = importlib.import_module(arg)
+
+    except IndexError:
+        return help_or_complete(help=True)
+    except (ModuleNotFoundError, ValueError):
+        return help_or_complete(complete=complete)
+
+    if complete:
+        print(parent_mod._completions(sys.argv[:-3], sys.argv[-3], sys.argv[-2],
+                                      sys.argv[-1]))
+        return
+
+    parent_mod.run(sys.argv, name='libexec')
+
+
+def help_or_complete(*, help: bool = False, complete: bool = False):
+    this_script_dir = Path(__file__).parent.as_posix()
+    sys.path.append(this_script_dir)
+    EpicImporter.load_paths.add(this_script_dir)
+    sys.path_importer_cache.clear()
+
+    heatmap = importlib.import_module('heatmap')
+
+    if complete:
+        print(heatmap._completions(sys.argv[:-3], sys.argv[-3], sys.argv[-2],
+                                   sys.argv[-1]))
+    else:
+        print_usage()
+        return not help
+
+
+def completions(a, b, c, d):
+    return ['aaa', 'bbb']
+
+def print_usage():
+    print("heatmap usage")
+
+
+def main():
+    sys.exit(runner())
+
+if __name__ == '__main__':
+    main()

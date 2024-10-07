@@ -1,7 +1,7 @@
 import random
-import logging
-from collections import OrderedDict
+
 from pyRDDLGym.core.policy import BaseAgent
+
 
 # Attackers and defenders look the same
 class PassiveCyberAgent(BaseAgent):
@@ -13,6 +13,7 @@ class PassiveCyberAgent(BaseAgent):
         action = {selected_action: self.action_space[selected_action]}
         action[selected_action] = 0
         return action
+
 
 class RandomCyberAgent(BaseAgent):
     def __init__(self, action_space, seed=None):
@@ -40,6 +41,7 @@ class RandomCyberAgent(BaseAgent):
             action[list(s.keys())[0]] = 0
         return action
 
+
 class LessRandomCyberAgent(BaseAgent):
     def __init__(self, action_space, novelty_priority=2, seed=None):
         self.action_space = action_space
@@ -47,7 +49,9 @@ class LessRandomCyberAgent(BaseAgent):
         if seed is not None:
             self.action_space.seed(seed)
         self.weighted_actions = dict()
-        self.novelty_priority = 1 # Newly discovered actions are five times as likely to be chosen
+        self.novelty_priority = (
+            1  # Newly discovered actions are five times as likely to be chosen
+        )
 
     def action_horizon(self, state):
         actionable_items = []
@@ -61,7 +65,9 @@ class LessRandomCyberAgent(BaseAgent):
         possible_actions = self.action_horizon(state)
         # Remove any actions that are no longer possible
         self.remove_obsolete_actions(possible_actions)
-        new_possible_actions = [action for action in possible_actions if action not in self.weighted_actions]
+        new_possible_actions = [
+            action for action in possible_actions if action not in self.weighted_actions
+        ]
         if new_possible_actions:
             self.add_new_actions(new_possible_actions)
         action = {}
@@ -83,16 +89,29 @@ class LessRandomCyberAgent(BaseAgent):
         if len(self.weighted_actions) == 0:
             new_probability_weight = 1
         else:
-            new_probability_weight = self.novelty_priority * max(self.weighted_actions.values())
+            new_probability_weight = self.novelty_priority * max(
+                self.weighted_actions.values()
+            )
         for action in new_possible_actions:
             self.weighted_actions[action] = new_probability_weight
         total_weight = sum(self.weighted_actions.values())
-        self.weighted_actions = {action: weight / total_weight for action, weight in self.weighted_actions.items()}
+        self.weighted_actions = {
+            action: weight / total_weight
+            for action, weight in self.weighted_actions.items()
+        }
 
     def remove_obsolete_actions(self, possible_actions):
-        self.weighted_actions = {action: weight for action, weight in self.weighted_actions.items() if action in possible_actions}
+        self.weighted_actions = {
+            action: weight
+            for action, weight in self.weighted_actions.items()
+            if action in possible_actions
+        }
         total_weight = sum(self.weighted_actions.values())
-        self.weighted_actions = {action: weight / total_weight for action, weight in self.weighted_actions.items()}
+        self.weighted_actions = {
+            action: weight / total_weight
+            for action, weight in self.weighted_actions.items()
+        }
+
 
 class NoveltyFocusedRandomCyberAgent(BaseAgent):
     def __init__(self, action_space, seed=None):
@@ -117,12 +136,19 @@ class NoveltyFocusedRandomCyberAgent(BaseAgent):
         s = self.action_space.sample()
         new_actions = []
         if len(possible_actions) > len(self.previous_possible_actions):
-            new_actions = [pa for pa in possible_actions if pa not in self.previous_possible_actions]
+            new_actions = [
+                pa
+                for pa in possible_actions
+                if pa not in self.previous_possible_actions
+            ]
         action = {}
         if len(new_actions) > 0:
             selected_action = random.choice(new_actions)
             action[selected_action] = 1
-        elif self.previous_selected_action is not None and self.rng.random() < self.repeat_action_probability:
+        elif (
+            self.previous_selected_action is not None
+            and self.rng.random() < self.repeat_action_probability
+        ):
             selected_action = self.previous_selected_action
             action[selected_action] = 1
         elif len(possible_actions) > 0:
@@ -133,6 +159,7 @@ class NoveltyFocusedRandomCyberAgent(BaseAgent):
         self.previous_possible_actions = possible_actions
         self.previous_selected_action = selected_action
         return action
+
 
 class HostTargetedCyberAgent(BaseAgent):
     def __init__(self, action_space, seed=None):
@@ -153,19 +180,26 @@ class HostTargetedCyberAgent(BaseAgent):
         s = self.action_space.sample()
         action = {}
         possible_actions = self.action_horizon(state)
-        neighbor_hosts = [pa.split('___h')[1] for pa in possible_actions if 'compromise_attempt' in pa]
+        neighbor_hosts = [
+            pa.split("___h")[1] for pa in possible_actions if "compromise_attempt" in pa
+        ]
         for nh in neighbor_hosts:
-            negibor_creds = [pa for pa in possible_actions if f'___c{nh}' in pa]
+            negibor_creds = [pa for pa in possible_actions if f"___c{nh}" in pa]
         if len(negibor_creds) > 0:
-            possible_actions = negibor_creds # if there are creds to neighbor hosts, try to crack them
+            possible_actions = (
+                negibor_creds  # if there are creds to neighbor hosts, try to crack them
+            )
         else:
-            possible_actions = [pa for pa in possible_actions if 'compromise_attempt' in pa]  # otherwise, try to compromise a neighbor host
+            possible_actions = [
+                pa for pa in possible_actions if "compromise_attempt" in pa
+            ]  # otherwise, try to compromise a neighbor host
         if len(possible_actions) > 0:
             selected_action = random.choice(possible_actions)
             action[selected_action] = 1
         else:
             action[list(s.keys())[0]] = 0
         return action
+
 
 class KeyboardCyberAgent(BaseAgent):
     def __init__(self, action_space, seed=None):

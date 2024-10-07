@@ -28,7 +28,7 @@ def setup_logging(name=None):
     for handler in root_logger.handlers.copy():
         root_logger.removeHandler(handler)
 
-    fmt = "%(asctime)s - %(levelname)s [%(module)s.%(funcName)s:%(lineno)d]: %(message)s"
+    fmt = "%(asctime)s - %(levelname)s [%(module)s:%(lineno)d]: %(message)s"
 
     logging.basicConfig(
         level=logging.WARNING,
@@ -40,9 +40,11 @@ def setup_logging(name=None):
         ],
     )
 
-    logging.getLogger('malsim').setLevel(logging.WARN)
+    # TODO: keep only one, the correct
+    logging.getLogger("malsim.sims.mal_simulator").setLevel(logging.WARNING)
+    logging.getLogger("malsim").setLevel(logging.WARNING)
     for logger_name in [name]:
-        logger = logging.getLogger(name)
+        logger = logging.getLogger(logger_name)
         logger.setLevel(logging.DEBUG if debug else logging.INFO)
         logger.addHandler(cli_handler)
         logger.propagate = False

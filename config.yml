@@ -1,0 +1,16 @@
+---
+
+common:
+  lang_file: deps/heatmap/heatmap.mal
+  model_file: deps/heatmap/instance-model.yml
+  data_folder: data
+  bucket_name: "nikolaos_gnn_rddl"
+  backend: tf
+
+simulate:
+  start_step: 50
+
+# train:
+  # compromised: 1
+  # uncompromised: 1
+  # val_samples: 1

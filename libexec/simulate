@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+# ruff: noqa: F821
+"""A descrition
+
+Usage:
+  simulate [options]
+
+Options:
+  --lang-file=<path>   Path to .mal or .mar file
+  --model-file=<path>  Path to json/yml instance model file
+  --horizon=<int>      Maximum number of steps to run the simulation for [default: 250]
+  --start-time=<int>   When the attacker agent starts working [default: 50]
+  --attacker=<type>    The attacker agent to use [default: bfs-random]
+  --log-window=<int>   How many logs to use as history [default: 40]
+  --fp-rate=<float>    False positive rate [default: 0.1]
+  --iterations=<int>   How many simulations to run at once [default: 1]
+  --sync               Push sample files to Google Cloud Storage bucket
+"""
+
+import logging
+import pickle
+import time
+import zipfile
+from datetime import datetime
+from pathlib import Path
+
+import malsim.agents.searchers as agents
+import numpy as np
+import yaml
+from malsim.sims.mal_simulator import MalSimulator
+from maltoolbox.attackgraph import AttackGraph
+from maltoolbox.language import LanguageClassesFactory, LanguageGraph
+from maltoolbox.model import Model
+
+from libexec.storage import GcsStorageBucket
+
+l = logging.getLogger(__name__)
+
+attacker_agents = {
+    "passive": agents.PassiveAttacker,
+    "bfs-random": agents.BreadthFirstAttacker,
+    "dfs-random": agents.DepthFirstAttacker,
+}
+
+
+def simulate() -> Path:
+    sample = []
+    env = _get_env(x)
+
+    # Initiate stateful functions
+    create_logs = _create_logs(env)
+    create_snapshot = _create_snapshot(env)
+
+    # TODO: These should accept objects
+    env.register_attacker("attacker", 0)
+
+    # TODO: why is this needed at all?
+    state, infos = env.reset()
+
+    l.info("Simulation started.")
+
+    start_time = time.time()
+
+    for step in range(x.horizon):
+        stepstamp = "{:>{}}/{}".format(step, len(str(x.horizon)), x.horizon)
+
+        if step % 30 == 0:
+            l.info(f"Step {stepstamp}. Time: {time.time() - start_time:.2f}s.")
+
+        if step == x.start_step:
+            l.info(f"Step {stepstamp}: Deploying {x.attacker} attacker.")
+            attacker = attacker_agents[x.attacker]({"randomize": True})
+
+        if step >= x.start_step:
+            actions = _compute_action(attacker, state, infos)
+        else:
+            # emulate a passive attacker without creating one for the time steps
+            # before an actual attacker agent (passive or other) is strictly
+            # needed.
+            actions = {"attacker": (0, None)}  # do nothing
+
+        state, rewards, terminations, truncations, infos = env.step(actions)
+
+        if "attacker" in state:
+            # Will be when starting, but not after attacker has finished, keep
+            # using the old one then.
+            compromised_state = state["attacker"]["observed_state"]
+
+        snapshot = create_snapshot(create_logs(), compromised_state)
+
+        if step >= x.log_window:
+            sample.append(snapshot)
+
+        if truncations.get("attacker"):
+            l.info("Simulation terminated by simulator.")
+            break
+
+    env.close()
+
+    l.info(f"Simulation completed after: {time.time() - start_time:.2f}s")
+
+    return _save_to_file(sample)
+
+
+def _get_env(x: dict):
+    try:
+        lang_graph = LanguageGraph.from_mar_archive(x.lang_file)
+    except zipfile.BadZipFile:
+        lang_graph = LanguageGraph.from_mal_spec(x.lang_file)
+
+    lang_classes_factory = LanguageClassesFactory(lang_graph)
+
+    model = Model.load_from_file(x.model_file, lang_classes_factory)
+
+    attack_graph = AttackGraph(lang_graph, model)
+
+    # TODO why is this needed?
+    attack_graph.attach_attackers()
+
+    env = MalSimulator(lang_graph, model, attack_graph, max_iter=x.horizon)
+
+    return env
+
+
+def _compute_action(attacker, state, infos):
+    try:
+        action = attacker.compute_action_from_dict(
+            state, infos["attacker"]["action_mask"]
+        )
+    except KeyError:
+        # This happens only after attacker termination/truncation
+        action = (0, None)
+
+    return {"attacker": action}
+
+
+def _create_logs(env):
+    log_history = np.zeros((len(env.attack_graph.nodes), x.log_window))
+    old_state = np.zeros(len(env.attack_graph.nodes)).astype(int)
+    old_log_line = np.zeros(len(env.attack_graph.nodes))
+    counter = 1
+
+    def closure():
+        nonlocal log_history, old_state, counter
+
+        if counter < x.start_step:
+            # TODO: in the current simulator, the attacker is attached to
+            # a starting attack step. So, even though the attacker may have not
+            # started, that step will show as compromised and the logic below
+            # will create a log for that step in the first step. To avoid this
+            # since it is not an actual compromise, we check the start_step.
+            new_state = np.zeros_like(old_state)
+            counter += 1
+        else:
+            new_state = np.array(
+                [node.is_compromised() for node in env.attack_graph.nodes]
+            ).astype(int)
+
+        log_line = np.logical_and(
+            old_log_line == 0, np.logical_and(new_state == 1, old_state == 1)
+        ).astype(int)
+
+        log_line = np.logical_and(
+            log_line == 0, np.logical_xor(new_state, old_state) == 1
+        ).astype(int)
+
+        flips = np.random.binomial(1, x.fp_rate, size=log_line.shape) * (log_line == 0)
+
+        log_line_fp = log_line + flips
+
+        l.debug("old_state:\n%s", old_state)
+        l.debug("new_state:\n%s", new_state)
+        l.debug("log_line:\n%s", log_line)
+        l.debug("log_line_fp:\n%s", log_line_fp)
+        l.debug("%s", 50 * "=")
+
+        old_state = new_state
+
+        return np.concatenate((log_history[:, 1:], log_line_fp[:, np.newaxis]), axis=1)
+
+    return closure
+
+
+def _create_snapshot(env):
+    nodes_as_features = np.array(
+        [
+            # TODO this will change with a newer sim version
+            env._step_name_to_index[f"{node.asset.metaconcept}:{node.name}"] + 1
+            if getattr(node, "asset") else 0
+            for node in env.attack_graph.nodes
+        ]
+    ).reshape(-1, 1)
+    edges = [
+        [env._id_to_index[attack_step.id], env._id_to_index[child.id]]
+        for attack_step in env.attack_graph.nodes
+        for child in attack_step.children
+    ]
+    edge_index = np.array(edges).T
+    edge_type = np.zeros(edge_index.shape[1])
+    counter = 1
+
+    def closure(log_history, labels: np.ndarray):
+        nonlocal counter
+
+        combined_features = np.concatenate((nodes_as_features, log_history), axis=1)
+
+        if counter < x.start_step:
+            # TODO: see comment at same check in _create_logs.closure()
+            labels = np.zeros(len(env.attack_graph.nodes)).astype(int)
+            counter += 1
+        else:
+            labels = np.where(labels == -1, 0, labels)
+
+        return {
+            "x": combined_features,
+            "edge_index": edge_index,
+            "edge_type": edge_type,
+            "y": labels,
+        }
+
+    return closure
+
+
+def _save_to_file(sample):
+    now_time = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
+
+    # TODO: compatibility with existing bucket, rethink naming
+    name = x.data_folder / "training_samples"
+    name /= f"log_window_{x.log_window}"
+    var = len(sample[0]["y"])
+    name /= f"{var}_nodes"
+    name /= f"fpr_{x.fp_rate}"
+    name /= f"{len(sample)}_snapshots"
+    name /= f"{x.attacker}"
+    name /= f"{now_time}.pkl"
+
+    name.parent.mkdir(parents=True, exist_ok=True)
+
+    with Path(name).open("wb") as f:
+        pickle.dump(sample, f)
+
+    l.info(f"Saved sample to {name}")
+
+    return name
+
+
+def _parse_args(kwargs: dict):
+    with Path("config.yml").open(encoding="utf8") as f:
+        conf = yaml.safe_load(f)
+
+    kwargs.update(conf["common"])
+    kwargs.update(conf.get(__epic_script__, {}))
+
+    kwargs["horizon"] = int(kwargs["horizon"])
+    kwargs["log_window"] = int(kwargs["log_window"])
+    kwargs["fp_rate"] = float(kwargs["fp_rate"])
+    kwargs["iterations"] = int(kwargs["iterations"])
+    kwargs["data_folder"] = Path(kwargs["data_folder"])
+
+    return kwargs
+
+
+x = _parse_args(kwargs)
+
+files = []
+for i in range(0, x.iterations):
+    files.append(simulate())
+
+import shutil
+shutil.copy(files[-1], "sample")
+
+if x.sync:
+    l.info("Saving to bucket.")
+    bucket = GcsStorageBucket(x.bucket_name)
+    for i, file in enumerate(files):
+        if i % 10 == 0:
+            l.info("Uploading file %d / %d", i, len(files))
+        bucket.upload(file, file.relative_to(x.data_folder))
