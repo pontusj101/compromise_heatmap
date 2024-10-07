@@ -1,0 +1,32 @@
+---
+
+# Ensure that no CI-handled files are changed in PRs.
+#
+# Unless we want the workflow to run on (and charge us a minute of CI time for)
+# every push to a PR, we cannot require that this passes before merge:
+#
+# > If a workflow is skipped due to path filtering, branch filtering, or a
+# > commit message, then checks associated with that workflow will remain in a
+# > "Pending" state. A pull request that requires those checks to be successful
+# > will be blocked from merging.
+#
+# yamllint disable rule:line-length
+# Source: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-including-paths
+# yamllint enable
+name: No protected files changed
+
+"on":
+  pull_request:
+    branches: [master]
+    paths:
+      - .github/workflows/lint.yml
+      - .github/workflows/protected-files.yml
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail
+        uses: actions/github-script@v3
+        with:
+          script: core.setFailed("Protected file modified")

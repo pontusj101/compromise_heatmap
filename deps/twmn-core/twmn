@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+"""
+This is main twmn script's help
+
+Usage:
+  twmn <command>
+"""
+
+import importlib
+import sys
+from pathlib import Path
+
+from epic.epic_importer import EpicImporter
+
+sys.path.append("libexec")
+EpicImporter.load_paths.add('libexec')
+
+EpicImporter.help_tokens = {
+    "go": "twmn",
+    "custom_help_token": "my help token",
+}
+
+
+def runner():
+    """Try to import the specified module (the script, in our case) and run it."""
+    sys.argv.pop(0)
+
+    complete = False
+
+    try:
+        arg = sys.argv.pop(0)
+
+        if arg == '--complete':
+            complete = True
+            arg = sys.argv.pop(0)
+
+        parent_mod = importlib.import_module(arg)
+
+    except IndexError:
+        return twmn_help_or_complete(help=True)
+    except (ModuleNotFoundError, ValueError):
+        return twmn_help_or_complete(complete=complete)
+
+    if complete:
+        print(parent_mod._completions(sys.argv[:-3], sys.argv[-3], sys.argv[-2],
+                                      sys.argv[-1]))
+        return
+
+    parent_mod.run(sys.argv)
+
+
+def twmn_help_or_complete(*, help: bool = False, complete: bool = False):
+    twmn_dir = Path(__file__).parent.as_posix()
+    sys.path.append(twmn_dir)
+    EpicImporter.load_paths.add(twmn_dir)
+    sys.path_importer_cache.clear()
+
+    twmn = importlib.import_module('twmn')
+
+    if complete:
+        print(twmn._completions(sys.argv[:-3], sys.argv[-3], sys.argv[-2], sys.argv[-1]))
+    else:
+        print_twmn_usage()
+        return not help
+
+
+def completions(a, b, c, d):
+    return ['aaa', 'bbb']
+
+def print_twmn_usage():
+    print("twmn usage")
+
+
+if __name__ == '__main__':
+    sys.exit(runner())

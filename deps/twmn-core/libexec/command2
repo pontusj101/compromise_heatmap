@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#
+# Usage:
+#   command2 [options] ARG
+#
+# Options:
+#   --ll  dsfdsf
+
+echo $ll
+echo $ARG

@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+"""
+A description of the command.
+
+Usage:
+  command3 [options]
+
+Options:
+  --lol     hehe
+"""
+
+
+from docopt import docopt
+args = docopt(__doc__)
+print(args)
+if args["--lol"]:
+    print('haha')
+else:
+    print("not funny")

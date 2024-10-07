@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+"""
+A description of the command.
+
+Usage:
+  command1 [options] (action1 | action2 ARG)
+
+Arguments:
+  ARG  an arg
+
+Options:
+  --aaa    sdfdsf
+  --qqq    dfdfdf
+"""
+
+import sys
+
+def main(args):
+    print(args)
+    if args['aaa']: print("Ran with AAA option")
+    if args['qqq']: print("Ran with QQQ option")
+
+    if args['action1']:
+        print("Executing command1")
+    elif args['action2']:
+        print(f"Executing command2 with {args['ARG']} ARG")
+
+if __name__ == '__main__':
+    main(kwargs)

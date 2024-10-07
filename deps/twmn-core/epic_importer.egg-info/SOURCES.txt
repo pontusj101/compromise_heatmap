@@ -1,0 +1,9 @@
+setup.py
+epic/__init__.py
+epic/epic_importer.py
+epic/epic_shell.py
+epic_importer.egg-info/PKG-INFO
+epic_importer.egg-info/SOURCES.txt
+epic_importer.egg-info/dependency_links.txt
+epic_importer.egg-info/requires.txt
+epic_importer.egg-info/top_level.txt
