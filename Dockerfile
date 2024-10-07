@@ -4,10 +4,8 @@ WORKDIR /root
 
 RUN mkdir -p ~/.config/pip/
 
-RUN cat <<EOF >~/.config/pip/pip.conf
-[global]
-break-system-packages = true
-EOF
+RUN mkdir -p ~/.config/pip/ && \
+    echo "[global]\nbreak-system-packages = true" > ~/.config/pip/pip.conf
 
 RUN apt-get update && \
     apt-get install -y git && \
@@ -41,7 +39,5 @@ COPY . /root/gnn_rddl
 RUN pip install deps/mal-toolbox
 RUN pip install deps/mal-simulator
 RUN pip install deps/twmn-core
-
-COPY config.pt.yml config.yml
 
 ENTRYPOINT ["./run"]
