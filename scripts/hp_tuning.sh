@@ -8,5 +8,5 @@ gcloud ai hp-tuning-jobs create \
     --display-name=$JOB_NAME \
     --max-trial-count=64 \
     --parallel-trial-count=64 \
-    --service-account=nikolaos-heatmap-simulator-cre@aps-validation-joarjox.iam.gserviceaccount.com \
+    --service-account=account \
     --config=hp_config.yaml

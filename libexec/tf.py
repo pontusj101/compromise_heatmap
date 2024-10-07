@@ -45,7 +45,7 @@ class GAT(tf.keras.Model):
                 mt_albis.MtAlbisGraphUpdate(
                     units=out_channels,
                     message_dim=edge_embedding_dim,
-                    attention_type="gat_v2",
+                    attention_type="multi_head",
                     normalization_type="layer",
                     attention_num_heads=heads[i],
                     next_state_type="dense",
@@ -90,7 +90,8 @@ def calculate_loss(logits, target_labels, minority_weight):
 def train(
     model, training_samples, validation_samples, epochs, learning_rate, minority_weight
 ):
-    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=1e-4)
+
 
     train_loss_values = []
     validation_loss_values = []
