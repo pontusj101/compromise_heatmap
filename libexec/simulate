@@ -45,7 +45,7 @@ attacker_agents = {
 
 def simulate() -> Path:
     sample = []
-    env = _get_env(x)
+    env = _get_env()
 
     # Initiate stateful functions
     create_logs = _create_logs(env)
@@ -69,7 +69,9 @@ def simulate() -> Path:
 
         if step == x.start_step:
             l.info(f"Step {stepstamp}: Deploying {x.attacker} attacker.")
-            attacker = attacker_agents[x.attacker]({"randomize": True})
+            attacker = attacker_agents[x.attacker](
+                {"randomize": True, "attack_graph": env.attack_graph}
+            )
 
         if step >= x.start_step:
             actions = _compute_action(attacker, state, infos)
@@ -102,7 +104,7 @@ def simulate() -> Path:
     return _save_to_file(sample)
 
 
-def _get_env(x: dict):
+def _get_env():
     try:
         lang_graph = LanguageGraph.from_mar_archive(x.lang_file)
     except zipfile.BadZipFile:
@@ -125,7 +127,7 @@ def _get_env(x: dict):
 def _compute_action(attacker, state, infos):
     try:
         action = attacker.compute_action_from_dict(
-            state, infos["attacker"]["action_mask"]
+            state["attacker"], infos["attacker"]["action_mask"]
         )
     except KeyError:
         # This happens only after attacker termination/truncation
@@ -185,8 +187,9 @@ def _create_snapshot(env):
     nodes_as_features = np.array(
         [
             # TODO this will change with a newer sim version
-            env._step_name_to_index[f"{node.asset.metaconcept}:{node.name}"] + 1
-            if getattr(node, "asset") else 0
+            env._step_name_to_index[f"{node.asset.type}:{node.name}"] + 1
+            if getattr(node, "asset")
+            else 0
             for node in env.attack_graph.nodes
         ]
     ).reshape(-1, 1)
@@ -267,6 +270,7 @@ for i in range(0, x.iterations):
     files.append(simulate())
 
 import shutil
+
 shutil.copy(files[-1], "sample")
 
 if x.sync:
