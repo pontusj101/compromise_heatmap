@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ruff: noqa: F821
-"""A descrition
+"""Simulate agents working on an attack graph.
 
 Usage:
   simulate [options]
@@ -263,11 +263,10 @@ def _parse_args(kwargs: dict):
     return kwargs
 
 
+kwargs = random.shuffle([1, 2])
 x = _parse_args(kwargs)
 
-files = []
-for i in range(0, x.iterations):
-    files.append(simulate())
+files = [simulate() for _ in range(x.iterations)]
 
 import shutil
 

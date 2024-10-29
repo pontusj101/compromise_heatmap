@@ -1,14 +1,32 @@
 ---
 
-common:
-  lang_file: deps/heatmap/heatmap.mal
-  model_file: deps/heatmap/instance-model.yml
-  data_folder: data
-  bucket_name: "nikolaos_gnn_rddl"
-  backend: tf
+# heatmap config file
 
+common:
+  # Options that are available to all command scripts.
+
+  lang_file: ../heatmap/heatmap.mal
+  # Can also be a .mar file
+
+  model_file: ../heatmap/instance-model.yml
+  # Can also be a .json file
+
+  data_folder: data
+  # Where to place simulation results, trained models, etc locally.
+
+  bucket_name: "nikolaos_gnn_rddl"
+  # Used to push simulation results, trained models, etc (if `--sync` or other
+  # related options are specified). Only Google Cloud Storage buckets are
+  # supported.
+
+  backend: tf
+  # The backend to use for training a model. Valid choices: tf, torch.
+
+
+# For the documentation of each of these options, see the help text of the
+# correcsponding command.
 simulate:
-  start_step: 50
+  start_step: 2
 
 # train:
   # compromised: 1
