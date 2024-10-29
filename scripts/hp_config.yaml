@@ -1,8 +1,13 @@
+maxFailedTrialCount: 3
 studySpec:
   metrics:
   - metricId: F1
     goal: MAXIMIZE
   parameters:
+  - parameterId: backend
+    categoricalValueSpec:
+      values:
+        - tf
   - parameterId: iterations
     integerValueSpec:
       minValue: 100
@@ -25,8 +30,8 @@ studySpec:
     scaleType: UNIT_LOG_SCALE
   - parameterId: epochs
     integerValueSpec:
-      minValue: 8
-      maxValue: 32
+      minValue: 6
+      maxValue: 15
     scaleType: UNIT_LOG_SCALE
   - parameterId: fp-rate
     doubleValueSpec:
@@ -74,4 +79,4 @@ trialJobSpec:
         machineType: n1-highcpu-32
       replicaCount: 1
       containerSpec:
-        imageUri: europe-north1-docker.pkg.dev/aps-validation-joarjox/heatmap-images/heatmap:latest
+        imageUri: us-central1-docker.pkg.dev/research02-386408/heatmap-images/heatmap:latest

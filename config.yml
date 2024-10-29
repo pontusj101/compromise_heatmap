@@ -1,7 +1,5 @@
 ---
 
-# heatmap config file
-
 common:
   # Options that are available to all command scripts.
 

@@ -48,7 +48,8 @@ def main():
     model = _get_model(
         gnn_type=x.gnn_type,
         edge_embedding_dim=x.edge_embedding_dim,
-        heads_per_layer=x.heads_per_layer,
+        #heads_per_layer=x.heads_per_layer,
+        heads_per_layer=1,
         actual_num_features=x.log_window + 1,
         hidden_layers=hidden_layers,
     )
@@ -168,6 +169,7 @@ def _model_filepath(
     edge_embedding_dim,
     actual_num_features,
 ):
+    heads=1
     name = ""
     name += f"hl-{','.join(str(l) for l in [actual_num_features, *hidden_layers, 2])}_"
     name += f"nsnpsht-{snapshot_sequence_length}_"
