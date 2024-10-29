@@ -7,6 +7,6 @@ gcloud ai hp-tuning-jobs create \
     --region=us-central1 \
     --display-name=$JOB_NAME \
     --max-trial-count=64 \
-    --parallel-trial-count=64 \
-    --service-account=account \
+    --parallel-trial-count=32 \
+    --service-account=nikolaos-heatmap@research02-386408.iam.gserviceaccount.com \
     --config=hp_config.yaml

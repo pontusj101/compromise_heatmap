@@ -36,8 +36,8 @@ WORKDIR /root/gnn_rddl
 
 # COPY deps deps
 COPY . /root/gnn_rddl
-RUN pip install deps/mal-toolbox
-RUN pip install deps/mal-simulator
-RUN pip install deps/twmn-core
+RUN pip install -e deps/mal-toolbox
+RUN pip install -e deps/mal-simulator
+RUN pip install -e deps/twmn-core
 
 ENTRYPOINT ["./run"]

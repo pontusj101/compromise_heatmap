@@ -7,9 +7,11 @@ export TF_USE_LEGACY_KERAS=1
 
 while [[ $# -gt 0 ]]; do
   name="${1##--}"
+  name="${name%=*}"
   name="${name//-/_}"
-  declare $name=$2
-  shift 2
+  declare $name="${1##*=}"
+  declare -p $name
+  shift 1
 done
 
 sed -i "s/backend: .*/backend: $backend/" config.yml
