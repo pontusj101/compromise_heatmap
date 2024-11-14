@@ -14,6 +14,6 @@ with open('BreadthFirstAttacker-logs.json') as f:
 
 logs.sort(key=lambda l: l['timestamp'])
 
-with open("merged-logs.json", "w") as f:
+with open("merged-logs.json", "a") as f:
   json.dump(logs, f, indent=2)
 PYTHON
