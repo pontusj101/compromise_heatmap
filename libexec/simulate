@@ -19,6 +19,7 @@ Options:
 
 import logging
 import pickle
+import random
 import time
 import zipfile
 from datetime import datetime
@@ -74,6 +75,7 @@ def simulate() -> Path:
             )
 
         if step >= x.start_step:
+            state["attacker"]["timestamp"] = step
             actions = _compute_action(attacker, state, infos)
         else:
             # emulate a passive attacker without creating one for the time steps
@@ -125,13 +127,17 @@ def _get_env():
 
 
 def _compute_action(attacker, state, infos):
-    try:
-        action = attacker.compute_action_from_dict(
-            state["attacker"], infos["attacker"]["action_mask"]
-        )
-    except KeyError:
-        # This happens only after attacker termination/truncation
+    if random.choices([True, False], weights=[1, 5])[0]:
         action = (0, None)
+
+    else:
+        try:
+            action = attacker.compute_action_from_dict(
+                state["attacker"], infos["attacker"]["action_mask"]
+            )
+        except KeyError:
+            # This happens only after attacker termination/truncation
+            action = (0, None)
 
     return {"attacker": action}
 
@@ -263,7 +269,6 @@ def _parse_args(kwargs: dict):
     return kwargs
 
 
-kwargs = random.shuffle([1, 2])
 x = _parse_args(kwargs)
 
 files = [simulate() for _ in range(x.iterations)]
