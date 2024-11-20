@@ -1,5 +1,6 @@
 setup.py
 epic/__init__.py
+epic/dotdict.py
 epic/epic_importer.py
 epic/epic_shell.py
 epic_importer.egg-info/PKG-INFO
