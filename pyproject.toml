@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["heatmap", "libexec"]
+
+[project]
+name = "compromise_heatmap"
+version = "0.0.0"
+description = "TBD"
+authors = [
+    {name = "Nikolaos Kakouros", email = "nkak@kth.se"},
+    {name = "Pontus Johnson", email = "pontusj@kth.se"},
+]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.12"
+
+[project.urls]
+homepage = "https://github.com/pontusj101/compromise_heatmap"
+repository = "https://github.com/pontusj101/compromise_heatmap"
+documentation = "TBD"

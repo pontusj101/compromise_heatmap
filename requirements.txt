@@ -1,0 +1,22 @@
+-f https://data.pyg.org/whl/torch-2.4.0+cu124.html
+torch==2.4.0
+pyg_lib
+torch_scatter
+torch_sparse
+torch_cluster
+torch_spline_conv
+torch_geometric
+torch_geometric_temporal
+cloudml-hypertune
+wandb
+scikit-learn
+matplotlib
+
+google-cloud-storage
+google-cloud-logging
+google-cloud-secret-manager
+
+-e git+https://github.com/mal-lang/mal-toolbox@detectors#egg=mal-toolbox
+-e git+https://github.com/mal-lang/mal-simulator@detectors#egg=mal-simulator
+
+git+https://github.com/KTH-SSAS/twmn-core@twmn
