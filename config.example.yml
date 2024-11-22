@@ -1,0 +1,35 @@
+---
+
+common:
+  # Options that are available to all command scripts.
+
+  lang_file: ../heatmap/heatmap.mal
+  # Can also be a .mar file
+
+  model_file: ../heatmap/instance-model.yml
+  # Can also be a .json file
+
+  data_folder: data
+  # Where to place simulation results, trained models, etc locally.
+
+  bucket_name: "heatmap_bucket"
+  # Used to push simulation results, trained models, etc (if `--sync` or other
+  # related options are specified). Only Google Cloud Storage buckets are
+  # supported.
+
+  gcp_auth: "auth.json"
+  # Path to a json key for authenticating with Google Cloud.
+
+  backend: torch
+  # The backend to use for training a model. Valid choices: tf, torch.
+
+
+# For the documentation of each of these options, see the help text of the
+# correcsponding command.
+#simulate:
+#  start_step: 2
+
+# train:
+  # compromised: 1
+  # uncompromised: 1
+  # val_samples: 1
