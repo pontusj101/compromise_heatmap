@@ -6,7 +6,7 @@ set -euxo pipefail
 ./heatmap simulate --attacker dfs-random --horizon 1000
 
 python <<PYTHON
-import json
+import json,os
 with open('DepthFirstAttacker-logs.json') as f:
   logs = json.load(f)
 with open('BreadthFirstAttacker-logs.json') as f:
@@ -14,6 +14,12 @@ with open('BreadthFirstAttacker-logs.json') as f:
 
 logs.sort(key=lambda l: l['timestamp'])
 
-with open("merged-logs.json", "a") as f:
+old_logs = []
+if os.path.isfile("merged-logs.json"):
+  with open("merged-logs.json", "r") as f:
+    old_logs = json.load(f)
+
+with open("merged-logs.json", "w") as f:
+  old_logs.extend(logs)
   json.dump(logs, f, indent=2)
 PYTHON
