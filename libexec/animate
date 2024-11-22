@@ -456,7 +456,7 @@ record = {"sample": x.sample.as_posix(), "model": x.model.as_posix()}
 with open("anim.record", "w") as f:
     yaml.dump(record, f)
 
-client = GcsStorageBucket(x.bucket_name)
+client = GcsStorageBucket(x.bucket_name, x.gcp_auth)
 folder = Path("animations") / random_string(20)
 l.info("Uploading to bucket under %s", folder)
 for file in [

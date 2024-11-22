@@ -9,15 +9,10 @@ application_default_credentials = "auth.json"
 
 class GcsStorageBucket:
     def __init__(self, bucket_name, credentials_path=None):
-        if credentials_path:
-            credentials = service_account.Credentials.from_service_account_file(
-                credentials_path
-            )
-            self.client = storage.Client(credentials=credentials)
-        else:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
-            self.client = storage.Client()
-
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path
+        )
+        self.client = storage.Client(credentials=credentials)
         self.bucket = self.client.bucket(bucket_name)
 
     def upload(self, local_path: Path, online_path: Path):

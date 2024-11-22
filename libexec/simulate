@@ -279,7 +279,7 @@ shutil.copy(files[-1], "sample")
 
 if x.sync:
     l.info("Saving to bucket.")
-    bucket = GcsStorageBucket(x.bucket_name)
+    bucket = GcsStorageBucket(x.bucket_name, x.gcp_auth)
     for i, file in enumerate(files):
         if i % 10 == 0:
             l.info("Uploading file %d / %d", i, len(files))
