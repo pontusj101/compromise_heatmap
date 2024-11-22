@@ -1,5 +1,7 @@
+# Project specific files
 config.yml
 data/
+*.json
 
 
 # general python ignores
