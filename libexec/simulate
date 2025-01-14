@@ -6,15 +6,15 @@ Usage:
   simulate [options]
 
 Options:
-  --lang-file=<path>   Path to .mal or .mar file
-  --model-file=<path>  Path to json/yml instance model file
-  --horizon=<int>      Maximum number of steps to run the simulation for [default: 250]
-  --start-time=<int>   When the attacker agent starts working [default: 50]
-  --attacker=<type>    The attacker agent to use [default: bfs-random]
-  --log-window=<int>   How many logs to use as history [default: 40]
-  --fp-rate=<float>    False positive rate [default: 0.1]
-  --iterations=<int>   How many simulations to run at once [default: 1]
-  --sync               Push sample files to Google Cloud Storage bucket
+  --lang-file=<path>          Path to .mal or .mar file
+  --model-file=<path>         Path to json/yml instance model file
+  --horizon=<int>             Maximum number of steps to run the simulation for [default: 250]
+  --start-step=<int>|random   When the attacker agent starts working [default: random]
+  --attacker=<type>           The attacker agent to use [default: bfs-random]
+  --log-window=<int>          How many logs to use as history [default: 40]
+  --fp-rate=<float>           False positive rate [default: 0.1]
+  --iterations=<int>          How many simulations to run at once [default: 1]
+  --sync                      Push sample files to Google Cloud Storage bucket
 """
 
 import logging
@@ -57,30 +57,35 @@ def simulate() -> Path:
 
     # TODO: why is this needed at all?
     state, infos = env.reset()
+    terminated = False
 
     l.info("Simulation started.")
 
     start_time = time.time()
 
-    for step in range(x.horizon):
-        stepstamp = "{:>{}}/{}".format(step, len(str(x.horizon)), x.horizon)
+    for timestep in range(x.horizon):
+        stepstamp = "{:>{}}/{}".format(timestep, len(str(x.horizon)), x.horizon)
 
-        if step % 30 == 0:
-            l.info(f"Step {stepstamp}. Time: {time.time() - start_time:.2f}s.")
+        if timestep % 30 == 0:
+            l.info(f"Timestep {stepstamp}. Time: {time.time() - start_time:.2f}s.")
 
-        if step == x.start_step:
-            l.info(f"Step {stepstamp}: Deploying {x.attacker} attacker.")
+        if timestep == x.start_step:
+            l.info(f"Timestep {stepstamp}: Deploying {x.attacker} attacker.")
             attacker = attacker_agents[x.attacker](
-                {"randomize": True, "attack_graph": env.attack_graph}
+                {
+                    "randomize": True,
+                    "attack_graph": env.attack_graph,
+                    "wait_factor": 5 / 6,
+                }
             )
 
-        if step >= x.start_step:
-            state["attacker"]["timestamp"] = step
+        if timestep >= x.start_step and not terminated:
+            state["attacker"]["timestamp"] = timestep
             actions = _compute_action(attacker, state, infos)
         else:
-            # emulate a passive attacker without creating one for the time steps
+            # Emulate a passive attacker without creating one for the time steps
             # before an actual attacker agent (passive or other) is strictly
-            # needed.
+            # needed. Do that after the attacker has nothing left to do as well.
             actions = {"attacker": (0, None)}  # do nothing
 
         state, rewards, terminations, truncations, infos = env.step(actions)
@@ -92,8 +97,13 @@ def simulate() -> Path:
 
         snapshot = create_snapshot(create_logs(), compromised_state)
 
-        if step >= x.log_window:
+        if timestep >= x.log_window:
             sample.append(snapshot)
+
+        if terminations.get("attacker"):
+            terminated = True
+            breakpoint()
+            l.info("Timestep %s: Attacker has nothing more to do.", timestep)
 
         if truncations.get("attacker"):
             l.info("Simulation terminated by simulator.")
@@ -127,17 +137,13 @@ def _get_env():
 
 
 def _compute_action(attacker, state, infos):
-    if random.choices([True, False], weights=[1, 5])[0]:
+    try:
+        action = attacker.compute_action_from_dict(
+            state["attacker"], infos["attacker"]["action_mask"]
+        )
+    except KeyError:
+        # This happens only after attacker termination/truncation
         action = (0, None)
-
-    else:
-        try:
-            action = attacker.compute_action_from_dict(
-                state["attacker"], infos["attacker"]["action_mask"]
-            )
-        except KeyError:
-            # This happens only after attacker termination/truncation
-            action = (0, None)
 
     return {"attacker": action}
 
@@ -265,6 +271,11 @@ def _parse_args(kwargs: dict):
     kwargs["fp_rate"] = float(kwargs["fp_rate"])
     kwargs["iterations"] = int(kwargs["iterations"])
     kwargs["data_folder"] = Path(kwargs["data_folder"])
+
+    if kwargs["start_step"] == "random":
+        kwargs["start_step"] = random.randint(0, kwargs["horizon"] / 2)
+    else:
+        kwargs["start_step"] = int(kwargs["start_step"])
 
     return kwargs
 
