@@ -8,25 +8,29 @@ Usage:
 Options:
   --lang-file=<path>          Path to .mal or .mar file
   --model-file=<path>         Path to json/yml instance model file
-  --horizon=<int>             Maximum number of steps to run the simulation for [default: 250]
-  --start-step=<int>|random   When the attacker agent starts working [default: random]
+  --horizon=<int|float>       Maximum number of steps to run the simulation for
+  --start-step=<int>          When the attacker agent starts working
   --attacker=<type>           The attacker agent to use [default: bfs-random]
   --log-window=<int>          How many logs to use as history [default: 40]
   --fp-rate=<float>           False positive rate [default: 0.1]
   --iterations=<int>          How many simulations to run at once [default: 1]
   --sync                      Push sample files to Google Cloud Storage bucket
+
+Notes:
+  - The default for the --horizon parameter is to match the number of attack
+    step in the attack graph plus 10%.
+
+  - The default for the --start-step parameter is pick a random starting point
+    between 0 and half the horizon.
 """
 
 import logging
-import pickle
 import random
 import time
 import zipfile
-from datetime import datetime
 from pathlib import Path
 
 import malsim.agents.searchers as agents
-import numpy as np
 import yaml
 from malsim.sims.mal_simulator import MalSimulator
 from maltoolbox.attackgraph import AttackGraph
@@ -45,12 +49,7 @@ attacker_agents = {
 
 
 def simulate() -> Path:
-    sample = []
     env = _get_env()
-
-    # Initiate stateful functions
-    create_logs = _create_logs(env)
-    create_snapshot = _create_snapshot(env)
 
     # TODO: These should accept objects
     env.register_attacker("attacker", 0)
@@ -75,7 +74,7 @@ def simulate() -> Path:
                 {
                     "randomize": True,
                     "attack_graph": env.attack_graph,
-                    "wait_factor": 5 / 6,
+                    "wait_factor": 0 / 6,
                 }
             )
 
@@ -95,25 +94,21 @@ def simulate() -> Path:
             # using the old one then.
             compromised_state = state["attacker"]["observed_state"]
 
-        snapshot = create_snapshot(create_logs(), compromised_state)
-
-        if timestep >= x.log_window:
-            sample.append(snapshot)
-
         if terminations.get("attacker"):
             terminated = True
-            breakpoint()
             l.info("Timestep %s: Attacker has nothing more to do.", timestep)
 
         if truncations.get("attacker"):
             l.info("Simulation terminated by simulator.")
             break
 
+    # TODO: doing this to write the logs to a file
+    attacker.terminate()
     env.close()
 
     l.info(f"Simulation completed after: {time.time() - start_time:.2f}s")
 
-    return _save_to_file(sample)
+    return
 
 
 def _get_env():
@@ -122,17 +117,36 @@ def _get_env():
     except zipfile.BadZipFile:
         lang_graph = LanguageGraph.from_mal_spec(x.lang_file)
 
+    print("langgraph done")
     lang_classes_factory = LanguageClassesFactory(lang_graph)
+    print("factory done")
 
     model = Model.load_from_file(x.model_file, lang_classes_factory)
+    print("model done")
 
     attack_graph = AttackGraph(lang_graph, model)
+    attack_graph.save_to_file("tmp/ag.json")
+    print("attack graph done")
 
     # TODO why is this needed?
     attack_graph.attach_attackers()
 
-    env = MalSimulator(lang_graph, model, attack_graph, max_iter=x.horizon)
+    if isinstance(x.horizon, float):
+        x.horizon = int(x.horizon * len(attack_graph.nodes))
 
+    if x.start_step == -1:
+        x.start_step = random.randint(0, x.horizon // 2)
+
+    env = MalSimulator(
+        lang_graph,
+        model,
+        attack_graph,
+        max_iter=x.horizon,
+        prune_unviable_unnecessary=False,
+        # TODO: this is needed for the random entry point selection
+    )
+
+    print("simulator created")
     return env
 
 
@@ -148,117 +162,6 @@ def _compute_action(attacker, state, infos):
     return {"attacker": action}
 
 
-def _create_logs(env):
-    log_history = np.zeros((len(env.attack_graph.nodes), x.log_window))
-    old_state = np.zeros(len(env.attack_graph.nodes)).astype(int)
-    old_log_line = np.zeros(len(env.attack_graph.nodes))
-    counter = 1
-
-    def closure():
-        nonlocal log_history, old_state, counter
-
-        if counter < x.start_step:
-            # TODO: in the current simulator, the attacker is attached to
-            # a starting attack step. So, even though the attacker may have not
-            # started, that step will show as compromised and the logic below
-            # will create a log for that step in the first step. To avoid this
-            # since it is not an actual compromise, we check the start_step.
-            new_state = np.zeros_like(old_state)
-            counter += 1
-        else:
-            new_state = np.array(
-                [node.is_compromised() for node in env.attack_graph.nodes]
-            ).astype(int)
-
-        log_line = np.logical_and(
-            old_log_line == 0, np.logical_and(new_state == 1, old_state == 1)
-        ).astype(int)
-
-        log_line = np.logical_and(
-            log_line == 0, np.logical_xor(new_state, old_state) == 1
-        ).astype(int)
-
-        flips = np.random.binomial(1, x.fp_rate, size=log_line.shape) * (log_line == 0)
-
-        log_line_fp = log_line + flips
-
-        l.debug("old_state:\n%s", old_state)
-        l.debug("new_state:\n%s", new_state)
-        l.debug("log_line:\n%s", log_line)
-        l.debug("log_line_fp:\n%s", log_line_fp)
-        l.debug("%s", 50 * "=")
-
-        old_state = new_state
-
-        return np.concatenate((log_history[:, 1:], log_line_fp[:, np.newaxis]), axis=1)
-
-    return closure
-
-
-def _create_snapshot(env):
-    nodes_as_features = np.array(
-        [
-            # TODO this will change with a newer sim version
-            env._step_name_to_index[f"{node.asset.type}:{node.name}"] + 1
-            if getattr(node, "asset")
-            else 0
-            for node in env.attack_graph.nodes
-        ]
-    ).reshape(-1, 1)
-    edges = [
-        [env._id_to_index[attack_step.id], env._id_to_index[child.id]]
-        for attack_step in env.attack_graph.nodes
-        for child in attack_step.children
-    ]
-    edge_index = np.array(edges).T
-    edge_type = np.zeros(edge_index.shape[1])
-    counter = 1
-
-    def closure(log_history, labels: np.ndarray):
-        nonlocal counter
-
-        combined_features = np.concatenate((nodes_as_features, log_history), axis=1)
-
-        if counter < x.start_step:
-            # TODO: see comment at same check in _create_logs.closure()
-            labels = np.zeros(len(env.attack_graph.nodes)).astype(int)
-            counter += 1
-        else:
-            labels = np.where(labels == -1, 0, labels)
-
-        return {
-            "x": combined_features,
-            "edge_index": edge_index,
-            "edge_type": edge_type,
-            "y": labels,
-        }
-
-    return closure
-
-
-def _save_to_file(sample):
-    now_time = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:20]
-
-    # TODO: compatibility with existing bucket, rethink naming
-    name = x.data_folder / "training_samples"
-    name /= f"log_window_{x.log_window}"
-    var = len(sample[0]["y"])
-    name /= f"{var}_nodes"
-    name /= f"fpr_{x.fp_rate}"
-    name /= f"{len(sample)}_snapshots"
-    name /= f"{x.attacker}"
-    name /= f"{now_time}.pkl"
-
-    name.parent.mkdir(parents=True, exist_ok=True)
-
-    with Path(name).open("wb") as f:
-        pickle.dump(sample, f)
-
-    l.info(f"Saved sample to {name}")
-
-    return name
-
-
 def _parse_args(kwargs: dict):
     with Path("config.yml").open(encoding="utf8") as f:
         conf = yaml.safe_load(f)
@@ -266,16 +169,28 @@ def _parse_args(kwargs: dict):
     kwargs.update(conf["common"])
     kwargs.update(conf.get(__epic_script__, {}))
 
-    kwargs["horizon"] = int(kwargs["horizon"])
+    if not kwargs["horizon"]:
+        kwargs["horizon"] = "1.1"
+
+    if kwargs["horizon"].isnumeric():
+        kwargs["horizon"] = int(kwargs["horizon"])
+    else:
+        try:
+            kwargs["horizon"] = float(kwargs["horizon"])
+        except TypeError:
+            raise ValueError(
+                "Expected int or float for horizon, got "
+                f"{type(kwargs['horizon'])}: {kwargs['horizon']}"
+            )
+
     kwargs["log_window"] = int(kwargs["log_window"])
     kwargs["fp_rate"] = float(kwargs["fp_rate"])
     kwargs["iterations"] = int(kwargs["iterations"])
     kwargs["data_folder"] = Path(kwargs["data_folder"])
 
-    if kwargs["start_step"] == "random":
-        kwargs["start_step"] = random.randint(0, kwargs["horizon"] / 2)
-    else:
-        kwargs["start_step"] = int(kwargs["start_step"])
+    kwargs["start_step"] = (
+        -1 if kwargs["start_step"] is None else int(kwargs["start_step"])
+    )
 
     return kwargs
 
@@ -283,10 +198,6 @@ def _parse_args(kwargs: dict):
 x = _parse_args(kwargs)
 
 files = [simulate() for _ in range(x.iterations)]
-
-import shutil
-
-shutil.copy(files[-1], "sample")
 
 if x.sync:
     l.info("Saving to bucket.")
