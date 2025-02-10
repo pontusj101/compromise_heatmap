@@ -30,7 +30,7 @@ import time
 import zipfile
 from pathlib import Path
 
-import malsim.agents.searchers as agents
+import malsim.agents as agents
 import yaml
 from malsim.sims.mal_simulator import MalSimulator
 from maltoolbox.attackgraph import AttackGraph
@@ -42,30 +42,30 @@ from libexec.storage import GcsStorageBucket
 l = logging.getLogger(__name__)
 
 attacker_agents = {
-    "passive": agents.PassiveAttacker,
+    "passive": agents.PassiveAgent,
     "bfs-random": agents.BreadthFirstAttacker,
     "dfs-random": agents.DepthFirstAttacker,
 }
 
 
-def simulate() -> Path:
+def simulate() -> None:
     env = _get_env()
 
     # TODO: These should accept objects
     env.register_attacker("attacker", 0)
 
     # TODO: why is this needed at all?
-    state, infos = env.reset()
-    terminated = False
+    state = env.reset()["attacker"]
 
     l.info("Simulation started.")
 
     start_time = time.time()
 
+    reported = False
     for timestep in range(x.horizon):
         stepstamp = "{:>{}}/{}".format(timestep, len(str(x.horizon)), x.horizon)
 
-        if timestep % 30 == 0:
+        if timestep % 1000 == 0:
             l.info(f"Timestep {stepstamp}. Time: {time.time() - start_time:.2f}s.")
 
         if timestep == x.start_step:
@@ -78,37 +78,32 @@ def simulate() -> Path:
                 }
             )
 
-        if timestep >= x.start_step and not terminated:
-            state["attacker"]["timestamp"] = timestep
-            actions = _compute_action(attacker, state, infos)
+        if timestep >= x.start_step and not state.terminated:
+            # TODO check if timestep is still required to set here
+            state.timestamp = timestep
+            actions = _compute_action(attacker, state)
         else:
             # Emulate a passive attacker without creating one for the time steps
             # before an actual attacker agent (passive or other) is strictly
             # needed. Do that after the attacker has nothing left to do as well.
-            actions = {"attacker": (0, None)}  # do nothing
+            actions = {"attacker": []}  # do nothing
 
-        state, rewards, terminations, truncations, infos = env.step(actions)
+        env.step(actions)
 
-        if "attacker" in state:
-            # Will be when starting, but not after attacker has finished, keep
-            # using the old one then.
-            compromised_state = state["attacker"]["observed_state"]
+        state = env.get_agent_state("attacker")
 
-        if terminations.get("attacker"):
-            terminated = True
+        if state.terminated and not reported:
+            reported = True
             l.info("Timestep %s: Attacker has nothing more to do.", timestep)
 
-        if truncations.get("attacker"):
+        if state.truncated:
             l.info("Simulation terminated by simulator.")
             break
 
     # TODO: doing this to write the logs to a file
     attacker.terminate()
-    env.close()
 
     l.info(f"Simulation completed after: {time.time() - start_time:.2f}s")
-
-    return
 
 
 def _get_env():
@@ -117,14 +112,14 @@ def _get_env():
     except zipfile.BadZipFile:
         lang_graph = LanguageGraph.from_mal_spec(x.lang_file)
 
-    print("langgraph done")
+    l.info("langgraph done")
 
     model = Model.load_from_file(x.model_file, lang_graph)
-    print("model done")
+    l.info("model done")
 
     attack_graph = AttackGraph(lang_graph, model)
     attack_graph.save_to_file("tmp/ag.json")
-    print("attack graph done")
+    l.info("attack graph done")
 
     # TODO why is this needed?
     attack_graph.attach_attackers()
@@ -136,26 +131,23 @@ def _get_env():
         x.start_step = random.randint(0, x.horizon // 2)
 
     env = MalSimulator(
-        lang_graph,
-        model,
         attack_graph,
         max_iter=x.horizon,
         prune_unviable_unnecessary=False,
         # TODO: this is needed for the random entry point selection
     )
 
-    print("simulator created")
+    l.info("simulator created")
     return env
 
 
-def _compute_action(attacker, state, infos):
+# TODO remove this function
+def _compute_action(attacker, state):
     try:
-        action = attacker.compute_action_from_dict(
-            state["attacker"], infos["attacker"]["action_mask"]
-        )
+        action = [attacker.get_next_action(state)]
     except KeyError:
         # This happens only after attacker termination/truncation
-        action = (0, None)
+        action = []
 
     return {"attacker": action}
 
