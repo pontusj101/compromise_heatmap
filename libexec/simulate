@@ -34,7 +34,7 @@ import malsim.agents.searchers as agents
 import yaml
 from malsim.sims.mal_simulator import MalSimulator
 from maltoolbox.attackgraph import AttackGraph
-from maltoolbox.language import LanguageClassesFactory, LanguageGraph
+from maltoolbox.language import LanguageGraph
 from maltoolbox.model import Model
 
 from libexec.storage import GcsStorageBucket
@@ -118,10 +118,8 @@ def _get_env():
         lang_graph = LanguageGraph.from_mal_spec(x.lang_file)
 
     print("langgraph done")
-    lang_classes_factory = LanguageClassesFactory(lang_graph)
-    print("factory done")
 
-    model = Model.load_from_file(x.model_file, lang_classes_factory)
+    model = Model.load_from_file(x.model_file, lang_graph)
     print("model done")
 
     attack_graph = AttackGraph(lang_graph, model)
