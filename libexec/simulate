@@ -24,6 +24,7 @@ Notes:
     between 0 and half the horizon.
 """
 
+import math
 import logging
 import random
 import time
@@ -32,7 +33,7 @@ from pathlib import Path
 
 import malsim.agents as agents
 import yaml
-from malsim.sims.mal_simulator import MalSimulator
+from malsim import MalSimulator
 from maltoolbox.attackgraph import AttackGraph
 from maltoolbox.language import LanguageGraph
 from maltoolbox.model import Model
@@ -61,11 +62,13 @@ def simulate() -> None:
 
     start_time = time.time()
 
+    stride = calculate_stride_size(x.horizon)
+
     reported = False
     for timestep in range(x.horizon):
         stepstamp = "{:>{}}/{}".format(timestep, len(str(x.horizon)), x.horizon)
 
-        if timestep % 1000 == 0:
+        if timestep % stride == 0:
             l.info(f"Timestep {stepstamp}. Time: {time.time() - start_time:.2f}s.")
 
         if timestep == x.start_step:
@@ -74,14 +77,21 @@ def simulate() -> None:
                 {
                     "randomize": True,
                     "attack_graph": env.attack_graph,
-                    "wait_factor": 0 / 6,
+                    "wait_factor": 1 / 6,
                 }
             )
 
         if timestep >= x.start_step and not state.terminated:
-            # TODO check if timestep is still required to set here
-            state.timestamp = timestep
-            actions = _compute_action(attacker, state)
+            try:
+                action = attacker.get_next_action(state, timestamp=timestep)
+            except KeyError:
+                # This happens only after attacker termination/truncation
+                action = None
+
+            if action:
+                return {"attacker": [action]}
+            else:
+                return {"attacker": []}
         else:
             # Emulate a passive attacker without creating one for the time steps
             # before an actual attacker agent (passive or other) is strictly
@@ -90,7 +100,7 @@ def simulate() -> None:
 
         env.step(actions)
 
-        state = env.get_agent_state("attacker")
+        state = env.agent_states["attacker"]
 
         if state.terminated and not reported:
             reported = True
@@ -101,7 +111,7 @@ def simulate() -> None:
             break
 
     # TODO: doing this to write the logs to a file
-    attacker.terminate()
+    # attacker.terminate()
 
     l.info(f"Simulation completed after: {time.time() - start_time:.2f}s")
 
@@ -141,15 +151,32 @@ def _get_env():
     return env
 
 
-# TODO remove this function
-def _compute_action(attacker, state):
-    try:
-        action = [attacker.get_next_action(state)]
-    except KeyError:
-        # This happens only after attacker termination/truncation
-        action = []
+def calculate_stride_size(value: int) -> int:
+    """
+    Calculates frequency using order of magnitude and first digit of value.
 
-    return {"attacker": action}
+    If value is too small (less than 150) sets the frequency to value, i.e.
+    there is no repetition.
+
+    Args:
+        value: The total number of iterations.
+    """
+    if value <= 0:
+        msg = "Value myst be a positive number"
+        logger.error(msg)
+        raise ValueError(msg)
+    if value < 150:
+        stride_size = value
+    else:
+        order_of_magnitude = math.floor(math.log10(value))
+        first_digit = int(str(value)[0])
+
+        base = 10 ** max(0, order_of_magnitude - 1)  # e.g., for 1000s, base is 100
+        multiplier = max(1, first_digit)  # Multiplier based on first digit
+        stride_size = base * multiplier
+        stride_size = max(30, int(stride_size))  # Minimum frequency of 30
+
+    return stride_size
 
 
 def _parse_args(kwargs: dict):
