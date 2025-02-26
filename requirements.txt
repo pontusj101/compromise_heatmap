@@ -16,7 +16,7 @@ google-cloud-storage
 google-cloud-logging
 google-cloud-secret-manager
 
--e git+https://github.com/mal-lang/mal-toolbox@detectors#egg=mal-toolbox
+-e git+https://github.com/mal-lang/mal-toolbox
 -e git+https://github.com/mal-lang/mal-simulator@detectors#egg=mal-simulator
 
 git+https://github.com/KTH-SSAS/twmn-core@twmn

@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 class BreadthFirstAttacker(BuiltinBFS):
     default_settings = BuiltinBFS.default_settings | {"wait_factor": 0}
 
+    def __init__(self, agent_config):
+        super().__init__(agent_config)
+        self.logs: list[dict] = []
+        # TODO read this from the state instead
+        self.attack_graph = agent_config.pop("attack_graph")
+
     def get_next_action(self, agent_state: MalSimAgentStateView, **kwargs):
         self._update_targets(agent_state.action_surface)
 

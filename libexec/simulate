@@ -89,9 +89,9 @@ def simulate() -> None:
                 action = None
 
             if action:
-                return {"attacker": [action]}
+                actions = {"attacker": [action]}
             else:
-                return {"attacker": []}
+                actions = {"attacker": []}
         else:
             # Emulate a passive attacker without creating one for the time steps
             # before an actual attacker agent (passive or other) is strictly
